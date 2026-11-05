@@ -1,7 +1,7 @@
 # TASKY_GUIDE.md
 
 > Documento de referencia del proyecto. Se consulta antes de cada fase y se actualiza al terminarla.
-> Última actualización: 2026-11-05 — Fases 1–6 completadas. Siguiente: Fase 7 (instalación en Windows). Incluye los requisitos de rapidez/atajos/fechas límite y de plataforma Windows + iPhone (PWA) con Supabase.
+> Última actualización: 2026-11-05 — Fases 1–7 completadas: Tasky instalada en Windows. Siguiente: Fase 8 (web móvil + PWA). Incluye los requisitos de rapidez/atajos/fechas límite y de plataforma Windows + iPhone (PWA) con Supabase.
 
 ---
 
@@ -338,6 +338,11 @@ Hosting, autenticación, Supabase, cola de sync, service worker, IndexedDB. Nada
 ### 7.3 Windows — escritorio (Tauri 2)
 Aplicación principal. Instalador propio, icono, buscador de Windows, anclaje a la barra de tareas. Datos en `%APPDATA%\com.tasky.app\tasky.json`. Funciona sin conexión y sin iniciar sesión; si se activa la sync (Fase 9), inicia sesión una vez y guarda la sesión.
 
+- **Instalador:** NSIS (`npm run tauri build` → `src-tauri\target\release\bundle\nsis\`), en español, **por usuario** (sin permisos de administrador, en `%LOCALAPPDATA%\Tasky`). Crea el acceso del menú Inicio, que es lo que lo hace aparecer en el buscador de Windows. Sin firma de código (gratuito) → SmartScreen avisa la primera vez. Se descartó MSI: exige permisos de administrador y no aporta nada para un único usuario.
+- **Instancia única** (`tauri-plugin-single-instance`): abrir Tasky de nuevo enfoca la ventana existente en vez de crear otra; dos ventanas mantendrían versiones distintas del mismo archivo y una pisaría a la otra.
+- **Actualizar:** ejecutar un instalador nuevo encima; los datos (en `%APPDATA%`, fuera de la carpeta de instalación) se conservan.
+- Instrucciones paso a paso para el usuario: [README.md](README.md).
+
 ### 7.4 iPhone — PWA (Fase 8)
 - **Por qué PWA y no app nativa:** una app iOS nativa (Tauri móvil, Capacitor, React Native) exige cuenta de Apple Developer (de pago) o reinstalar cada 7 días. La PWA se añade a la pantalla de inicio desde Safari, se abre a pantalla completa con su icono y funciona offline.
 - **Mismo código:** el build web de Vite es la PWA; solo cambian el adaptador de almacenamiento (IndexedDB) y lo específico de PWA (manifest, service worker con `vite-plugin-pwa`, iconos `apple-touch-icon`, `viewport-fit=cover` y zonas seguras).
@@ -398,7 +403,7 @@ Cada fase termina con verificación real (app en ejecución + tests de `core/`),
 | **4. Tareas + fechas límite** ✅ | CRUD, `T`, estados, completar, fecha límite e indicadores, drag & drop con `rank`, completadas plegables, próxima fecha y vencidas en las tarjetas de Inicio. | CRUD, orden y fechas verificados y persistentes. |
 | **5. Ideas** ✅ | CRUD, `I`, cuadrícula, diferenciación visual, estados vacíos. | CRUD verificado y persistente. |
 | **6. Acabado UX** ✅ | Splash, pulido de animaciones, feedback, accesibilidad, backups e importación/exportación, revisión general. | Revisión visual y de teclado completa. |
-| **7. Instalación Windows** | Build del instalador, instalación, buscador de Windows, anclaje, instrucciones paso a paso. | Instalada y anclada en este PC. |
+| **7. Instalación Windows** ✅ | Build del instalador, instalación, buscador de Windows, anclaje, instrucciones paso a paso. | Instalada y anclada en este PC. |
 | **8. Web móvil + PWA** | Adaptador IndexedDB, manifest, service worker, iconos iOS, interfaz móvil específica (barra inferior, botón «+», hojas, táctil). Probada en local, sin publicar. | Funciona en Safari de iPhone en red local. |
 | **9. Supabase: privacidad + sync + hosting** | Proyecto Supabase, esquema, RLS y lista blanca, registro desactivado, login, sync local-first, hosting estático con HTTPS, instalación en iPhone. | Mismos datos en Windows e iPhone, offline y privado. |
 
@@ -443,6 +448,6 @@ Cada fase termina con verificación real (app en ejecución + tests de `core/`),
 | Fase 4 — Tareas: crear (`T`), editar, eliminar, estados (casilla y «En curso» en la fila), fecha límite con atajos Hoy/Mañana/En una semana, drag & drop con `rank`, completadas plegables, próxima fecha y vencidas en Inicio | ✅ |
 | Fase 5 — Ideas: crear (`I`, cambia a la pestaña Ideas), editar, eliminar con confirmación; cuadrícula tipo nota con acento ámbar y fecha de creación relativa | ✅ |
 | Fase 6 — Splash (trazo del sello, ~0,7 s, se omite con «reducir movimiento»), avisos (toasts), copias diarias rotativas, restaurar copia desde la pantalla de error, exportar/importar con confirmación; accesibilidad: contraste de `--text-faint`, flechas en las pestañas, títulos en botones de icono | ✅ Verificado en navegador y tests; compilación Rust correcta |
-| Fase 7 — Instalación en Windows | ⏳ Pendiente |
+| Fase 7 — Instalador NSIS por usuario en español (1,8 MB), instancia única, instrucciones en README | ✅ Instalada en este PC: acceso en el menú Inicio (buscador), entrada en Aplicaciones, datos existentes cargados sin modificar, segunda apertura no crea otra instancia. El anclado a la barra lo hace el usuario (Windows no permite anclar por programa) |
 | Fase 8 — Web móvil + PWA | 🔒 Diseñada (§7.4) |
 | Fase 9 — Supabase: privacidad + sync + hosting | 🔒 Diseñada (§7.5–7.6) |

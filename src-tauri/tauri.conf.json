@@ -18,7 +18,8 @@
         "minWidth": 420,
         "minHeight": 560,
         "center": true,
-        "backgroundColor": "#0A0A0B"
+        "backgroundColor": "#0A0A0B",
+        "label": "main"
       }
     ],
     "security": {
@@ -27,13 +28,27 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": [
+      "nsis"
+    ],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "publisher": "Tasky",
+    "shortDescription": "Gestor personal de proyectos, tareas e ideas",
+    "copyright": "© 2026",
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": [
+          "Spanish"
+        ],
+        "displayLanguageSelector": false
+      }
+    }
   }
 }
