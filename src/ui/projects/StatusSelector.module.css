@@ -1,0 +1,70 @@
+.group {
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.option {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 28px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 7px;
+  background: none;
+  color: var(--text-faint);
+  font-size: var(--fs-xs);
+  font-weight: 550;
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease);
+}
+.option:hover {
+  color: var(--text-muted);
+}
+.selected,
+.selected:hover {
+  color: var(--text);
+}
+
+.pill {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--surface-3);
+  box-shadow: 0 0 0 1px var(--border-strong) inset;
+}
+
+.dot,
+.label {
+  position: relative;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  opacity: 0.5;
+}
+.selected .dot {
+  opacity: 1;
+}
+.active {
+  background: var(--status-active);
+}
+.on_hold {
+  background: var(--status-on-hold);
+}
+.done {
+  background: var(--status-done);
+}
+
+@media (pointer: coarse) {
+  .option {
+    height: 36px;
+  }
+}

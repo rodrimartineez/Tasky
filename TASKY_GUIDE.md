@@ -1,7 +1,7 @@
 # TASKY_GUIDE.md
 
 > Documento de referencia del proyecto. Se consulta antes de cada fase y se actualiza al terminarla.
-> Última actualización: 2026-11-05 — Fases 1 y 2 completadas. Siguiente: Fase 3 (core + persistencia + proyectos).
+> Última actualización: 2026-11-05 — Fases 1–3 completadas. Siguiente: Fase 4 (tareas + fechas límite). Incluye los requisitos de rapidez/atajos/fechas límite y de plataforma Windows + iPhone (PWA) con Supabase.
 
 ---
 
@@ -9,34 +9,35 @@
 
 **Tasky** es el centro personal de organización de un único usuario: un gestor de **proyectos**, **tareas** e **ideas** inspirado en GitHub Projects y Linear, pensado para usarse a diario durante años.
 
-**Prioridad actual:** una aplicación de escritorio para Windows (Tauri) excelente, sencilla, estable y completa.
-**Futuro (no se implementa ahora):** versión Android/iOS y sincronización entre dispositivos. La arquitectura se prepara para ello sin construir infraestructura que aún no se necesita (ver §7).
+**Plataformas (objetivo final):**
+- **Windows:** aplicación de escritorio Tauri 2 (instalador, icono, buscador de Windows, barra de tareas, datos locales, offline). Es la aplicación principal y la prioridad actual.
+- **iPhone:** la misma aplicación como **web móvil instalable (PWA)** desde Safari, con interfaz adaptada a móvil. Sin App Store ni cuenta de Apple Developer. *(Fase 8)*
+- **Sincronización** entre ambos mediante **Supabase**, con acceso privado exclusivo para el usuario. *(Fase 9)*
 
-Principios que guían todas las decisiones:
+Principios que guían todas las decisiones, por orden:
 
-1. **Datos seguros y persistentes.** Nada se pierde al cerrar la app o apagar el equipo.
-2. **Offline siempre.** Tasky funciona completo sin Internet; la futura sincronización será un añadido, nunca un requisito.
-3. **Rapidez y comodidad.** Abrir, mirar, actuar. Pocos clics, atajos claros, animaciones que no estorban.
-4. **Calidad visual.** Identidad propia, oscura, minimalista y premium, con el naranja como color de marca.
-5. **Simplicidad técnica.** Sin servidores, sin cuentas, sin servicios de pago. Solo la complejidad que se usa hoy, más las decisiones baratas que evitan rehacer trabajo mañana.
+1. **Rapidez antes que complejidad.** Cada acción habitual con el mínimo esfuerzo: una tecla, escribir, Enter. Sin menús profundos ni formularios largos; los campos opcionales se pueden dejar vacíos sin fricción (§3.6).
+2. **Datos seguros y persistentes.** Nada se pierde al cerrar la app o apagar el equipo.
+3. **Offline siempre.** Tasky funciona completo sin Internet; la sincronización es un añadido, nunca un requisito.
+4. **Calidad visual.** Identidad propia, oscura, minimalista y premium, con el naranja como color de marca. Animaciones fluidas que nunca ralentizan.
+5. **Simplicidad técnica.** Solo la complejidad que se usa hoy, más las decisiones baratas que evitan rehacer trabajo mañana.
 
 ### Fuera de alcance (salvo que se decida lo contrario)
-
-Autenticación, multiusuario, sincronización (por ahora), versión móvil (por ahora), etiquetas, fechas límite, prioridades, subtareas, búsqueda global, notificaciones.
+Multiusuario, registro público, etiquetas, prioridades, subtareas, búsqueda global, notificaciones, publicación en tiendas de aplicaciones.
 
 ---
 
 ## 2. Funcionamiento general
 
 ```
-Pantalla principal (Inicio)
+Pantalla principal (Inicio)                         Atajos: P nuevo proyecto · ? ayuda
 ├── Activos      (tarjetas grandes, protagonistas)
 ├── En espera    (tarjetas compactas)
 └── Finalizados  (tarjetas compactas / atenuadas)
         │
         ▼  clic en una tarjeta
-Página de proyecto
-├── Cabecera: nombre, descripción, estado, menú (editar · cambiar estado · eliminar)
+Página de proyecto                                  Atajos: T nueva tarea · I nueva idea · Esc volver
+├── Cabecera: nombre, descripción, estado (1 clic), menú (editar · eliminar)
 ├── Pestaña «Tareas»  ← apartado principal
 │     ├── Lista ordenada de tareas abiertas (drag & drop = secuencia de trabajo)
 │     └── Sección «Completadas» (plegable)
@@ -51,89 +52,131 @@ Página de proyecto
 ### 3.1 Proyectos
 | Requisito | Detalle |
 |---|---|
-| Crear | Nombre (obligatorio) y descripción (opcional). Estado inicial elegible (por defecto *Activo*). |
-| Editar | Nombre y descripción. |
-| Cambiar estado | `active` · `on_hold` · `done` (Activo · En espera · Finalizado). |
+| Crear | Tecla **P** o botón → diálogo pequeño con el foco ya en el nombre. Nombre (obligatorio) y descripción (opcional). Enter crea. Estado inicial *Activo*. |
+| Editar | Nombre y descripción (mismo diálogo). |
+| Cambiar estado | `active` · `on_hold` · `done` (Activo · En espera · Finalizado), con un clic desde la cabecera del proyecto. |
 | Eliminar | Con diálogo de confirmación. Elimina en cascada sus tareas e ideas. |
-| Listar | Agrupados por estado en la pantalla principal (más recientes primero). |
+| Listar | Agrupados por estado en Inicio (más recientes primero). |
 | Página propia | Ruta `/project/:id`. |
 
 ### 3.2 Tareas
 | Requisito | Detalle |
 |---|---|
-| Campos | Título (obligatorio), descripción (opcional), estado, orden, fecha de creación. |
-| Crear / editar / eliminar | Creación rápida inline (escribir + Enter); edición en panel/modal; eliminar con confirmación ligera (o deshacer). |
-| Estados | `todo` (Pendiente) · `in_progress` (En curso) · `done` (Completada). *(D3, por defecto)* |
-| Completar | Checkbox de un clic con animación de feedback. |
-| Reordenar | Drag & drop (ratón y teclado). El orden define la secuencia de trabajo. |
-| Visualización | Lista única: abiertas arriba en su orden; completadas en una sección plegable. *(D4, por defecto)* |
+| Campos | Título (obligatorio), descripción (opcional), estado, **fecha límite (opcional)**, orden, fecha de creación. |
+| Crear | Tecla **T** (dentro de un proyecto) o botón → diálogo con foco en el título; descripción y fecha límite opcionales. Enter crea. |
+| Editar / eliminar | Clic en la tarea → mismo diálogo; eliminar con confirmación ligera. |
+| Estados | `todo` (Pendiente) · `in_progress` (En curso) · `done` (Completada). |
+| Completar | Checkbox de un clic en la propia fila, con animación de feedback. |
+| Reordenar | Drag & drop (ratón, teclado y táctil). El orden define la secuencia de trabajo. |
+| Visualización | Lista única: abiertas arriba en su orden; completadas en una sección plegable. Cada fila: título, descripción (si existe), estado y fecha límite (si existe). |
 
-### 3.3 Ideas
+### 3.3 Fechas límite
+- Opcionales, solo en tareas. Representan **el día máximo** para terminar la tarea (no inicio ni creación).
+- Indicadores discretos, sin abusar del color:
+  | Situación | Indicación |
+  |---|---|
+  | Vencida (antes de hoy, no completada) | Texto y icono en rojo apagado (`--danger`), «Venció hace N días». |
+  | Hoy / mañana | Naranja (`--orange-300`), «Hoy» / «Mañana». |
+  | Próxima (≤ 7 días) | Gris claro, día de la semana («vie 13»). |
+  | Más adelante | Gris tenue, fecha corta («13 dic»). |
+  | Tarea completada | Fecha atenuada, sin alerta. |
+- En Inicio, cada tarjeta de proyecto muestra la **próxima fecha límite** y, si las hay, cuántas tareas están **vencidas**, para identificar qué proyectos requieren atención.
+
+### 3.4 Ideas
 | Requisito | Detalle |
 |---|---|
 | Campos | Título (obligatorio), descripción (opcional), fecha de creación. |
-| Crear / editar / eliminar | Igual que las tareas, sin estado ni orden manual (más recientes primero). |
+| Crear | Tecla **I** (dentro de un proyecto) o botón → diálogo con foco en el título. Enter crea. |
+| Editar / eliminar | Clic en la idea → mismo diálogo. Sin estado ni orden manual (más recientes primero). |
 | Diferenciación visual | Tarjetas tipo nota en cuadrícula, icono de bombilla, acento ámbar suave, sin checkbox. |
 
-### 3.4 Pantalla principal
-- Sin login. Es la primera pantalla al abrir.
+### 3.5 Pantalla principal
+- Sin login en escritorio. Es la primera pantalla al abrir.
 - Tres secciones: Activos (mayor protagonismo), En espera, Finalizados.
-- Tarjeta de proyecto: nombre, descripción breve (truncada), estado, nº tareas pendientes, nº completadas, barra de progreso sutil.
-- Botón «Nuevo proyecto» siempre visible (cabecera) + atajo de teclado `N`.
+- Tarjeta de proyecto: nombre, descripción breve, estado, nº tareas pendientes, nº completadas, barra de progreso, próxima fecha límite y nº de vencidas (si existen).
+- Botón «Nuevo proyecto» siempre visible con su atajo (`P`).
 - Estados vacíos diseñados para cada sección.
 
-### 3.5 Persistencia
-- Todo (proyectos, tareas, ideas, estados y órdenes) se guarda automáticamente tras cada cambio, en local.
-- Copias de seguridad: automáticas rotativas + exportar/importar JSON. *(D2, por defecto)*
+### 3.6 Rapidez y atajos de teclado
+Flujos objetivo:
+- Crear proyecto: `P` → escribir → `Enter`.
+- Crear tarea: entrar en el proyecto → `T` → escribir → `Enter`.
+- Crear idea: entrar en el proyecto → `I` → escribir → `Enter`.
+- Completar tarea: clic en su checkbox. Reordenar: arrastrar y soltar.
 
-### 3.6 Acceso desde Windows
-- App de escritorio **Tauri 2** con instalador propio: aparece en el buscador de Windows, se ancla a la barra de tareas, icono propio. *(D1, confirmada)*
+**Atajos (mantener esta tabla actualizada):**
+
+| Tecla | Dónde | Acción |
+|---|---|---|
+| `P` | Inicio | Nuevo proyecto |
+| `T` | Página de proyecto | Nueva tarea (abre la pestaña Tareas si hace falta) |
+| `I` | Página de proyecto | Nueva idea (abre la pestaña Ideas si hace falta) |
+| `Enter` | Diálogo de creación/edición (campo de una línea) | Confirmar |
+| `Ctrl` + `Enter` | Diálogo, dentro de la descripción | Confirmar (Enter solo hace salto de línea) |
+| `Esc` | Diálogo / menú abierto | Cerrar sin guardar |
+| `Esc` | Página de proyecto (sin nada abierto) | Volver a Inicio |
+| `?` | Cualquier pantalla | Mostrar la ayuda de atajos |
+
+**Reglas:**
+- Los atajos de una letra **no se activan** mientras se escribe en un campo de texto, ni si se pulsan con `Ctrl`, `Alt`, `Shift`(salvo `?`) o `Win`/`Cmd`, ni con un diálogo abierto. Así no interfieren con atajos de Windows ni del navegador.
+- Son contextuales: `T` e `I` solo existen dentro de un proyecto; `P` en Inicio.
+- Toda acción con atajo tiene también un botón visible, con el atajo indicado (`<kbd>`).
+- Ayuda visual: botón «Atajos» (icono de teclado) en la cabecera y tecla `?`.
+- Las funciones principales son accesibles con teclado y con ratón (foco visible, orden de tabulación lógico, `aria-*` en diálogos y menús).
+- Implementación: un único hook `useShortcut` en `ui/shortcuts/` registra atajos por pantalla; la tabla de ayuda se genera desde la misma definición para que nunca se desincronice.
+
+### 3.7 Persistencia
+- Todo (proyectos, tareas, ideas, estados, fechas y órdenes) se guarda automáticamente tras cada cambio, en local.
+- Copias de seguridad: automáticas rotativas + exportar/importar JSON (Fase 6).
 
 ---
 
 ## 4. Requisitos visuales
 
 ### 4.1 Estilo
-Dark mode, minimalista y premium (referencias: Linear, GitHub Projects). Jerarquía clara, espaciado generoso, bordes finos de 1px, radios suaves, sombras mínimas, animaciones cortas (150–250 ms).
+Dark mode, minimalista y premium (referencias: Linear, GitHub Projects). Jerarquía clara, espaciado generoso, bordes finos de 1px, radios suaves, sombras mínimas.
 
-### 4.2 Paleta (tokens CSS)
+### 4.2 Paleta (tokens CSS, `src/styles/tokens.css`)
 | Token | Valor | Uso |
 |---|---|---|
 | `--bg` | `#0A0A0B` | Fondo de la app |
-| `--surface-1` | `#111113` | Paneles, barra lateral |
-| `--surface-2` | `#18181B` | Tarjetas |
+| `--surface-1` | `#111113` | Paneles, tarjetas |
+| `--surface-2` | `#18181B` | Hover de tarjetas, botones secundarios |
 | `--surface-3` | `#202024` | Hover, inputs |
 | `--border` | `#27272A` | Separadores, bordes |
 | `--border-strong` | `#3A3A40` | Bordes en foco/hover |
 | `--text` | `#EDEDEF` | Texto principal |
 | `--text-muted` | `#A1A1AA` | Texto secundario |
 | `--text-faint` | `#6B6B74` | Metadatos, placeholders |
-| `--orange-300` | `#FDBA74` | Detalles, texto sobre oscuro |
-| `--orange-400` | `#FB923C` | Hover de acento |
-| `--orange-500` | `#F97316` | Color de marca, botón primario |
-| `--orange-600` | `#EA580C` | Pulsado |
+| `--orange-300…600` | `#FDBA74` `#FB923C` `#F97316` `#EA580C` | Marca: logo, primario, selección, foco, progreso |
 | `--orange-glow` | `rgba(249,115,22,.15)` | Halos, selección, foco |
 | `--idea` | `#E5B567` | Acento de ideas (ámbar apagado) |
-| `--success` | `#4ADE80` (desaturado) | Solo para confirmaciones puntuales |
-| `--danger` | `#F87171` (desaturado) | Acciones destructivas |
-
-Los naranjas se usan con moderación: logotipo, botón primario, elemento seleccionado, foco, progreso y microanimaciones.
+| `--success` | `#6FCF97` | Completado, confirmaciones puntuales |
+| `--danger` | `#F87171` | Acciones destructivas, fechas vencidas |
 
 ### 4.3 Tipografía
 **Inter** (variable, empaquetada localmente). Tamaños: 12 / 13 / 14 (base) / 16 / 20 / 28. Números tabulares en contadores.
 
 ### 4.4 Logotipo — «Sello» (aprobado)
-Un **único trazo continuo** escribe «tsk» en cursiva y, sin levantarse, sale de la «k» para rodear la palabra y cerrar un círculo, como un sello. Degradado naranja `#FDBA74 → #EA580C`, sin fondo (el icono es la propia silueta del anillo).
-- Trazado canónico: `LOGO_PATH` en `src/ui/components/Logo.tsx` (espacio 64×64). El grosor se adapta al tamaño (más grueso en pequeño).
-- Favicon: `public/tasky.svg`. Fuente de iconos de la app: `src-tauri/icons/source/tasky-icon.svg` → `npx tauri icon src-tauri/icons/source/tasky-icon.svg` (borrar después `icons/android` e `icons/ios` hasta que exista la versión móvil).
-- Al ser un solo trazo, se puede animar dibujándose (`stroke-dashoffset`) en el splash de la Fase 6.
-- Descartados: monograma «t» con check, «Secuencia», «Progreso», «tsk» como texto lineal (cursiva, neón, firma, onda), «Tarea cumplida» y «Tarjeta».
+Un **único trazo continuo** escribe «tsk» en cursiva y, sin levantarse, sale de la «k» para rodear la palabra y cerrar un círculo, como un sello. Degradado naranja `#FDBA74 → #EA580C`, sin fondo.
+- Trazado canónico: `LOGO_PATH` en `src/ui/components/Logo.tsx` (espacio 64×64). El grosor se adapta al tamaño.
+- Favicon: `public/tasky.svg`. Iconos de la app: `src-tauri/icons/source/tasky-icon.svg` → `npx tauri icon src-tauri/icons/source/tasky-icon.svg` (borrar después `icons/android` e `icons/ios`; los iconos de la PWA se generarán en la Fase 8 desde el mismo SVG).
+- Al ser un solo trazo, se anima dibujándose (`stroke-dashoffset`) en el splash.
+- Descartados: monograma «t» con check, «Secuencia», «Progreso», «tsk» como texto lineal, «Tarea cumplida» y «Tarjeta».
 
 ### 4.5 Movimiento
-- Splash de entrada ≤ 700 ms (el logotipo se «dibuja» y se desvanece). Se omite con `prefers-reduced-motion`.
-- Transiciones de página: fundido + desplazamiento de 8px, 200 ms.
-- Completar tarea: el check se dibuja, la fila se atenúa y pasa a «Completadas».
-- Listas: animación de layout al reordenar/insertar/eliminar.
+Fluido y rápido: la interacción nunca espera a una animación. Duraciones 120–250 ms, curvas suaves (`--ease`), sin rebotes llamativos. Todo respeta `prefers-reduced-motion`. Librería: **Motion**.
+
+| Elemento | Animación |
+|---|---|
+| Apertura de la app | Splash ≤ 700 ms: el logotipo se dibuja y se desvanece. |
+| Cambio de pantalla | Fundido + desplazamiento de 8 px, ~200 ms. |
+| Diálogos y menús | Aparición con fundido + escala 0,97 → 1 (~160 ms); en móvil, hoja que sube desde abajo. |
+| Crear / eliminar elementos | Entrada con fundido y altura; salida colapsando. |
+| Cambio de estado | La tarjeta se recoloca en su sección con animación de layout; el check se dibuja al completar. |
+| Reordenación | Animación de layout de @dnd-kit/Motion. |
+| Secciones plegables | Altura animada + giro del chevron. |
+| Botones y tarjetas | Hover/pulsado sutiles (elevación de 2 px, halo naranja en el primario). |
 
 ---
 
@@ -142,68 +185,74 @@ Un **único trazo continuo** escribe «tsk» en cursiva y, sin levantarse, sale 
 ### 5.1 Capas
 
 ```
-┌──────────────────────────────────────────────────────────┐
-│ ui/        React: páginas, componentes, animaciones      │  ← reutilizable en móvil (Tauri/Capacitor)
-├──────────────────────────────────────────────────────────┤
-│ state/     Store (Zustand): conecta UI ↔ core ↔ storage  │
-├──────────────────────────────────────────────────────────┤
-│ core/      TypeScript puro: modelo, validación, reglas,  │  ← sin React, sin Tauri, sin navegador
-│            casos de uso, interfaces (puertos)            │     100 % testeable y reutilizable
-├──────────────────────────────────────────────────────────┤
-│ adapters/  Implementaciones concretas de los puertos:    │  ← ÚNICO sitio que importa @tauri-apps/*
-│            storage Tauri (archivo), memoria (tests/dev)  │     aquí se añadirán móvil y sync
-└──────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────┐
+│ ui/        React: páginas, componentes, atajos, animaciones   │  ← compartida por escritorio y PWA
+│            (layouts específicos de móvil donde haga falta)    │
+├───────────────────────────────────────────────────────────────┤
+│ state/     Store (Zustand): conecta UI ↔ core ↔ storage       │
+├───────────────────────────────────────────────────────────────┤
+│ core/      TypeScript puro: modelo, validación, reglas,       │  ← sin React, sin Tauri, sin navegador
+│            casos de uso, fechas límite, interfaces (puertos)  │     100 % testeable y reutilizable
+├───────────────────────────────────────────────────────────────┤
+│ adapters/  Implementaciones de los puertos por plataforma:    │  ← ÚNICO sitio que importa @tauri-apps/*
+│            · Tauri: archivo JSON en AppData (escritorio)      │
+│            · Web: localStorage hoy → IndexedDB (PWA, Fase 8)  │
+│            · Supabase: auth + sync (Fase 9)                   │
+└───────────────────────────────────────────────────────────────┘
 ```
 
 Reglas:
 - `core/` no importa nada de `ui/`, `state/`, `adapters/`, React ni Tauri.
-- Solo `adapters/` importa `@tauri-apps/*`. Se refuerza con una regla ESLint (`no-restricted-imports`).
+- Solo `adapters/` importa `@tauri-apps/*` (y en el futuro `@supabase/*`). Se refuerza con ESLint (`no-restricted-imports`).
+- La plataforma se detecta **una sola vez** en `adapters/index.ts` (`isTauri()`), que devuelve el `Storage` adecuado. El resto de la app no sabe en qué plataforma corre.
 - La UI nunca accede al almacenamiento directamente: llama acciones del store, que aplican casos de uso de `core/` y persisten mediante el puerto `Storage`.
 
 ### 5.2 Estructura de carpetas
 ```
 src/
 ├── core/
-│   ├── model.ts        # Tipos + esquemas zod + versión de esquema
+│   ├── model.ts        # Esquemas zod + tipos inferidos + versión de esquema
 │   ├── ids.ts          # newId() → UUID v7
-│   ├── clock.ts        # now() → marca temporal UTC (inyectable en tests)
-│   ├── rank.ts         # orden fraccional (rankBetween)
-│   ├── projects.ts     # casos de uso puros: (estado, comando) → nuevo estado
-│   ├── tasks.ts
-│   ├── ideas.ts
-│   ├── selectors.ts    # consultas: proyectos por estado, contadores, tareas ordenadas
-│   ├── migrations.ts
-│   └── ports.ts        # interface Storage { load(); save(); backup() }
+│   ├── clock.ts        # now() (UTC) y today() (fecha local)
+│   ├── data.ts         # emptyData(), parseData() (validación + migraciones + purga de lápidas)
+│   ├── projects.ts     # casos de uso puros: (datos, comando) → nuevos datos
+│   ├── tasks.ts  ideas.ts  rank.ts  dueDates.ts   (Fases 4–5)
+│   ├── selectors.ts    # consultas: proyectos por estado, contadores, próximas fechas
+│   └── ports.ts        # interface Storage { load(); save() }
 ├── adapters/
-│   ├── tauriStorage.ts # archivo en %APPDATA%\Tasky (plugin-fs), escritura atómica, backups
-│   └── memoryStorage.ts# tests y desarrollo en navegador (localStorage)
+│   ├── index.ts        # createStorage(): elige la implementación por plataforma
+│   ├── tauriStorage.ts # %APPDATA%\com.tasky.app\tasky.json, escritura atómica
+│   └── webStorage.ts   # navegador (desarrollo; IndexedDB en la Fase 8)
 ├── state/store.ts
 ├── ui/
 │   ├── app/            # App, rutas, layout, splash
+│   ├── shortcuts/      # useShortcut, definición de atajos, ayuda
 │   ├── projects/  tasks/  ideas/
-│   └── components/     # Button, Dialog, ConfirmDialog, Input, Menu, Tabs, EmptyState, Toast, Logo
+│   └── components/     # Button, Dialog, ConfirmDialog, Field, Menu, Tabs, EmptyState, Logo…
 └── styles/             # tokens.css, global.css
-src-tauri/              # configuración Tauri, iconos, (casi) sin código Rust propio
+src-tauri/              # configuración Tauri, iconos, plugin fs (sin código Rust propio)
 ```
 
 ### 5.3 Stack
 | Capa | Tecnología | Motivo |
 |---|---|---|
-| UI | **React 19 + TypeScript** | Maduro, tipado; la misma UI sirve en móvil. |
-| Build | **Vite** | Rápido; plantilla oficial de Tauri. |
-| Escritorio | **Tauri 2** | Instalador ligero (~5–10 MB), WebView2 nativo de Windows, soporta Android/iOS. |
-| Estilos | **CSS Modules + variables CSS** | Control total del diseño, sin kits de UI genéricos. |
+| UI | **React 19 + TypeScript** | Maduro, tipado; la misma UI sirve en escritorio y PWA. |
+| Build | **Vite** | Rápido; plantilla oficial de Tauri; plugin PWA disponible. |
+| Escritorio | **Tauri 2** + `plugin-fs` | Instalador ligero, WebView2 nativo, acceso al archivo de datos. |
+| Móvil | **PWA** (Fase 8) | Se instala desde Safari sin App Store ni Apple Developer. |
+| Sync / auth | **Supabase** (Fase 9) | Postgres + Auth + RLS, plan gratuito. |
+| Estilos | **CSS Modules + variables CSS** | Control total del diseño. |
 | Estado | **Zustand** | Store mínimo. |
-| Rutas | **React Router** (`HashRouter`) | Funciona igual en escritorio, móvil y navegador. |
-| Drag & drop | **@dnd-kit** | Accesible (teclado), compatible con táctil. |
-| Animación | **Motion** | Transiciones de layout y presencia. |
+| Rutas | **React Router** (`HashRouter`) | Igual en escritorio, PWA y navegador. |
+| Drag & drop | **@dnd-kit** | Accesible (teclado) y táctil. |
+| Animación | **Motion** | Presencia, layout y transiciones. |
 | Iconos | **lucide-react** | Línea fina, coherente. |
-| Validación | **zod** | Valida datos al cargar/importar (y en el futuro, al recibir del servidor). |
+| Validación | **zod** | Valida datos al cargar/importar y, en el futuro, al recibir del servidor. |
 | IDs | **uuid** (v7) | Ver §6.2. |
 | Orden | **fractional-indexing** | Ver §6.4. |
 | Tests | **Vitest** | Lógica de `core/` y adaptadores. |
 
-> Las dependencias se instalan en la fase que las usa (Zustand y zod en la 3, @dnd-kit y fractional-indexing en la 4, Motion en la 6), para no arrastrar paquetes sin uso.
+> Las dependencias se instalan en la fase que las usa (Zustand, zod, uuid, Motion y plugin-fs en la 3; @dnd-kit y fractional-indexing en la 4; plugin PWA en la 8; Supabase en la 9).
 
 ---
 
@@ -215,6 +264,7 @@ src-tauri/              # configuración Tauri, iconos, (casi) sin código Rust 
 type ProjectStatus = 'active' | 'on_hold' | 'done';
 type TaskStatus    = 'todo' | 'in_progress' | 'done';
 type Timestamp     = string;  // ISO 8601 UTC con milisegundos: "2026-11-05T18:04:12.345Z"
+type LocalDate     = string;  // Día del calendario sin hora ni zona: "2026-11-13"
 
 interface BaseRecord {
   id: string;                 // UUID v7, generado en el dispositivo
@@ -234,6 +284,7 @@ interface Task extends BaseRecord {
   title: string;
   description: string;
   status: TaskStatus;
+  dueDate: LocalDate | null;  // fecha límite opcional
   rank: string;               // orden fraccional dentro del proyecto
   completedAt: Timestamp | null;
 }
@@ -252,129 +303,127 @@ interface TaskyData {
 }
 ```
 
-**Relaciones:** `Project 1 ─ N Task`, `Project 1 ─ N Idea`. Los contadores (pendientes/completadas) se **calculan**, no se almacenan.
+**Relaciones:** `Project 1 ─ N Task`, `Project 1 ─ N Idea`. Contadores, progreso y próximas fechas se **calculan**, no se almacenan.
 
 ### 6.2 Identificadores — UUID v7
-Generados en el propio dispositivo, sin servidor. Únicos globalmente → dos dispositivos nunca crean el mismo id, así que no hay duplicados al sincronizar. A diferencia de v4, v7 está ordenado por tiempo (mejor rendimiento en índices de bases de datos y orden natural de creación).
+Generados en el dispositivo, sin servidor. Únicos globalmente → sin duplicados al sincronizar. Ordenados por tiempo (mejor rendimiento en índices de Postgres).
 
 ### 6.3 Fechas y marcas temporales
-- Todas en **UTC**, formato ISO 8601 con milisegundos, generadas por una única función `clock.now()`. Se muestran en hora local solo en la UI.
-- `createdAt` nunca cambia; `updatedAt` cambia en cada modificación; `completedAt` al completar; `deletedAt` al borrar.
-- `updatedAt` es la base de la futura resolución de conflictos (§7.3).
+- **Marcas temporales** (`createdAt`, `updatedAt`, `deletedAt`, `completedAt`): UTC, ISO 8601 con milisegundos, generadas solo por `clock.now()`. Se muestran en hora local en la UI. `updatedAt` es la base de la resolución de conflictos (§7.3).
+- **Fecha límite** (`dueDate`): `LocalDate` (`YYYY-MM-DD`), **sin hora ni zona horaria**. Es un día del calendario del usuario: guardarla como instante UTC haría que «13 de noviembre» se viese como «12» en otra zona o con el cambio de horario. «Hoy» se calcula con `clock.today()` en la zona local del dispositivo. En Postgres se mapeará a `date`.
 
 ### 6.4 Orden de tareas — índice fraccional
-Cada tarea tiene un `rank` de texto (`"a0"`, `"a0V"`, `"a1"`…). Mover una tarea entre otras dos solo cambia **su** `rank` (se calcula uno intermedio); el resto no se toca.
-
-*Alternativa descartada:* posiciones enteras renumeradas (0..n). Más intuitivo, pero cada movimiento modifica muchas tareas → en una sincronización futura, dos reordenaciones en distintos dispositivos chocarían en casi todos los registros. El índice fraccional cuesta lo mismo hoy (una librería de ~1 KB) y evita una migración después. Empates (posibles tras sincronizar) se resuelven por `id`.
+Cada tarea tiene un `rank` de texto (`"a0"`, `"a0V"`, `"a1"`…). Mover una tarea solo cambia **su** `rank`. Evita conflictos masivos al sincronizar reordenaciones. Empates se resuelven por `id`.
 
 ### 6.5 Borrado lógico
-Eliminar marca `deletedAt` en lugar de quitar el registro (en cascada: el proyecto y sus tareas e ideas). Los selectores lo filtran, la UI nunca ve registros borrados. Necesario para que un borrado pueda propagarse a otros dispositivos en el futuro. Mientras no haya sync, las lápidas de más de 30 días se purgan al arrancar para que el archivo no crezca.
+Eliminar marca `deletedAt` (en cascada: proyecto → tareas e ideas). Los selectores lo filtran. Permite propagar borrados. Mientras no haya sync, las lápidas de más de 30 días se purgan al cargar; con sync, solo se purgarán las ya confirmadas por el servidor.
 
 ---
 
-## 7. Preparación para móvil y sincronización (diseño, NO implementación)
+## 7. Multiplataforma y sincronización
 
 ### 7.1 Qué se hace ya (coste casi nulo)
 | Decisión | Por qué ayuda después |
 |---|---|
-| Capas `core/` / `adapters/` / `ui/` | Móvil y sync se añaden como adaptadores nuevos. |
-| UUID v7 en cliente | Sin duplicados entre dispositivos. |
-| `createdAt/updatedAt/deletedAt` UTC | Detección de cambios y resolución de conflictos. |
-| Borrado lógico | Los borrados se propagan. |
-| Orden fraccional | Reordenar no genera conflictos masivos. |
+| Capas `core/` / `adapters/` / `ui/` | PWA y Supabase se añaden como adaptadores nuevos. |
+| Detección de plataforma en un solo punto | El mismo build web sirve para Tauri y para la PWA. |
+| UUID v7, marcas UTC, `LocalDate` para fechas límite | Sin duplicados ni desfases de zona horaria entre dispositivos. |
+| Borrado lógico y orden fraccional | Borrados y reordenaciones se sincronizan sin conflictos masivos. |
 | Validación zod en la frontera | Los datos remotos se validarán igual que los locales. |
-| UI responsive, drag & drop táctil, `HashRouter` | La UI es reutilizable en pantallas pequeñas. |
+| UI responsive, drag & drop táctil, `HashRouter`, diálogos que en móvil son hojas | La interfaz móvil parte de los mismos componentes. |
 
-### 7.2 Qué NO se hace ahora
-Servidor, cuentas/autenticación, cola de cambios, cursores de sync, detección de red, proyectos de Android/iOS. Nada de esto existe en el código hasta que se decida empezar.
+### 7.2 Qué NO se hace todavía
+Hosting, autenticación, Supabase, cola de sync, service worker, IndexedDB. Nada de esto existe en el código hasta su fase.
 
-### 7.3 Propuesta de sincronización futura
-**Modelo:** *local-first*. El almacenamiento local sigue siendo la fuente de verdad del dispositivo; la app nunca espera a la red.
+### 7.3 Windows — escritorio (Tauri 2)
+Aplicación principal. Instalador propio, icono, buscador de Windows, anclaje a la barra de tareas. Datos en `%APPDATA%\com.tasky.app\tasky.json`. Funciona sin conexión y sin iniciar sesión; si se activa la sync (Fase 9), inicia sesión una vez y guarda la sesión.
+
+### 7.4 iPhone — PWA (Fase 8)
+- **Por qué PWA y no app nativa:** una app iOS nativa (Tauri móvil, Capacitor, React Native) exige cuenta de Apple Developer (de pago) o reinstalar cada 7 días. La PWA se añade a la pantalla de inicio desde Safari, se abre a pantalla completa con su icono y funciona offline.
+- **Mismo código:** el build web de Vite es la PWA; solo cambian el adaptador de almacenamiento (IndexedDB) y lo específico de PWA (manifest, service worker con `vite-plugin-pwa`, iconos `apple-touch-icon`, `viewport-fit=cover` y zonas seguras).
+- **Interfaz adaptada, no reducida:** barra inferior con pestañas Tareas/Ideas, botón flotante «+» (no hay teclado físico para atajos), formularios como hojas inferiores, objetivos táctiles ≥ 44 px, arrastre con pulsación larga mediante un asa visible, sin estados de hover imprescindibles.
+- **Limitaciones conocidas de iOS:** el almacenamiento de una PWA puede borrarse si no se usa durante semanas → con Supabase (Fase 9) el servidor es la copia de seguridad y el móvil se rehidrata al abrir. Sin sync, la PWA en iPhone no tendría sentido como segundo dispositivo, por eso las Fases 8 y 9 se publican juntas.
+
+### 7.5 Sincronización con Supabase (Fase 9)
+**Modelo *local-first*:** cada dispositivo trabaja contra su almacenamiento local; la app nunca espera a la red.
+
+**Esquema:** tablas `projects`, `tasks`, `ideas` que replican §6.1 (`snake_case`), más `user_id uuid` y `server_seq bigint` (asignado por un trigger con una secuencia en cada insert/update).
 
 **Flujo:**
-1. **Push:** el dispositivo envía los registros con `updatedAt` posterior a su último envío confirmado (upsert por `id`, incluye lápidas).
-2. **Pull:** pide al servidor los registros cambiados desde su último cursor (el servidor asigna a cada escritura un número de secuencia creciente, así el cursor no depende del reloj del dispositivo).
-3. **Merge:** por registro, gana el `updatedAt` más reciente (*last-write-wins*); empate → mayor `id`. Las lápidas ganan igual que cualquier cambio.
-4. **Offline:** si no hay conexión, simplemente no se sincroniza; los cambios quedan en local y se envían al volver la red (al arrancar, al recuperar conexión y periódicamente).
+1. **Push:** se envían los registros con `updatedAt` posterior al último envío confirmado (`upsert` por `id`, incluye lápidas). El servidor solo acepta el cambio si su `updated_at` es más reciente que el guardado (*last-write-wins* aplicado también en el servidor).
+2. **Pull:** se piden los registros con `server_seq` mayor que el último cursor del dispositivo (cursor independiente del reloj local).
+3. **Merge:** por registro gana el `updatedAt` más reciente; empate → mayor `id`. Tras el merge se reaplica la cascada de borrados.
+4. **Cuándo:** al arrancar, al recuperar conexión, tras cada cambio local (agrupado unos segundos) y periódicamente; opcionalmente Supabase Realtime para recibir cambios al instante.
+5. **Offline:** los cambios quedan en local y se envían al volver la red.
 
-**Casos límite previstos:**
-- Mismo registro editado en dos dispositivos → gana la última edición. Para un único usuario es aceptable. Si molesta, se refina a *LWW por campo* (un `updatedAt` por campo) sin cambiar el resto.
-- Reordenaciones simultáneas → cada tarea conserva el `rank` de su último movimiento; el orden resultante es coherente aunque no idéntico a ninguno.
-- Tarea creada en un proyecto que otro dispositivo borró → la cascada se reaplica tras el merge (queda borrada).
-- Relojes desajustados → riesgo bajo con un solo usuario; si fuese necesario, se sustituye `clock.now()` por un reloj lógico híbrido (HLC) en un único archivo.
+**Casos límite:** misma tarea editada en dos dispositivos → gana la última edición (refinable a LWW por campo); reordenaciones simultáneas → cada tarea conserva su último `rank`; tarea creada en un proyecto borrado en otro dispositivo → queda borrada por la cascada; relojes desajustados → riesgo bajo con un usuario, sustituible por un reloj híbrido (HLC) en `clock.ts`.
 
-**Alternativas de backend (se decidirá cuando toque):**
-| Opción | Ventajas | Consecuencias |
-|---|---|---|
-| **Supabase** (Postgres gestionado, plan gratuito) | Auth y API listos; el esquema replica el modelo de §6. | Dependencia de un servicio externo (opcional: la app funciona sin él). |
-| **PocketBase autoalojado** | Un único ejecutable, datos en tu poder. | Hay que alojarlo y mantenerlo accesible (VPS/NAS). |
-| **API propia mínima** (Node + SQLite) | Control total. | Más código y mantenimiento. |
-| **Motor de sync** (PowerSync, ElectricSQL…) | Menos código de sync. | Acoplamiento a un proveedor; normalmente exige SQLite en cliente. |
-| **CRDT** (Automerge/Yjs) | Fusión perfecta de ediciones concurrentes. | Complejidad y formato de datos opaco; excesivo para un usuario. |
-| **Carpeta OneDrive/Dropbox** | Sin servidor. | Conflictos a nivel de archivo completo; mal soporte en iOS. |
+**Cambios necesarios en el código:** adaptador `adapters/supabase/` (cliente, auth, sync), metadatos de sync en el almacenamiento local (`lastPushAt`, `pullCursor`), pantalla de inicio de sesión e indicador de estado de sync. `core/` y la UI de proyectos/tareas/ideas no cambian.
 
-Recomendación provisional: LWW por registro + Supabase o PocketBase. Se reevaluará antes de implementar.
-
-**Cambios necesarios cuando llegue:** un adaptador `SyncClient`, guardar en el archivo local los metadatos de sync (`lastPushAt`, `pullCursor`), un indicador de estado de sync en la UI y pantalla de inicio de sesión. `core/` y la UI de proyectos/tareas/ideas no cambian.
-
-### 7.4 Propuesta de versión móvil futura
-| Opción | Reutilización | Consecuencias |
-|---|---|---|
-| **Tauri 2 móvil** (recomendada) | ~100 %: misma UI, `core/` y adaptadores; un solo proyecto. | Soporte móvil de Tauri más joven que el de escritorio; compilar iOS requiere un Mac. |
-| **Capacitor** | ~95 %: misma UI y `core/`, adaptador de almacenamiento nuevo. | Segundo empaquetador que mantener. |
-| **React Native** | Solo `core/` (~30 %). | Reescribir toda la UI; mejor sensación nativa. |
-
-Trabajo previsto: ajustes de layout táctil (gestos, áreas de toque), adaptador de almacenamiento si cambia la ruta de datos, iconos/splash móviles y, casi seguro, la sincronización (sin ella, cada dispositivo tendría datos independientes).
+### 7.6 Privacidad y acceso restringido (Fase 9)
+- **Autenticación obligatoria** en la web: sin sesión válida solo se muestra la pantalla de acceso; no se carga ni se muestra ningún dato.
+- **Sin registro público:** en Supabase se desactiva *Allow new users to sign up*; la única cuenta se crea manualmente desde el panel. La UI no tiene pantalla de registro.
+- **RLS en todas las tablas:** `enable row level security` + políticas `using (user_id = auth.uid())` y `with check (user_id = auth.uid())` para select/insert/update/delete. Sin políticas para `anon`.
+- **Lista blanca:** las políticas comprueban además que `auth.uid()` es el id de la cuenta autorizada (o un `email` concreto), de modo que aunque alguien consiguiera crear una cuenta no vería ni escribiría nada.
+- **Claves:** en el cliente solo la *anon/publishable key* (pública por diseño; la protección es RLS). La *service role key* nunca sale del panel de Supabase.
+- **Hosting de la PWA:** sitio estático gratuito (Cloudflare Pages, Netlify o Vercel) con HTTPS. Los archivos de la app son públicos pero no contienen datos. Opcional: Cloudflare Access delante del sitio para que ni siquiera la pantalla de acceso sea visible a terceros.
+- **Sesión:** Supabase Auth con email + contraseña (o enlace mágico); la sesión se renueva sola y se puede cerrar desde ajustes.
 
 ---
 
-## 8. Persistencia local (escritorio)
+## 8. Persistencia local
 
-Decisión **D5** (§10): **documento JSON** único en `%APPDATA%\com.tasky.app\tasky.json`.
-- Carga completa al arrancar, validación zod y migraciones por `schemaVersion`.
-- Guardado automático tras cada cambio (*debounce* ~300 ms + guardado forzado al cerrar la ventana).
-- Escritura atómica: se escribe `tasky.json.tmp` y se renombra (un corte de luz nunca deja el archivo a medias).
-- Copias automáticas rotativas en `backups/` (una por día, últimas 14) + exportar/importar manual.
-- Si el archivo principal está corrupto, se ofrece restaurar la última copia válida.
+**Escritorio** — decisión **D5**: **documento JSON** único en `%APPDATA%\com.tasky.app\tasky.json`.
+- Carga completa al arrancar; validación zod, migraciones por `schemaVersion` y purga de lápidas antiguas.
+- **Guardado inmediato tras cada cambio**, serializado (si hay una escritura en curso, se encola solo la última versión). Sin *debounce*: con un archivo de pocos KB es instantáneo y no existe ventana en la que cerrar la app pierda cambios.
+- Escritura atómica: se escribe `tasky.json.tmp` y se renombra sobre `tasky.json`.
+- Si el archivo no es válido, **no se sobrescribe**: se muestra un error y se conserva para recuperarlo (restauración desde copia en la Fase 6).
+- Copias automáticas rotativas en `backups/` + exportar/importar manual (Fase 6).
+
+**Navegador** (desarrollo y, en la Fase 8, PWA): mismo documento en `localStorage` mientras se desarrolla; IndexedDB en la PWA.
 
 ---
 
 ## 9. Plan de desarrollo por fases
 
-Cada fase termina con verificación real (app en ejecución + tests de `core/`) y actualización de esta guía.
+Cada fase termina con verificación real (app en ejecución + tests de `core/`), actualización de esta guía y commit.
 
 | Fase | Contenido | Criterio de cierre |
 |---|---|---|
-| **1. Planificación** | Requisitos, arquitectura, modelo de datos, preparación móvil/sync, esta guía. | Decisiones confirmadas. |
-| **2. Base + identidad visual** | Instalar Rust, scaffold Tauri + Vite + React + TS, ESLint, tokens, tipografía, logotipo, componentes UI usados por Inicio, layout, Inicio con datos de ejemplo. (Diálogos, menús, inputs y pestañas se crean en la fase que los usa, para no dejar código muerto.) | Inicio se ve completo dentro de la ventana Tauri; logotipo aprobado. |
-| **3. Core + persistencia + proyectos** | `core/` (modelo, ids, clock, migraciones), adaptador de almacenamiento, store, CRUD de proyectos, estados, navegación, confirmaciones. | CRUD verificado; datos sobreviven a reinicios; tests verdes. |
-| **4. Tareas** | CRUD, estados, completar, drag & drop con `rank`, sección de completadas. | CRUD + orden verificados y persistentes. |
-| **5. Ideas** | CRUD, cuadrícula, diferenciación visual, estados vacíos. | CRUD verificado y persistente. |
-| **6. Acabado UX** | Splash, transiciones, feedback, atajos, responsive, accesibilidad, backups e importación/exportación, revisión general. | Revisión visual completa. |
-| **7. Instalación Windows** | Build del instalador, iconos, instalación, búsqueda en Inicio, anclaje, instrucciones paso a paso. | Instalada y anclada en este PC. |
+| **1. Planificación** ✅ | Requisitos, arquitectura, modelo de datos, esta guía. | Decisiones confirmadas. |
+| **2. Base + identidad visual** ✅ | Scaffold Tauri + Vite + React + TS, ESLint, tokens, tipografía, logotipo, Inicio con datos de ejemplo. | Inicio en la ventana Tauri; logotipo aprobado. |
+| **3. Core + persistencia + proyectos + atajos** | `core/` (modelo zod, ids, reloj, carga/validación), adaptadores Tauri y navegador, store, CRUD de proyectos, cambio de estado con un clic, página de proyecto (cabecera + pestañas), diálogos, confirmación de borrado, sistema de atajos (`P`, `Esc`, `Enter`, `?`) con ayuda visual, transiciones básicas. | CRUD verificado; datos sobreviven a reinicios; atajos funcionando; tests verdes. |
+| **4. Tareas + fechas límite** | CRUD, `T`, estados, completar, fecha límite e indicadores, drag & drop con `rank`, completadas plegables, próxima fecha y vencidas en las tarjetas de Inicio. | CRUD, orden y fechas verificados y persistentes. |
+| **5. Ideas** | CRUD, `I`, cuadrícula, diferenciación visual, estados vacíos. | CRUD verificado y persistente. |
+| **6. Acabado UX** | Splash, pulido de animaciones, feedback, accesibilidad, backups e importación/exportación, revisión general. | Revisión visual y de teclado completa. |
+| **7. Instalación Windows** | Build del instalador, instalación, buscador de Windows, anclaje, instrucciones paso a paso. | Instalada y anclada en este PC. |
+| **8. Web móvil + PWA** | Adaptador IndexedDB, manifest, service worker, iconos iOS, interfaz móvil específica (barra inferior, botón «+», hojas, táctil). Probada en local, sin publicar. | Funciona en Safari de iPhone en red local. |
+| **9. Supabase: privacidad + sync + hosting** | Proyecto Supabase, esquema, RLS y lista blanca, registro desactivado, login, sync local-first, hosting estático con HTTPS, instalación en iPhone. | Mismos datos en Windows e iPhone, offline y privado. |
 
 ---
 
 ## 10. Decisiones
 
-### Confirmadas
-- **D1 — Plataforma:** app de escritorio con **Tauri 2** (confirmada por el usuario).
-- Móvil y sincronización: **diseñadas, no implementadas** (§7).
-- Idioma de la interfaz: español. Sin autenticación ni backend.
-- Arquitectura en capas `core/` · `adapters/` · `state/` · `ui/`; solo `adapters/` conoce Tauri.
-- UUID v7, marcas temporales UTC ISO 8601, borrado lógico, orden fraccional.
+### Confirmadas por el usuario
+- **D1 — Windows:** app de escritorio con **Tauri 2**.
+- **D5 — Almacenamiento local de escritorio:** documento JSON (alternativa descartada: SQLite; migrable más adelante cambiando solo `adapters/`).
+- **D6 — iPhone:** **PWA** instalable desde Safari (sustituye la propuesta anterior de Tauri móvil, que exigiría Apple Developer). Interfaz móvil específica.
+- **D7 — Sincronización:** **Supabase**, *local-first*, LWW por registro.
+- **D8 — Acceso:** exclusivamente personal: autenticación obligatoria en la web, registro desactivado, RLS + lista blanca.
+- **D9 — Fechas límite** opcionales en tareas, como `LocalDate`.
+- **D10 — Atajos de una letra** contextuales (`P`, `T`, `I`) + `Enter`, `Esc`, `?` (§3.6). Sustituye al atajo `N` previsto antes.
+
+### Técnicas (tomadas)
+- Arquitectura en capas `core/` · `adapters/` · `state/` · `ui/`; solo `adapters/` conoce Tauri/Supabase.
+- UUID v7, marcas UTC ISO 8601, borrado lógico, orden fraccional.
 - `HashRouter`, fuentes e iconos locales (100 % offline).
+- Guardado inmediato serializado y atómico (§8).
+- Idioma de la interfaz: español.
 
 ### Por defecto (se aplican salvo que se indique lo contrario)
 - **D2 — Copias de seguridad:** automáticas rotativas + exportar/importar JSON.
 - **D3 — Estados de tarea:** Pendiente / En curso / Completada.
 - **D4 — Vista de tareas:** lista ordenada única con completadas plegables.
-
-### Almacenamiento
-- **D5 — Almacenamiento local: documento JSON** (confirmada por el usuario, §8).
-  - Motivo: simplicidad máxima, fácil de inspeccionar y respaldar copiando un archivo, migraciones triviales. Reescribe el archivo entero en cada guardado (irrelevante por debajo de unos pocos MB).
-  - Alternativa descartada: SQLite (`tauri-plugin-sql`) — escrituras incrementales y esquema paralelo a un futuro Postgres, pero más código desde el día uno.
-  - Gracias al puerto `Storage`, migrar a SQLite más adelante solo afectaría a `adapters/` y a una migración única de datos.
 
 ---
 
@@ -382,18 +431,16 @@ Cada fase termina con verificación real (app en ejecución + tests de `core/`) 
 
 | Funcionalidad | Estado |
 |---|---|
-| Fase 1 — Guía y planificación | ✅ Completada (D1–D5 cerradas) |
-| Fase 2 — Scaffold Tauri 2 + React 19 + Vite, ESLint (reglas de capas), Vitest | ✅ Hecho |
-| Fase 2 — Tokens, tipografía Inter local, estilos globales | ✅ Hecho |
-| Fase 2 — Componentes: Logo, Button, StatusBadge, EmptyState; AppLayout | ✅ Hecho |
-| Fase 2 — Pantalla principal con datos de ejemplo (`ui/app/sampleData.ts`, se elimina en Fase 3) | ✅ Hecho |
-| Identidad visual / logotipo «Sello» + iconos de Windows (`src-tauri/icons`) | ✅ Hecho |
-| Core + persistencia | ⏳ Pendiente |
-| Proyectos (CRUD, estados, navegación) | ⏳ Pendiente |
-| Tareas (CRUD, estados, drag & drop) | ⏳ Pendiente |
-| Ideas (CRUD) | ⏳ Pendiente |
-| Animaciones, feedback, responsive | ⏳ Pendiente |
-| Copias de seguridad | ⏳ Pendiente |
-| Instalación en Windows | ⏳ Pendiente |
-| Versión móvil | 🔒 Futuro (diseñada, §7.4) |
-| Sincronización | 🔒 Futuro (diseñada, §7.3) |
+| Fase 1 — Guía y planificación | ✅ |
+| Fase 2 — Scaffold Tauri 2 + React 19 + Vite, ESLint (reglas de capas), Vitest | ✅ |
+| Fase 2 — Tokens, tipografía Inter local, estilos globales | ✅ |
+| Fase 2 — Logotipo «Sello» + iconos de Windows | ✅ |
+| Fase 2 — Inicio (datos de ejemplo eliminados en la Fase 3) | ✅ |
+| Fase 3 — Core (modelo zod, UUID v7, carga/validación/purga) + store con guardado inmediato serializado + adaptadores Tauri/navegador | ✅ Verificado en navegador y tests; escritura del archivo en la ventana Tauri pendiente de confirmar por el usuario |
+| Fase 3 — Proyectos: crear (`P`), editar, estado con un clic, eliminar con confirmación, página con pestañas; atajos `P`, `Esc`, `Enter`, `Ctrl+Enter`, `?` y ayuda visual | ✅ |
+| Fase 4 — Tareas + fechas límite | ⏳ Pendiente |
+| Fase 5 — Ideas | ⏳ Pendiente |
+| Fase 6 — Acabado UX y copias de seguridad | ⏳ Pendiente |
+| Fase 7 — Instalación en Windows | ⏳ Pendiente |
+| Fase 8 — Web móvil + PWA | 🔒 Diseñada (§7.4) |
+| Fase 9 — Supabase: privacidad + sync + hosting | 🔒 Diseñada (§7.5–7.6) |

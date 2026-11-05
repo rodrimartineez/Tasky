@@ -1,18 +1,17 @@
-import type { ReactNode } from 'react';
-import { FolderKanban, Hourglass, Plus, Archive } from 'lucide-react';
-import type { ProjectStatus, TaskyData } from '../../core/model';
+import { useMemo, useState, type ReactNode } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
+import { Archive, FolderKanban, Hourglass, Plus } from 'lucide-react';
+import type { ProjectStatus } from '../../core/model';
 import { projectSummariesByStatus } from '../../core/selectors';
+import { useTasky } from '../../state/store';
 import { Button } from '../components/Button';
 import { EmptyState } from '../components/EmptyState';
+import { useShortcut } from '../shortcuts/useShortcut';
 import { ProjectCard } from './ProjectCard';
+import { ProjectFormDialog } from './ProjectFormDialog';
 import styles from './HomePage.module.css';
 
-interface HomePageProps {
-  data: TaskyData;
-  onCreateProject: () => void;
-}
-
-const SECTIONS: { status: ProjectStatus; title: string; emptyIcon: ReactNode; emptyTitle: string; emptyText: string }[] = [
+const SECTIONS: { status: ProjectStatus; title: string; emptyIcon: ReactNode; emptyTitle: string; emptyText?: string }[] = [
   {
     status: 'active',
     title: 'Activos',
@@ -27,18 +26,21 @@ const SECTIONS: { status: ProjectStatus; title: string; emptyIcon: ReactNode; em
     emptyTitle: 'Nada en espera',
     emptyText: 'Aquí aparecerán los proyectos que quieras empezar más adelante.',
   },
-  {
-    status: 'done',
-    title: 'Finalizados',
-    emptyIcon: <Archive />,
-    emptyTitle: 'Aún no has finalizado ningún proyecto',
-    emptyText: '',
-  },
+  { status: 'done', title: 'Finalizados', emptyIcon: <Archive />, emptyTitle: 'Aún no has finalizado ningún proyecto' },
 ];
 
-export function HomePage({ data, onCreateProject }: HomePageProps) {
-  const active = projectSummariesByStatus(data, 'active');
+export function HomePage() {
+  const data = useTasky((s) => s.data);
+  const [creating, setCreating] = useState(false);
+  useShortcut('p', () => setCreating(true));
+
+  const sections = useMemo(
+    () => SECTIONS.map((section) => ({ ...section, summaries: projectSummariesByStatus(data, section.status) })),
+    [data],
+  );
+  const active = sections[0].summaries;
   const pendingTasks = active.reduce((sum, s) => sum + s.pending, 0);
+  const isEmpty = sections.every((s) => s.summaries.length === 0);
 
   return (
     <div className={styles.page}>
@@ -47,20 +49,21 @@ export function HomePage({ data, onCreateProject }: HomePageProps) {
           <h1 className={styles.title}>Proyectos</h1>
           <p className={styles.subtitle}>
             {active.length === 0
-              ? 'Empieza creando tu primer proyecto.'
+              ? 'Pulsa P para crear tu primer proyecto.'
               : `${active.length} ${active.length === 1 ? 'proyecto activo' : 'proyectos activos'} · ${pendingTasks} ${
                   pendingTasks === 1 ? 'tarea pendiente' : 'tareas pendientes'
                 }`}
           </p>
         </div>
-        <Button variant="primary" icon={<Plus />} shortcut="N" onClick={onCreateProject}>
+        <Button variant="primary" icon={<Plus />} shortcut="P" onClick={() => setCreating(true)}>
           Nuevo proyecto
         </Button>
       </div>
 
-      {SECTIONS.map((section) => {
-        const summaries = section.status === 'active' ? active : projectSummariesByStatus(data, section.status);
+      {sections.map((section) => {
         const featured = section.status === 'active';
+        // Sin proyectos, solo se muestra la sección principal para no llenar la pantalla de vacíos.
+        if (isEmpty && !featured) return null;
         return (
           <section key={section.status} className={styles.section} aria-labelledby={`section-${section.status}`}>
             <header className={styles.sectionHeader}>
@@ -68,33 +71,46 @@ export function HomePage({ data, onCreateProject }: HomePageProps) {
               <h2 id={`section-${section.status}`} className={styles.sectionTitle}>
                 {section.title}
               </h2>
-              <span className={styles.sectionCount}>{summaries.length}</span>
+              <span className={styles.sectionCount}>{section.summaries.length}</span>
             </header>
 
-            {summaries.length === 0 ? (
+            {section.summaries.length === 0 ? (
               <EmptyState
                 compact={!featured}
                 icon={section.emptyIcon}
                 title={section.emptyTitle}
-                description={section.emptyText || undefined}
+                description={section.emptyText}
                 action={
-                  featured ? (
-                    <Button variant="secondary" icon={<Plus />} onClick={onCreateProject}>
+                  featured && (
+                    <Button icon={<Plus />} shortcut="P" onClick={() => setCreating(true)}>
                       Nuevo proyecto
                     </Button>
-                  ) : undefined
+                  )
                 }
               />
             ) : (
               <div className={featured ? styles.gridFeatured : styles.gridCompact}>
-                {summaries.map((summary) => (
-                  <ProjectCard key={summary.project.id} summary={summary} variant={featured ? 'featured' : 'compact'} />
-                ))}
+                <AnimatePresence initial={false} mode="popLayout">
+                  {section.summaries.map((summary) => (
+                    <motion.div
+                      key={summary.project.id}
+                      layout
+                      initial={{ opacity: 0, scale: 0.96 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.96 }}
+                      transition={{ duration: 0.2, ease: [0.2, 0.8, 0.2, 1] }}
+                    >
+                      <ProjectCard summary={summary} variant={featured ? 'featured' : 'compact'} />
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
               </div>
             )}
           </section>
         );
       })}
+
+      <ProjectFormDialog open={creating} onClose={() => setCreating(false)} />
     </div>
   );
 }

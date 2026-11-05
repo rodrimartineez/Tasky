@@ -65,17 +65,21 @@
   color: var(--text);
 }
 
-.kbd {
-  font: inherit;
-  font-size: 11px;
-  line-height: 1;
-  padding: 3px 5px;
-  border-radius: 4px;
-  background: rgba(0, 0, 0, 0.18);
-  color: rgba(255, 255, 255, 0.85);
+.danger {
+  background: #c2413a;
+  color: #fff;
 }
-.secondary .kbd,
-.ghost .kbd {
-  background: var(--surface-3);
-  color: var(--text-faint);
+.danger:hover {
+  background: #d14c44;
+  box-shadow: 0 0 0 4px rgba(248, 113, 113, 0.15);
+}
+
+.button:disabled {
+  opacity: 0.45;
+  cursor: default;
+  box-shadow: none;
+  transform: none;
+}
+.primary:disabled:hover {
+  background: var(--orange-500);
 }

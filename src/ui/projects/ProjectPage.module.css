@@ -1,0 +1,121 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.back {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: -6px;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+  color: var(--text-faint);
+  font-size: var(--fs-sm);
+  transition:
+    color var(--dur-fast) var(--ease),
+    background var(--dur-fast) var(--ease);
+}
+.back:hover {
+  color: var(--text);
+  background: var(--surface-2);
+}
+.back svg {
+  width: 15px;
+  height: 15px;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-5);
+  flex-wrap: wrap;
+}
+
+.heading {
+  min-width: 0;
+  flex: 1 1 320px;
+}
+
+.title {
+  font-size: var(--fs-xl);
+  font-weight: 650;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.description {
+  margin-top: var(--space-2);
+  max-width: 680px;
+  color: var(--text-muted);
+  white-space: pre-line;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.tabs {
+  display: flex;
+  gap: var(--space-1);
+  border-bottom: 1px solid var(--border);
+}
+
+.tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 10px 12px 12px;
+  border: none;
+  background: none;
+  color: var(--text-faint);
+  font-size: var(--fs-sm);
+  font-weight: 550;
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease);
+}
+.tab:hover {
+  color: var(--text-muted);
+}
+.tab svg {
+  width: 15px;
+  height: 15px;
+}
+.tabSelected,
+.tabSelected:hover {
+  color: var(--text);
+}
+
+.tabCount {
+  min-width: 18px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-faint);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.underline {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: -1px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--orange-500);
+}
+
+@media (max-width: 640px) {
+  .actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+}

@@ -1,0 +1,58 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  display: flex;
+  justify-content: space-between;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  font-weight: 550;
+}
+
+.optional {
+  color: var(--text-faint);
+  font-weight: 450;
+}
+
+.control {
+  width: 100%;
+  padding: 9px var(--space-3);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-base);
+  outline: none;
+  transition:
+    border-color var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease),
+    background var(--dur-fast) var(--ease);
+}
+.control::placeholder {
+  color: var(--text-faint);
+}
+.control:hover {
+  border-color: var(--border-strong);
+}
+.control:focus {
+  border-color: var(--orange-500);
+  background: var(--surface-3);
+  box-shadow: 0 0 0 3px var(--orange-glow);
+}
+
+.textarea {
+  resize: vertical;
+  min-height: 76px;
+  line-height: 1.5;
+}
+
+/* Evita el zoom automático de iOS al enfocar campos */
+@media (pointer: coarse) {
+  .control {
+    font-size: 16px;
+  }
+}

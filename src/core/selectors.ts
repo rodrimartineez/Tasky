@@ -22,3 +22,14 @@ export function projectSummariesByStatus(data: TaskyData, status: ProjectStatus)
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
     .map((project) => ({ project, ...(counts.get(project.id) ?? { pending: 0, completed: 0 }) }));
 }
+
+export function findProject(data: TaskyData, id: string): Project | undefined {
+  return data.projects.find((p) => p.id === id && !p.deletedAt);
+}
+
+export function countProjectItems(data: TaskyData, projectId: string): { tasks: number; ideas: number } {
+  return {
+    tasks: data.tasks.filter((t) => t.projectId === projectId && !t.deletedAt).length,
+    ideas: data.ideas.filter((i) => i.projectId === projectId && !i.deletedAt).length,
+  };
+}
