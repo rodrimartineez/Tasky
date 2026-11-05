@@ -2,17 +2,18 @@ import { useState } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { ArrowLeft, Ellipsis, Lightbulb, ListTodo, Pencil, Plus, Trash2 } from 'lucide-react';
-import type { ProjectStatus, Task } from '../../core/model';
+import type { Idea, ProjectStatus, Task } from '../../core/model';
 import { countProjectItems, findProject } from '../../core/selectors';
 import { useTasky } from '../../state/store';
 import { Button } from '../components/Button';
 import { ConfirmDialog } from '../components/ConfirmDialog';
-import { EmptyState } from '../components/EmptyState';
 import { Kbd } from '../components/Kbd';
 import { Menu } from '../components/Menu';
 import { Segmented, type SegmentedOption } from '../components/Segmented';
 import { PROJECT_STATUS_LABEL } from '../components/StatusBadge';
 import { useShortcut } from '../shortcuts/useShortcut';
+import { IdeaFormDialog } from '../ideas/IdeaFormDialog';
+import { IdeaGrid } from '../ideas/IdeaGrid';
 import { TaskFormDialog } from '../tasks/TaskFormDialog';
 import { TaskList } from '../tasks/TaskList';
 import { ProjectFormDialog } from './ProjectFormDialog';
@@ -42,7 +43,14 @@ export function ProjectPage() {
     setTaskDialog({});
   };
   useShortcut('Escape', () => navigate('/'));
+  /** Diálogo de idea: null = cerrado; { idea: undefined } = nueva idea. */
+  const [ideaDialog, setIdeaDialog] = useState<{ idea?: Idea } | null>(null);
+  const newIdea = () => {
+    setTab('ideas');
+    setIdeaDialog({});
+  };
   useShortcut('t', newTask);
+  useShortcut('i', newIdea);
 
   const project = findProject(data, projectId);
   if (!project) return <Navigate to="/" replace />;
@@ -99,9 +107,13 @@ export function ProjectPage() {
           </button>
         ))}
         <span className={styles.tabsSpacer} />
-        {tab === 'tasks' && (
+        {tab === 'tasks' ? (
           <Button variant="primary" icon={<Plus />} shortcut="T" className={styles.tabAction} onClick={newTask}>
             Nueva tarea
+          </Button>
+        ) : (
+          <Button icon={<Plus />} shortcut="I" className={styles.tabAction} onClick={newIdea}>
+            Nueva idea
           </Button>
         )}
       </nav>
@@ -110,7 +122,7 @@ export function ProjectPage() {
         {tab === 'tasks' ? (
           <TaskList projectId={project.id} onCreate={newTask} onOpen={(task) => setTaskDialog({ task })} />
         ) : (
-          <EmptyState icon={<Lightbulb />} title="Sin ideas todavía" description="Guarda aquí conceptos y posibilidades para más adelante." />
+          <IdeaGrid projectId={project.id} onCreate={newIdea} onOpen={(idea) => setIdeaDialog({ idea })} />
         )}
       </div>
 
@@ -119,6 +131,12 @@ export function ProjectPage() {
         onClose={() => setTaskDialog(null)}
         projectId={project.id}
         task={taskDialog?.task}
+      />
+      <IdeaFormDialog
+        open={ideaDialog !== null}
+        onClose={() => setIdeaDialog(null)}
+        projectId={project.id}
+        idea={ideaDialog?.idea}
       />
       <ProjectFormDialog open={editing} onClose={() => setEditing(false)} project={project} />
       <ConfirmDialog

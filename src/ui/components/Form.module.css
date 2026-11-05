@@ -1,0 +1,38 @@
+/* Estructura común de los formularios en diálogos (proyecto, tarea, idea). */
+.form {
+  display: contents;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  display: flex;
+  justify-content: space-between;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  font-weight: 550;
+}
+
+.hint {
+  color: var(--text-faint);
+  font-weight: 450;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) 0 var(--space-5);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.delete:hover {
+  color: var(--danger);
+}

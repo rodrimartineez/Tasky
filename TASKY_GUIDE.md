@@ -1,7 +1,7 @@
 # TASKY_GUIDE.md
 
 > Documento de referencia del proyecto. Se consulta antes de cada fase y se actualiza al terminarla.
-> Última actualización: 2026-11-05 — Fases 1–4 completadas. Siguiente: Fase 5 (ideas). Incluye los requisitos de rapidez/atajos/fechas límite y de plataforma Windows + iPhone (PWA) con Supabase.
+> Última actualización: 2026-11-05 — Fases 1–5 completadas. Siguiente: Fase 6 (acabado UX y copias de seguridad). Incluye los requisitos de rapidez/atajos/fechas límite y de plataforma Windows + iPhone (PWA) con Supabase.
 
 ---
 
@@ -228,7 +228,7 @@ src/
 │   ├── app/            # App, rutas, layout, splash
 │   ├── shortcuts/      # useShortcut, definición de atajos, ayuda
 │   ├── projects/  tasks/  ideas/
-│   └── components/     # Button, Dialog, ConfirmDialog, Field, Menu, Tabs, EmptyState, Logo…
+│   └── components/     # Button, Dialog, ConfirmDialog, Field, Form (estilos comunes), Menu, Segmented, EmptyState, Kbd, Logo…
 └── styles/             # tokens.css, global.css
 src-tauri/              # configuración Tauri, iconos, plugin fs (sin código Rust propio)
 ```
@@ -439,7 +439,7 @@ Cada fase termina con verificación real (app en ejecución + tests de `core/`),
 | Fase 3 — Core (modelo zod, UUID v7, carga/validación/purga) + store con guardado inmediato serializado + adaptadores Tauri/navegador | ✅ Verificado en navegador, tests y app de escritorio (tasky.json escrito en AppData, sin restos de .tmp) |
 | Fase 3 — Proyectos: crear (`P`), editar, estado con un clic, eliminar con confirmación, página con pestañas; atajos `P`, `Esc`, `Enter`, `Ctrl+Enter`, `?` y ayuda visual | ✅ |
 | Fase 4 — Tareas: crear (`T`), editar, eliminar, estados (casilla y «En curso» en la fila), fecha límite con atajos Hoy/Mañana/En una semana, drag & drop con `rank`, completadas plegables, próxima fecha y vencidas en Inicio | ✅ |
-| Fase 5 — Ideas | ⏳ Pendiente |
+| Fase 5 — Ideas: crear (`I`, cambia a la pestaña Ideas), editar, eliminar con confirmación; cuadrícula tipo nota con acento ámbar y fecha de creación relativa | ✅ |
 | Fase 6 — Acabado UX y copias de seguridad | ⏳ Pendiente |
 | Fase 7 — Instalación en Windows | ⏳ Pendiente |
 | Fase 8 — Web móvil + PWA | 🔒 Diseñada (§7.4) |

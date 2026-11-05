@@ -1,4 +1,4 @@
-import type { LocalDate, Project, ProjectStatus, Task, TaskyData } from './model';
+import type { Idea, LocalDate, Project, ProjectStatus, Task, TaskyData } from './model';
 import { compareRank } from './rank';
 
 export interface ProjectSummary {
@@ -45,6 +45,13 @@ export function projectTasks(data: TaskyData, projectId: string): { open: Task[]
     open: live.filter((t) => t.status !== 'done').sort(compareRank),
     done: live.filter((t) => t.status === 'done').sort((a, b) => (b.completedAt ?? '').localeCompare(a.completedAt ?? '')),
   };
+}
+
+/** Ideas de un proyecto, de la más reciente a la más antigua. */
+export function projectIdeas(data: TaskyData, projectId: string): Idea[] {
+  return data.ideas
+    .filter((i) => i.projectId === projectId && !i.deletedAt)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id));
 }
 
 export function countProjectItems(data: TaskyData, projectId: string): { tasks: number; ideas: number } {

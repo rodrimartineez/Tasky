@@ -58,8 +58,10 @@ function DialogPanel({ onClose, title, description, children, footer }: Omit<Dia
     const target = panel?.querySelector<HTMLElement>('[data-autofocus]') ?? panel?.querySelector<HTMLElement>(FOCUSABLE) ?? panel;
     target?.focus();
     return () => {
-      if (previous?.isConnected) previous.focus();
-      else (document.activeElement as HTMLElement | null)?.blur();
+      // Primero se suelta el foco del diálogo (un campo inerte podría seguir recibiendo teclas)…
+      if (panel?.contains(document.activeElement)) (document.activeElement as HTMLElement).blur();
+      // …y después se devuelve a donde estaba, si sigue existiendo.
+      if (previous?.isConnected && previous !== document.body) previous.focus();
     };
   }, [isPresent]);
 

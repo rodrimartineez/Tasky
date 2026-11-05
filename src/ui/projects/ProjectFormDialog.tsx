@@ -4,6 +4,7 @@ import { useTasky } from '../../state/store';
 import { Button } from '../components/Button';
 import { Dialog } from '../components/Dialog';
 import { TextArea, TextField } from '../components/Field';
+import styles from '../components/Form.module.css';
 
 interface ProjectFormDialogProps {
   open: boolean;
@@ -37,7 +38,7 @@ function ProjectForm({ project, onDone }: { project?: Project; onDone: () => voi
 
   return (
     <form
-      style={{ display: 'contents' }}
+      className={styles.form}
       onSubmit={(e) => {
         e.preventDefault();
         submit();
@@ -65,7 +66,8 @@ function ProjectForm({ project, onDone }: { project?: Project; onDone: () => voi
           }
         }}
       />
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, padding: '4px 0 20px' }}>
+      <div className={styles.footer}>
+        <span className={styles.spacer} />
         <Button variant="ghost" onClick={onDone} shortcut="Esc">
           Cancelar
         </Button>

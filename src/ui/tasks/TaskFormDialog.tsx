@@ -10,6 +10,7 @@ import { Dialog } from '../components/Dialog';
 import { TextArea, TextField } from '../components/Field';
 import { Segmented, type SegmentedOption } from '../components/Segmented';
 import { dueLabel } from './DueBadge';
+import form from '../components/Form.module.css';
 import styles from './TaskFormDialog.module.css';
 
 const STATUS_OPTIONS: SegmentedOption<TaskStatus>[] = [
@@ -61,7 +62,7 @@ function TaskForm({ projectId, task, onDone }: { projectId: string; task?: Task;
 
   return (
     <form
-      className={styles.form}
+      className={form.form}
       onSubmit={(e) => {
         e.preventDefault();
         submit();
@@ -90,10 +91,10 @@ function TaskForm({ projectId, task, onDone }: { projectId: string; task?: Task;
         }}
       />
 
-      <div className={styles.field}>
-        <span className={styles.label}>
+      <div className={form.field}>
+        <span className={form.label}>
           Fecha límite
-          <span className={styles.hint}>{dueDate ? dueLabel(dueDate, today) : 'Opcional'}</span>
+          <span className={form.hint}>{dueDate ? dueLabel(dueDate, today) : 'Opcional'}</span>
         </span>
         <div className={styles.dateRow}>
           <input
@@ -122,19 +123,19 @@ function TaskForm({ projectId, task, onDone }: { projectId: string; task?: Task;
       </div>
 
       {task && (
-        <div className={styles.field}>
-          <span className={styles.label}>Estado</span>
+        <div className={form.field}>
+          <span className={form.label}>Estado</span>
           <Segmented label="Estado de la tarea" value={status} options={STATUS_OPTIONS} onChange={setStatus} />
         </div>
       )}
 
-      <div className={styles.footer}>
+      <div className={form.footer}>
         {task && (
-          <Button variant="ghost" icon={<Trash2 />} className={styles.delete} onClick={() => setConfirmingDelete(true)}>
+          <Button variant="ghost" icon={<Trash2 />} className={form.delete} onClick={() => setConfirmingDelete(true)}>
             Eliminar
           </Button>
         )}
-        <span className={styles.spacer} />
+        <span className={form.spacer} />
         <Button variant="ghost" onClick={onDone} shortcut="Esc">
           Cancelar
         </Button>
