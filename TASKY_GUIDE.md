@@ -436,7 +436,7 @@ Cada fase termina con verificación real (app en ejecución + tests de `core/`),
 | Fase 2 — Tokens, tipografía Inter local, estilos globales | ✅ |
 | Fase 2 — Logotipo «Sello» + iconos de Windows | ✅ |
 | Fase 2 — Inicio (datos de ejemplo eliminados en la Fase 3) | ✅ |
-| Fase 3 — Core (modelo zod, UUID v7, carga/validación/purga) + store con guardado inmediato serializado + adaptadores Tauri/navegador | ✅ Verificado en navegador y tests; escritura del archivo en la ventana Tauri pendiente de confirmar por el usuario |
+| Fase 3 — Core (modelo zod, UUID v7, carga/validación/purga) + store con guardado inmediato serializado + adaptadores Tauri/navegador | ✅ Verificado en navegador, tests y app de escritorio (tasky.json escrito en AppData, sin restos de .tmp) |
 | Fase 3 — Proyectos: crear (`P`), editar, estado con un clic, eliminar con confirmación, página con pestañas; atajos `P`, `Esc`, `Enter`, `Ctrl+Enter`, `?` y ayuda visual | ✅ |
 | Fase 4 — Tareas + fechas límite | ⏳ Pendiente |
 | Fase 5 — Ideas | ⏳ Pendiente |
