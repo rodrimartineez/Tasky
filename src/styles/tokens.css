@@ -1,0 +1,58 @@
+:root {
+  /* Superficies */
+  --bg: #0a0a0b;
+  --surface-1: #111113;
+  --surface-2: #18181b;
+  --surface-3: #202024;
+  --border: #27272a;
+  --border-strong: #3a3a40;
+
+  /* Texto */
+  --text: #ededef;
+  --text-muted: #a1a1aa;
+  --text-faint: #6b6b74;
+
+  /* Marca */
+  --orange-300: #fdba74;
+  --orange-400: #fb923c;
+  --orange-500: #f97316;
+  --orange-600: #ea580c;
+  --orange-glow: rgba(249, 115, 22, 0.15);
+  --orange-gradient: linear-gradient(135deg, var(--orange-400), var(--orange-600));
+
+  /* Semánticos */
+  --idea: #e5b567;
+  --success: #6fcf97;
+  --danger: #f87171;
+  --status-active: var(--orange-400);
+  --status-on-hold: #8b8b94;
+  --status-done: var(--success);
+
+  /* Tipografía */
+  --font: "Inter Variable", "Segoe UI", system-ui, sans-serif;
+  --fs-xs: 12px;
+  --fs-sm: 13px;
+  --fs-base: 14px;
+  --fs-md: 16px;
+  --fs-lg: 20px;
+  --fs-xl: 28px;
+
+  /* Espaciado y forma */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 14px;
+
+  /* Movimiento */
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --dur-fast: 120ms;
+  --dur: 200ms;
+
+  --shadow-lift: 0 8px 24px -12px rgba(0, 0, 0, 0.6);
+}
