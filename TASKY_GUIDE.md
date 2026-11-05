@@ -1,7 +1,7 @@
 # TASKY_GUIDE.md
 
 > Documento de referencia del proyecto. Se consulta antes de cada fase y se actualiza al terminarla.
-> Última actualización: 2026-11-05 — Fases 1–5 completadas. Siguiente: Fase 6 (acabado UX y copias de seguridad). Incluye los requisitos de rapidez/atajos/fechas límite y de plataforma Windows + iPhone (PWA) con Supabase.
+> Última actualización: 2026-11-05 — Fases 1–6 completadas. Siguiente: Fase 7 (instalación en Windows). Incluye los requisitos de rapidez/atajos/fechas límite y de plataforma Windows + iPhone (PWA) con Supabase.
 
 ---
 
@@ -147,7 +147,7 @@ Dark mode, minimalista y premium (referencias: Linear, GitHub Projects). Jerarqu
 | `--border-strong` | `#3A3A40` | Bordes en foco/hover |
 | `--text` | `#EDEDEF` | Texto principal |
 | `--text-muted` | `#A1A1AA` | Texto secundario |
-| `--text-faint` | `#6B6B74` | Metadatos, placeholders |
+| `--text-faint` | `#7C7C86` | Metadatos, placeholders (contraste ≥ 4,5:1) |
 | `--orange-300…600` | `#FDBA74` `#FB923C` `#F97316` `#EA580C` | Marca: logo, primario, selección, foco, progreso |
 | `--orange-glow` | `rgba(249,115,22,.15)` | Halos, selección, foco |
 | `--idea` | `#E5B567` | Acento de ideas (ámbar apagado) |
@@ -377,8 +377,10 @@ Aplicación principal. Instalador propio, icono, buscador de Windows, anclaje a 
 - Carga completa al arrancar; validación zod, migraciones por `schemaVersion` y purga de lápidas antiguas.
 - **Guardado inmediato tras cada cambio**, serializado (si hay una escritura en curso, se encola solo la última versión). Sin *debounce*: con un archivo de pocos KB es instantáneo y no existe ventana en la que cerrar la app pierda cambios.
 - Escritura atómica: se escribe `tasky.json.tmp` y se renombra sobre `tasky.json`.
-- Si el archivo no es válido, **no se sobrescribe**: se muestra un error y se conserva para recuperarlo (restauración desde copia en la Fase 6).
-- Copias automáticas rotativas en `backups/` + exportar/importar manual (Fase 6).
+- Si el archivo no es válido, **no se sobrescribe**: se muestra una pantalla de error con «Restaurar la última copia». Al restaurar, el archivo ilegible se aparta como `tasky.ilegible-<fecha>.json` (nunca se borra) y se usa la copia válida más reciente.
+- **Copias automáticas** en `backups/`: antes del primer cambio de cada día se copia el `tasky.json` existente a `backups/tasky-AAAA-MM-DD.json`; se conservan las 14 más recientes. Un fallo al copiar nunca bloquea el guardado.
+- **Exportar** (menú «Copias de seguridad» de la cabecera): escribe `tasky-copia-AAAA-MM-DD.json` en la carpeta Descargas (en el navegador, descarga normal).
+- **Importar**: se elige un archivo, se valida igual que al arrancar y se pide confirmación mostrando lo que contiene y lo que se va a sustituir. Antes de reemplazar se guarda `backups/tasky-antes-de-importar-<fecha>.json`.
 
 **Navegador** (desarrollo y, en la Fase 8, PWA): mismo documento en `localStorage` mientras se desarrolla; IndexedDB en la PWA.
 
@@ -392,10 +394,10 @@ Cada fase termina con verificación real (app en ejecución + tests de `core/`),
 |---|---|---|
 | **1. Planificación** ✅ | Requisitos, arquitectura, modelo de datos, esta guía. | Decisiones confirmadas. |
 | **2. Base + identidad visual** ✅ | Scaffold Tauri + Vite + React + TS, ESLint, tokens, tipografía, logotipo, Inicio con datos de ejemplo. | Inicio en la ventana Tauri; logotipo aprobado. |
-| **3. Core + persistencia + proyectos + atajos** | `core/` (modelo zod, ids, reloj, carga/validación), adaptadores Tauri y navegador, store, CRUD de proyectos, cambio de estado con un clic, página de proyecto (cabecera + pestañas), diálogos, confirmación de borrado, sistema de atajos (`P`, `Esc`, `Enter`, `?`) con ayuda visual, transiciones básicas. | CRUD verificado; datos sobreviven a reinicios; atajos funcionando; tests verdes. |
-| **4. Tareas + fechas límite** | CRUD, `T`, estados, completar, fecha límite e indicadores, drag & drop con `rank`, completadas plegables, próxima fecha y vencidas en las tarjetas de Inicio. | CRUD, orden y fechas verificados y persistentes. |
-| **5. Ideas** | CRUD, `I`, cuadrícula, diferenciación visual, estados vacíos. | CRUD verificado y persistente. |
-| **6. Acabado UX** | Splash, pulido de animaciones, feedback, accesibilidad, backups e importación/exportación, revisión general. | Revisión visual y de teclado completa. |
+| **3. Core + persistencia + proyectos + atajos** ✅ | `core/` (modelo zod, ids, reloj, carga/validación), adaptadores Tauri y navegador, store, CRUD de proyectos, cambio de estado con un clic, página de proyecto (cabecera + pestañas), diálogos, confirmación de borrado, sistema de atajos (`P`, `Esc`, `Enter`, `?`) con ayuda visual, transiciones básicas. | CRUD verificado; datos sobreviven a reinicios; atajos funcionando; tests verdes. |
+| **4. Tareas + fechas límite** ✅ | CRUD, `T`, estados, completar, fecha límite e indicadores, drag & drop con `rank`, completadas plegables, próxima fecha y vencidas en las tarjetas de Inicio. | CRUD, orden y fechas verificados y persistentes. |
+| **5. Ideas** ✅ | CRUD, `I`, cuadrícula, diferenciación visual, estados vacíos. | CRUD verificado y persistente. |
+| **6. Acabado UX** ✅ | Splash, pulido de animaciones, feedback, accesibilidad, backups e importación/exportación, revisión general. | Revisión visual y de teclado completa. |
 | **7. Instalación Windows** | Build del instalador, instalación, buscador de Windows, anclaje, instrucciones paso a paso. | Instalada y anclada en este PC. |
 | **8. Web móvil + PWA** | Adaptador IndexedDB, manifest, service worker, iconos iOS, interfaz móvil específica (barra inferior, botón «+», hojas, táctil). Probada en local, sin publicar. | Funciona en Safari de iPhone en red local. |
 | **9. Supabase: privacidad + sync + hosting** | Proyecto Supabase, esquema, RLS y lista blanca, registro desactivado, login, sync local-first, hosting estático con HTTPS, instalación en iPhone. | Mismos datos en Windows e iPhone, offline y privado. |
@@ -440,7 +442,7 @@ Cada fase termina con verificación real (app en ejecución + tests de `core/`),
 | Fase 3 — Proyectos: crear (`P`), editar, estado con un clic, eliminar con confirmación, página con pestañas; atajos `P`, `Esc`, `Enter`, `Ctrl+Enter`, `?` y ayuda visual | ✅ |
 | Fase 4 — Tareas: crear (`T`), editar, eliminar, estados (casilla y «En curso» en la fila), fecha límite con atajos Hoy/Mañana/En una semana, drag & drop con `rank`, completadas plegables, próxima fecha y vencidas en Inicio | ✅ |
 | Fase 5 — Ideas: crear (`I`, cambia a la pestaña Ideas), editar, eliminar con confirmación; cuadrícula tipo nota con acento ámbar y fecha de creación relativa | ✅ |
-| Fase 6 — Acabado UX y copias de seguridad | ⏳ Pendiente |
+| Fase 6 — Splash (trazo del sello, ~0,7 s, se omite con «reducir movimiento»), avisos (toasts), copias diarias rotativas, restaurar copia desde la pantalla de error, exportar/importar con confirmación; accesibilidad: contraste de `--text-faint`, flechas en las pestañas, títulos en botones de icono | ✅ Verificado en navegador y tests; compilación Rust correcta |
 | Fase 7 — Instalación en Windows | ⏳ Pendiente |
 | Fase 8 — Web móvil + PWA | 🔒 Diseñada (§7.4) |
 | Fase 9 — Supabase: privacidad + sync + hosting | 🔒 Diseñada (§7.5–7.6) |

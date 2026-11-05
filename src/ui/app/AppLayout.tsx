@@ -5,7 +5,9 @@ import { Keyboard, TriangleAlert } from 'lucide-react';
 import { useTasky } from '../../state/store';
 import { Button } from '../components/Button';
 import { Logo } from '../components/Logo';
+import { Toaster } from '../components/Toaster';
 import { ShortcutsHelp } from '../shortcuts/ShortcutsHelp';
+import { DataMenu } from './DataMenu';
 import { useShortcut } from '../shortcuts/useShortcut';
 import styles from './AppLayout.module.css';
 
@@ -23,9 +25,12 @@ export function AppLayout() {
           <Link to="/" className={styles.brand} aria-label="Tasky — inicio">
             <Logo size={34} withWordmark />
           </Link>
-          <Button variant="ghost" icon={<Keyboard />} shortcut="?" className={styles.help} onClick={() => setHelpOpen(true)}>
-            Atajos
-          </Button>
+          <div className={styles.headerActions}>
+            <Button variant="ghost" icon={<Keyboard />} shortcut="?" className={styles.help} onClick={() => setHelpOpen(true)}>
+              Atajos
+            </Button>
+            <DataMenu />
+          </div>
         </div>
       </header>
 
@@ -47,6 +52,7 @@ export function AppLayout() {
       </main>
 
       <ShortcutsHelp open={helpOpen} onClose={() => setHelpOpen(false)} />
+      <Toaster />
     </div>
   );
 }

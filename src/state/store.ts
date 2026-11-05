@@ -1,9 +1,9 @@
 import { create } from 'zustand';
-import { now } from '../core/clock';
+import { now, today } from '../core/clock';
 import { DataError, emptyData, parseData } from '../core/data';
 import { newId } from '../core/ids';
 import type { TaskyData } from '../core/model';
-import type { Storage } from '../core/ports';
+import type { FileExport, Storage } from '../core/ports';
 import { createProject, deleteProject, updateProject, type ProjectInput, type ProjectPatch } from '../core/projects';
 import { createIdea, deleteIdea, updateIdea, type IdeaInput } from '../core/ideas';
 import { createTask, deleteTask, moveTask, updateTask, type TaskInput, type TaskPatch } from '../core/tasks';
@@ -17,7 +17,13 @@ interface TaskyState {
   saveError: string | null;
   data: TaskyData;
 
-  load(storage: Storage): Promise<void>;
+  load(storage: Storage, fileExport?: FileExport): Promise<void>;
+  /** Tras un error de carga: aparta el archivo ilegible y carga la copia válida más reciente. Devuelve su nombre o null. */
+  restoreLatestBackup(): Promise<string | null>;
+  /** Exporta todos los datos a un archivo JSON y devuelve dónde ha quedado. */
+  exportData(): Promise<string>;
+  /** Sustituye todos los datos por otros ya validados, guardando antes una copia de los actuales. */
+  importData(data: TaskyData): Promise<void>;
   createProject(input: ProjectInput): string;
   updateProject(id: string, patch: ProjectPatch): void;
   deleteProject(id: string): void;
@@ -32,6 +38,7 @@ interface TaskyState {
 }
 
 let storage: Storage | null = null;
+let fileExport: FileExport | null = null;
 let saving: Promise<void> | null = null;
 let queued: TaskyData | null = null;
 
@@ -72,8 +79,9 @@ export const useTasky = create<TaskyState>()((set, get) => {
     saveError: null,
     data: emptyData(),
 
-    async load(s) {
+    async load(s, exporter) {
       storage = s;
+      fileExport = exporter ?? null;
       try {
         set({ status: 'ready', data: parseData(await s.load(), now()) });
       } catch (e) {
@@ -84,6 +92,35 @@ export const useTasky = create<TaskyState>()((set, get) => {
           loadError: e instanceof DataError ? e.message : 'No se pudieron leer los datos de Tasky.',
         });
       }
+    },
+
+    async restoreLatestBackup() {
+      if (!storage?.listBackups) return null;
+      for (const backup of await storage.listBackups()) {
+        let data: TaskyData;
+        try {
+          data = parseData(backup.raw, now());
+        } catch {
+          continue;
+        }
+        await storage.quarantine?.();
+        set({ status: 'ready', loadError: null, data });
+        persist(data);
+        return backup.name;
+      }
+      return null;
+    },
+
+    async exportData() {
+      if (!fileExport) throw new Error('Exportar no está disponible en esta plataforma.');
+      return fileExport.exportText(`tasky-copia-${today()}.json`, JSON.stringify(get().data, null, 2));
+    },
+
+    async importData(data) {
+      if (get().status !== 'ready') return;
+      await storage?.snapshot?.('antes-de-importar');
+      set({ data });
+      persist(data);
     },
 
     createProject(input) {

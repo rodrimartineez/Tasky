@@ -97,6 +97,15 @@ export function ProjectPage() {
             type="button"
             role="tab"
             aria-selected={tab === t.id}
+            tabIndex={tab === t.id ? 0 : -1}
+            onKeyDown={(e) => {
+              // Patrón de pestañas: las flechas cambian de pestaña.
+              if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+              const next = tab === 'tasks' ? 'ideas' : 'tasks';
+              setTab(next);
+              (e.currentTarget.parentElement?.querySelector(`[data-tab="${next}"]`) as HTMLElement | null)?.focus();
+            }}
+            data-tab={t.id}
             className={`${styles.tab} ${tab === t.id ? styles.tabSelected : ''}`}
             onClick={() => setTab(t.id)}
           >

@@ -61,6 +61,7 @@ export function Menu({ label, trigger, items }: MenuProps) {
         type="button"
         className={styles.trigger}
         aria-label={label}
+        title={label}
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}

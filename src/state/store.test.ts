@@ -39,4 +39,37 @@ describe('store + persistencia', () => {
     expect(saved.map((d) => d.projects[0].name)).toEqual(['A', 'C']);
     expect(useTasky.getState().saveError).toBeNull();
   });
+
+  it('restaura la copia válida más reciente tras un error de carga, apartando el archivo ilegible', async () => {
+    const good = { schemaVersion: 1, projects: [], tasks: [], ideas: [] };
+    const quarantine = vi.fn(async () => {});
+    const save = vi.fn(async () => {});
+    await useTasky.getState().load({
+      load: async () => ({ roto: true }),
+      save,
+      quarantine,
+      listBackups: async () => [
+        { name: 'tasky-2026-11-05.json', date: '2026-11-05', raw: { tambien: 'roto' } },
+        { name: 'tasky-2026-11-04.json', date: '2026-11-04', raw: good },
+      ],
+    });
+    expect(useTasky.getState().status).toBe('error');
+    expect(await useTasky.getState().restoreLatestBackup()).toBe('tasky-2026-11-04.json');
+    expect(quarantine).toHaveBeenCalledOnce();
+    expect(useTasky.getState().status).toBe('ready');
+    await flush();
+    expect(save).toHaveBeenCalledOnce();
+  });
+
+  it('al importar guarda antes una copia de los datos actuales', async () => {
+    const calls: string[] = [];
+    await useTasky.getState().load({
+      load: async () => null,
+      save: async () => void calls.push('save'),
+      snapshot: async (label) => void calls.push(`snapshot:${label}`),
+    });
+    await useTasky.getState().importData({ schemaVersion: 1, projects: [], tasks: [], ideas: [] });
+    await flush();
+    expect(calls).toEqual(['snapshot:antes-de-importar', 'save']);
+  });
 });

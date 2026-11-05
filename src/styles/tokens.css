@@ -10,7 +10,7 @@
   /* Texto */
   --text: #ededef;
   --text-muted: #a1a1aa;
-  --text-faint: #6b6b74;
+  --text-faint: #7c7c86; /* ≥ 4,5:1 sobre --bg */
 
   /* Marca */
   --orange-300: #fdba74;
