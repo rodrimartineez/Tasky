@@ -19,7 +19,8 @@
         "minHeight": 560,
         "center": true,
         "backgroundColor": "#0A0A0B",
-        "label": "main"
+        "label": "main",
+        "maximized": true
       }
     ],
     "security": {

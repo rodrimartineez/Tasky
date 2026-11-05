@@ -339,6 +339,7 @@ Hosting, autenticación, Supabase, cola de sync, service worker, IndexedDB. Nada
 Aplicación principal. Instalador propio, icono, buscador de Windows, anclaje a la barra de tareas. Datos en `%APPDATA%\com.tasky.app\tasky.json`. Funciona sin conexión y sin iniciar sesión; si se activa la sync (Fase 9), inicia sesión una vez y guarda la sesión.
 
 - **Instalador:** NSIS (`npm run tauri build` → `src-tauri\target\release\bundle\nsis\`), en español, **por usuario** (sin permisos de administrador, en `%LOCALAPPDATA%\Tasky`). Crea el acceso del menú Inicio, que es lo que lo hace aparecer en el buscador de Windows. Sin firma de código (gratuito) → SmartScreen avisa la primera vez. Se descartó MSI: exige permisos de administrador y no aporta nada para un único usuario.
+- **Ventana:** se abre **maximizada** (ocupa la pantalla y deja visible la barra de tareas); al restaurarla vuelve a 1280×820.
 - **Instancia única** (`tauri-plugin-single-instance`): abrir Tasky de nuevo enfoca la ventana existente en vez de crear otra; dos ventanas mantendrían versiones distintas del mismo archivo y una pisaría a la otra.
 - **Actualizar:** ejecutar un instalador nuevo encima; los datos (en `%APPDATA%`, fuera de la carpeta de instalación) se conservan.
 - Instrucciones paso a paso para el usuario: [README.md](README.md).
@@ -448,6 +449,6 @@ Cada fase termina con verificación real (app en ejecución + tests de `core/`),
 | Fase 4 — Tareas: crear (`T`), editar, eliminar, estados (casilla y «En curso» en la fila), fecha límite con atajos Hoy/Mañana/En una semana, drag & drop con `rank`, completadas plegables, próxima fecha y vencidas en Inicio | ✅ |
 | Fase 5 — Ideas: crear (`I`, cambia a la pestaña Ideas), editar, eliminar con confirmación; cuadrícula tipo nota con acento ámbar y fecha de creación relativa | ✅ |
 | Fase 6 — Splash (trazo del sello, ~0,7 s, se omite con «reducir movimiento»), avisos (toasts), copias diarias rotativas, restaurar copia desde la pantalla de error, exportar/importar con confirmación; accesibilidad: contraste de `--text-faint`, flechas en las pestañas, títulos en botones de icono | ✅ Verificado en navegador y tests; compilación Rust correcta |
-| Fase 7 — Instalador NSIS por usuario en español (1,8 MB), instancia única, instrucciones en README | ✅ Instalada en este PC: acceso en el menú Inicio (buscador), entrada en Aplicaciones, datos existentes cargados sin modificar, segunda apertura no crea otra instancia. El anclado a la barra lo hace el usuario (Windows no permite anclar por programa) |
+| Fase 7 — Instalador NSIS por usuario en español (1,8 MB), instancia única, instrucciones en README | ✅ Instalada en este PC: acceso en el menú Inicio (buscador), entrada en Aplicaciones, datos existentes cargados sin modificar, segunda apertura no crea otra instancia. Anclada a la barra de tareas por el usuario (Windows no permite anclar por programa); el usuario confirmó que se ve bien y que exportar a Descargas funciona. Se abre maximizada |
 | Fase 8 — Web móvil + PWA | 🔒 Diseñada (§7.4) |
 | Fase 9 — Supabase: privacidad + sync + hosting | 🔒 Diseñada (§7.5–7.6) |
