@@ -1,7 +1,7 @@
 # TASKY_GUIDE.md
 
 > Documento de referencia del proyecto. Se consulta antes de cada fase y se actualiza al terminarla.
-> Última actualización: 2026-11-05 — Fases 1–3 completadas. Siguiente: Fase 4 (tareas + fechas límite). Incluye los requisitos de rapidez/atajos/fechas límite y de plataforma Windows + iPhone (PWA) con Supabase.
+> Última actualización: 2026-11-05 — Fases 1–4 completadas. Siguiente: Fase 5 (ideas). Incluye los requisitos de rapidez/atajos/fechas límite y de plataforma Windows + iPhone (PWA) con Supabase.
 
 ---
 
@@ -66,8 +66,8 @@ Página de proyecto                                  Atajos: T nueva tarea · I 
 | Crear | Tecla **T** (dentro de un proyecto) o botón → diálogo con foco en el título; descripción y fecha límite opcionales. Enter crea. |
 | Editar / eliminar | Clic en la tarea → mismo diálogo; eliminar con confirmación ligera. |
 | Estados | `todo` (Pendiente) · `in_progress` (En curso) · `done` (Completada). |
-| Completar | Checkbox de un clic en la propia fila, con animación de feedback. |
-| Reordenar | Drag & drop (ratón, teclado y táctil). El orden define la secuencia de trabajo. |
+| Completar | Checkbox de un clic en la propia fila: el check se dibuja (~260 ms) y la tarea pasa a «Completadas». Botón ▶ en la fila para marcar/quitar «En curso» con un clic. |
+| Reordenar | Drag & drop: con el ratón desde cualquier punto de la fila; con teclado desde el asa (`Espacio` para coger, flechas para mover, `Espacio` para soltar); en táctil desde el asa. El orden define la secuencia de trabajo. |
 | Visualización | Lista única: abiertas arriba en su orden; completadas en una sección plegable. Cada fila: título, descripción (si existe), estado y fecha límite (si existe). |
 
 ### 3.3 Fechas límite
@@ -244,7 +244,7 @@ src-tauri/              # configuración Tauri, iconos, plugin fs (sin código R
 | Estilos | **CSS Modules + variables CSS** | Control total del diseño. |
 | Estado | **Zustand** | Store mínimo. |
 | Rutas | **React Router** (`HashRouter`) | Igual en escritorio, PWA y navegador. |
-| Drag & drop | **@dnd-kit** | Accesible (teclado) y táctil. |
+| Drag & drop | **@dnd-kit** (+ `modifiers`) | Accesible (teclado) y táctil. |
 | Animación | **Motion** | Presencia, layout y transiciones. |
 | Iconos | **lucide-react** | Línea fina, coherente. |
 | Validación | **zod** | Valida datos al cargar/importar y, en el futuro, al recibir del servidor. |
@@ -438,7 +438,7 @@ Cada fase termina con verificación real (app en ejecución + tests de `core/`),
 | Fase 2 — Inicio (datos de ejemplo eliminados en la Fase 3) | ✅ |
 | Fase 3 — Core (modelo zod, UUID v7, carga/validación/purga) + store con guardado inmediato serializado + adaptadores Tauri/navegador | ✅ Verificado en navegador, tests y app de escritorio (tasky.json escrito en AppData, sin restos de .tmp) |
 | Fase 3 — Proyectos: crear (`P`), editar, estado con un clic, eliminar con confirmación, página con pestañas; atajos `P`, `Esc`, `Enter`, `Ctrl+Enter`, `?` y ayuda visual | ✅ |
-| Fase 4 — Tareas + fechas límite | ⏳ Pendiente |
+| Fase 4 — Tareas: crear (`T`), editar, eliminar, estados (casilla y «En curso» en la fila), fecha límite con atajos Hoy/Mañana/En una semana, drag & drop con `rank`, completadas plegables, próxima fecha y vencidas en Inicio | ✅ |
 | Fase 5 — Ideas | ⏳ Pendiente |
 | Fase 6 — Acabado UX y copias de seguridad | ⏳ Pendiente |
 | Fase 7 — Instalación en Windows | ⏳ Pendiente |

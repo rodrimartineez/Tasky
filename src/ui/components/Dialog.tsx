@@ -1,6 +1,6 @@
-import { useEffect, useId, useRef, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, motion, useIsPresent } from 'motion/react';
 import { useOverlay } from '../shortcuts/overlays';
 import styles from './Dialog.module.css';
 
@@ -20,10 +20,19 @@ const openStack: (() => void)[] = [];
 /** Diálogo modal. En pantallas estrechas se presenta como hoja inferior. */
 export function Dialog({ open, onClose, title, description, children, footer }: DialogProps) {
   useOverlay(open);
+  // Cada apertura es una instancia nueva: reabrir mientras la anterior aún se anima al cerrarse
+  // nunca reutiliza su contenido (p. ej. el texto de un formulario ya enviado).
+  const [prevOpen, setPrevOpen] = useState(open);
+  const [instance, setInstance] = useState(0);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
+    if (open) setInstance((n) => n + 1);
+  }
+
   return createPortal(
     <AnimatePresence>
       {open && (
-        <DialogPanel onClose={onClose} title={title} description={description} footer={footer}>
+        <DialogPanel key={instance} onClose={onClose} title={title} description={description} footer={footer}>
           {children}
         </DialogPanel>
       )}
@@ -37,14 +46,22 @@ function DialogPanel({ onClose, title, description, children, footer }: Omit<Dia
   const titleId = useId();
   const sheet = isSheet();
 
+  // Mientras se anima su salida, el diálogo ya está cerrado a todos los efectos: inerte, sin Esc
+  // y con el foco devuelto. Así una tecla pulsada justo después de cerrar nunca le llega.
+  const isPresent = useIsPresent();
+
   // Foco inicial en el elemento marcado (o el primero enfocable, o el propio panel) y devolución del foco al cerrar.
   useEffect(() => {
+    if (!isPresent) return;
     const previous = document.activeElement as HTMLElement | null;
     const panel = panelRef.current;
     const target = panel?.querySelector<HTMLElement>('[data-autofocus]') ?? panel?.querySelector<HTMLElement>(FOCUSABLE) ?? panel;
     target?.focus();
-    return () => previous?.focus?.();
-  }, []);
+    return () => {
+      if (previous?.isConnected) previous.focus();
+      else (document.activeElement as HTMLElement | null)?.blur();
+    };
+  }, [isPresent]);
 
   // Esc cierra solo el diálogo superior, esté donde esté el foco.
   const closeRef = useRef(onClose);
@@ -52,6 +69,7 @@ function DialogPanel({ onClose, title, description, children, footer }: Omit<Dia
     closeRef.current = onClose;
   });
   useEffect(() => {
+    if (!isPresent) return;
     const close = () => closeRef.current();
     openStack.push(close);
     const onKey = (e: KeyboardEvent) => {
@@ -65,7 +83,7 @@ function DialogPanel({ onClose, title, description, children, footer }: Omit<Dia
       window.removeEventListener('keydown', onKey, true);
       openStack.splice(openStack.indexOf(close), 1);
     };
-  }, []);
+  }, [isPresent]);
 
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key !== 'Tab' || !panelRef.current) return;
@@ -84,7 +102,7 @@ function DialogPanel({ onClose, title, description, children, footer }: Omit<Dia
   };
 
   return (
-    <div className={styles.root} onKeyDown={onKeyDown}>
+    <div className={styles.root} onKeyDown={onKeyDown} inert={!isPresent}>
       <motion.div
         className={styles.backdrop}
         onClick={onClose}

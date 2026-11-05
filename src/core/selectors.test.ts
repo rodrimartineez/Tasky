@@ -32,15 +32,15 @@ describe('projectSummariesByStatus', () => {
   };
 
   it('filtra por estado, excluye borrados y ordena por actualización reciente', () => {
-    expect(projectSummariesByStatus(data, 'active').map((s) => s.project.id)).toEqual(['new', 'old']);
-    expect(projectSummariesByStatus(data, 'on_hold').map((s) => s.project.id)).toEqual(['waiting']);
+    expect(projectSummariesByStatus(data, 'active', '2026-01-01').map((s) => s.project.id)).toEqual(['new', 'old']);
+    expect(projectSummariesByStatus(data, 'on_hold', '2026-01-01').map((s) => s.project.id)).toEqual(['waiting']);
   });
 
   it('cuenta pendientes (todo + en curso) y completadas, ignorando tareas borradas', () => {
-    const old = projectSummariesByStatus(data, 'active').find((s) => s.project.id === 'old')!;
+    const old = projectSummariesByStatus(data, 'active', '2026-01-01').find((s) => s.project.id === 'old')!;
     expect(old.pending).toBe(2);
     expect(old.completed).toBe(1);
-    const fresh = projectSummariesByStatus(data, 'active').find((s) => s.project.id === 'new')!;
+    const fresh = projectSummariesByStatus(data, 'active', '2026-01-01').find((s) => s.project.id === 'new')!;
     expect(fresh.pending).toBe(0);
   });
 });

@@ -48,21 +48,12 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
+  background: var(--dot);
   opacity: 0.5;
 }
 .selected .dot {
   opacity: 1;
 }
-.active {
-  background: var(--status-active);
-}
-.on_hold {
-  background: var(--status-on-hold);
-}
-.done {
-  background: var(--status-done);
-}
-
 @media (pointer: coarse) {
   .option {
     height: 36px;

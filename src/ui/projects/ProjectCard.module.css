@@ -128,6 +128,20 @@
   color: var(--text-muted);
 }
 
+.due {
+  margin-left: auto;
+}
+.counts > .due {
+  color: inherit;
+}
+.overdue {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--danger);
+  font-weight: 550;
+}
+
 @media (max-width: 480px) {
   .featured {
     min-height: 0;

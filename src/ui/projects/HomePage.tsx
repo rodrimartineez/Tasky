@@ -2,6 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Archive, FolderKanban, Hourglass, Plus } from 'lucide-react';
 import type { ProjectStatus } from '../../core/model';
+import { today } from '../../core/clock';
 import { projectSummariesByStatus } from '../../core/selectors';
 import { useTasky } from '../../state/store';
 import { Button } from '../components/Button';
@@ -35,7 +36,7 @@ export function HomePage() {
   useShortcut('p', () => setCreating(true));
 
   const sections = useMemo(
-    () => SECTIONS.map((section) => ({ ...section, summaries: projectSummariesByStatus(data, section.status) })),
+    () => SECTIONS.map((section) => ({ ...section, summaries: projectSummariesByStatus(data, section.status, today()) })),
     [data],
   );
   const active = sections[0].summaries;

@@ -119,3 +119,12 @@
     justify-content: space-between;
   }
 }
+
+.tabsSpacer {
+  flex: 1;
+}
+
+.tabAction {
+  align-self: center;
+  margin-bottom: 6px;
+}

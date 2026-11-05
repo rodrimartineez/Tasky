@@ -6,7 +6,10 @@ export const SHORTCUT_GROUPS: { title: string; items: { keys: string[]; label: s
   },
   {
     title: 'Proyecto',
-    items: [{ keys: ['Esc'], label: 'Volver a Inicio' }],
+    items: [
+      { keys: ['T'], label: 'Nueva tarea' },
+      { keys: ['Esc'], label: 'Volver a Inicio' },
+    ],
   },
   {
     title: 'Formularios',

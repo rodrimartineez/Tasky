@@ -5,6 +5,7 @@ import { newId } from '../core/ids';
 import type { TaskyData } from '../core/model';
 import type { Storage } from '../core/ports';
 import { createProject, deleteProject, updateProject, type ProjectInput, type ProjectPatch } from '../core/projects';
+import { createTask, deleteTask, moveTask, updateTask, type TaskInput, type TaskPatch } from '../core/tasks';
 
 type Status = 'loading' | 'ready' | 'error';
 
@@ -19,6 +20,11 @@ interface TaskyState {
   createProject(input: ProjectInput): string;
   updateProject(id: string, patch: ProjectPatch): void;
   deleteProject(id: string): void;
+  createTask(projectId: string, input: TaskInput): string;
+  updateTask(id: string, patch: TaskPatch): void;
+  /** Coloca la tarea entre dos vecinas (null = extremo de la lista). */
+  moveTask(id: string, beforeId: string | null, afterId: string | null): void;
+  deleteTask(id: string): void;
 }
 
 let storage: Storage | null = null;
@@ -83,5 +89,14 @@ export const useTasky = create<TaskyState>()((set, get) => {
     },
     updateProject: (id, patch) => commit((d) => updateProject(d, id, patch, now())),
     deleteProject: (id) => commit((d) => deleteProject(d, id, now())),
+
+    createTask(projectId, input) {
+      const id = newId();
+      commit((d) => createTask(d, projectId, input, id, now()));
+      return id;
+    },
+    updateTask: (id, patch) => commit((d) => updateTask(d, id, patch, now())),
+    moveTask: (id, beforeId, afterId) => commit((d) => moveTask(d, id, beforeId, afterId, now())),
+    deleteTask: (id) => commit((d) => deleteTask(d, id, now())),
   };
 });

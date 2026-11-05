@@ -1,0 +1,49 @@
+.box {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1.5px solid var(--border-strong);
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+  transition:
+    border-color var(--dur-fast) var(--ease),
+    background var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease);
+}
+.box svg {
+  width: 20px;
+  height: 20px;
+}
+.box:hover {
+  border-color: var(--orange-400);
+  box-shadow: 0 0 0 4px var(--orange-glow);
+}
+
+.progress {
+  border-color: var(--orange-400);
+}
+.half {
+  fill: var(--orange-400);
+}
+
+.checked {
+  border-color: transparent;
+  background: var(--orange-gradient);
+}
+
+/* Área táctil más generosa sin cambiar el tamaño visual */
+@media (pointer: coarse) {
+  .box {
+    position: relative;
+  }
+  .box::after {
+    content: "";
+    position: absolute;
+    inset: -12px;
+  }
+}
