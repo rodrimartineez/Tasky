@@ -37,6 +37,42 @@
   gap: var(--space-2);
 }
 
+/* Secciones de proyectos: plegables por separado */
+.collapsible {
+  gap: 0;
+}
+.sectionHeading {
+  display: flex;
+}
+.sectionToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: -6px;
+  padding: 4px 8px 4px 4px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  font: inherit;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease);
+}
+.sectionToggle:hover {
+  background: var(--surface-2);
+}
+.chevron {
+  display: grid;
+  place-items: center;
+  color: var(--text-faint);
+}
+.chevron svg {
+  width: 15px;
+  height: 15px;
+}
+.sectionBody {
+  padding-top: var(--space-4);
+}
+
 .sectionDot {
   width: 8px;
   height: 8px;

@@ -64,7 +64,7 @@ Página de proyecto                                  Atajos: T nueva tarea · I 
 |---|---|
 | Campos | Título (obligatorio), descripción (opcional), estado, **fecha límite (opcional)**, **franja horaria** (Mañana · Tarde · Noche · Día completo; por defecto «Día completo»), orden, fecha de creación. |
 | Crear | Tecla **T** (dentro de un proyecto) o botón → diálogo con foco en el título; descripción y fecha límite opcionales. Enter crea. |
-| Editar / eliminar | Clic en la tarea → mismo diálogo; eliminar con confirmación ligera. |
+| Editar / eliminar | Clic en la tarea → mismo diálogo; eliminar con confirmación ligera. En táctil, **deslizar la fila a la izquierda**: un poco deja ver una franja roja con papelera (pulsarla borra; tocar la fila la cierra); más de la mitad del ancho borra al soltar. No se activa con el ratón (allí se arrastra para ordenar) ni desde el asa. Componente común `ui/components/SwipeToDelete`. |
 | Estados | `todo` (Pendiente) · `in_progress` (En curso) · `done` (Completada). |
 | Completar | Checkbox de un clic en la propia fila: el check se dibuja (~260 ms) y la tarea pasa a «Completadas». Botón ▶ en la fila para marcar/quitar «En curso» con un clic. |
 | Reordenar | Drag & drop: con el ratón desde cualquier punto de la fila; con teclado desde el asa (`Espacio` para coger, flechas para mover, `Espacio` para soltar); en táctil desde el asa. El orden define la secuencia de trabajo. |
@@ -87,13 +87,13 @@ Página de proyecto                                  Atajos: T nueva tarea · I 
 |---|---|
 | Campos | Título (obligatorio), descripción (opcional), fecha de creación. |
 | Crear | Tecla **I** (dentro de un proyecto) o botón → diálogo con foco en el título. Enter crea. |
-| Editar / eliminar | Clic en la idea → mismo diálogo. Sin estado ni orden manual (más recientes primero). |
+| Editar / eliminar | Clic en la idea → mismo diálogo. Sin estado ni orden manual (más recientes primero). En táctil, deslizar a la izquierda para borrar, igual que las tareas. |
 | Diferenciación visual | Tarjetas tipo nota en cuadrícula, icono de bombilla, acento ámbar suave, sin checkbox. |
 
 ### 3.5 Pantalla principal
 - Sin login en escritorio. Es la primera pantalla al abrir.
 - Sección **Hoy** antes de los proyectos: tareas pendientes y en curso con fecha de hoy, agrupadas por franja (Mañana, Tarde, Noche, Día completo; solo las franjas con tareas). Cada fila: punto con el color del proyecto, título, «En curso» si lo está y nombre del proyecto; al pulsarla se abre el proyecto. Las completadas no aparecen. En móvil, las franjas van en un solo bloque.
-- Tres secciones: Activos (mayor protagonismo), En espera, Finalizados.
+- Tres secciones: Activos (mayor protagonismo), En espera, Finalizados. Cada una se pliega o despliega por separado pulsando su cabecera; lo plegado se recuerda en cada dispositivo (`localStorage`, no se sincroniza).
 - **Orden manual de proyectos:** mantener pulsada una tarjeta (~250 ms, ratón o dedo) y arrastrarla; las demás se apartan en tiempo real. Se ordena dentro de cada sección. Un clic normal sigue abriendo el proyecto y soltar no lo abre. Los proyectos nuevos aparecen los primeros; los que nunca se han ordenado van detrás, del más reciente al más antiguo. El orden se guarda en `Project.rank` (índice fraccional, como las tareas) y se sincroniza.
 - Tarjeta de proyecto: punto de color, nombre, descripción breve, **siguiente tarea** (la primera no completada según el orden manual; sin tareas pendientes no se muestra), estado, nº tareas pendientes, nº completadas, barra de progreso, próxima fecha límite y nº de vencidas (si existen).
 - **Color de proyecto:** se deriva del id (paleta fija de 10 colores, `ui/projects/projectColor.ts`); no se guarda, así que es el mismo en todos los dispositivos.
@@ -356,7 +356,7 @@ Aplicación principal. Instalador propio, icono, buscador de Windows, anclaje a 
 - **Implementado (Fase 8):**
   - `adapters/webStorage.ts`: el documento JSON en **IndexedDB** (base `tasky`, almacén `documents`, clave `data`). Migra solo los datos que hubiera en `localStorage` (`tasky:data`) y pide almacenamiento persistente (`navigator.storage.persist`).
   - `vite-plugin-pwa` (`vite.config.ts`): manifest (`standalone`, vertical, colores `#0A0A0B`), service worker Workbox que precachea la app completa (JS, CSS, fuentes, iconos) → funciona sin conexión. El registro lo hace `adapters/index.ts` solo en navegador y solo en el build (nunca en Tauri ni en `npm run dev`). Versión nueva: se activa al abrir la app y recarga una vez (`skipWaiting` + `clientsClaim`).
-  - Iconos en `public/icons/` (180 `apple-touch-icon`, 192, 512, 512 *maskable*), generados con `tauri icon` desde `src-tauri/icons/source/tasky-icon-pwa.svg` (sello sobre fondo oscuro, con margen para recortes).
+  - Iconos en `public/icons/` (180 `apple-touch-icon`, 192, 512, 512 *maskable*), generados con `tauri icon` desde `src-tauri/icons/source/tasky-icon-pwa.svg` (sello sobre fondo gris carbón `#27272A`, más claro que el de la app, con margen para recortes).
   - `index.html`: `viewport-fit=cover`, `theme-color`, metas `apple-mobile-web-app-*` (barra de estado translúcida). La cabecera respeta `safe-area-inset-top`; la barra inferior, las hojas y el botón «+», `safe-area-inset-bottom`.
   - Interfaz móvil (≤ 640 px, `useMediaQuery`): en Inicio, «Nuevo proyecto» pasa al botón flotante «+»; en un proyecto, las pestañas Tareas/Ideas pasan a una **barra inferior** fija y «Nueva tarea/idea» al «+». Barra y «+» se montan en `body` (portal) para que la transición de página no altere su posición fija. Los avisos se muestran arriba. En pantallas táctiles se ocultan los atajos y «Atajos».
   - Arrastre: ratón desde cualquier punto de la fila (`MouseSensor`); táctil solo desde el asa con pulsación de 150 ms (`TouchSensor`), así deslizar la lista nunca mueve tareas.
@@ -496,3 +496,5 @@ Cada fase termina con verificación real (app en ejecución + tests de `core/`),
 | Integración con Claude (MCP) — Edge Function `tasky-mcp` con 12 herramientas sobre `core/`, OAuth 2.1 de Supabase, página `/oauth/consent` | ✅ 10 tests (servicio y protocolo HTTP); desplegada: sin token → 401 con metadatos OAuth; conector añadido en claude.ai y funcionando (confirmado por el usuario) |
 | Franja horaria, sección «Hoy» y siguiente tarea en las tarjetas — `timeSlot` en core (zod con valor por defecto, sin cambio de versión de esquema), columna `time_slot` en Supabase, `time_slot` en `create_task`/`update_task` y `next_task` en `get_projects` del MCP | ✅ 48 tests; navegador (escritorio y móvil): crear con franja, editar conservándola, reordenar actualiza la siguiente tarea, completadas excluidas de «Hoy» |
 | Orden manual de proyectos en Inicio — `rank` en `Project` (core + columna `rank` en Supabase), mantener pulsado y arrastrar con dnd-kit (ratón y táctil), el MCP devuelve los proyectos en el mismo orden | ✅ 50 tests; navegador: arrastre con ratón y con toque simulado, movimiento en tiempo real, el orden persiste, soltar no abre el proyecto y el clic normal sí |
+| Secciones de proyectos plegables por separado en Inicio (estado recordado por dispositivo) | ✅ Navegador: plegar y desplegar cada sección, se mantiene al recargar, sin recorte de tarjetas al desplegar |
+| Deslizar a la izquierda para borrar tareas e ideas (táctil) + icono del iPhone con fondo más claro | ✅ Vista móvil con toques simulados: abrir la papelera, cerrar tocando, borrar deslizando del todo (tarea e idea); el asa no inicia el gesto; con ratón se sigue reordenando |

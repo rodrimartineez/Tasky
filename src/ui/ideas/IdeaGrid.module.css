@@ -80,3 +80,8 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Mismo redondeo que la tarjeta, para la franja roja al deslizar */
+.swipe {
+  border-radius: var(--radius-lg) var(--radius-lg) var(--radius-lg) 4px;
+}

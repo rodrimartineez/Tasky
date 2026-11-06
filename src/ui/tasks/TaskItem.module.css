@@ -19,6 +19,14 @@
   background: var(--surface-2);
 }
 
+.lifted {
+  position: relative;
+  z-index: 10;
+}
+.swipe {
+  border-radius: var(--radius);
+}
+
 .dragging {
   z-index: 10;
   cursor: grabbing;

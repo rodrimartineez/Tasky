@@ -8,6 +8,8 @@ import { projectIdeas } from '../../core/selectors';
 import { useTasky } from '../../state/store';
 import { Button } from '../components/Button';
 import { EmptyState } from '../components/EmptyState';
+import { SwipeToDelete } from '../components/SwipeToDelete';
+import { toast } from '../components/Toaster';
 import styles from './IdeaGrid.module.css';
 
 const dateFmt = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short' });
@@ -33,6 +35,7 @@ interface IdeaGridProps {
 
 export function IdeaGrid({ projectId, onCreate, onOpen }: IdeaGridProps) {
   const data = useTasky((s) => s.data);
+  const deleteIdea = useTasky((s) => s.deleteIdea);
   const ideas = useMemo(() => projectIdeas(data, projectId), [data, projectId]);
   const today = getToday();
 
@@ -63,16 +66,25 @@ export function IdeaGrid({ projectId, onCreate, onOpen }: IdeaGridProps) {
             exit={{ opacity: 0, scale: 0.96 }}
             transition={{ duration: 0.18, ease: [0.2, 0.8, 0.2, 1] }}
           >
-            <button type="button" className={styles.card} onClick={() => onOpen(idea)}>
-              <span className={styles.icon}>
-                <Lightbulb />
-              </span>
-              <span className={styles.title}>{idea.title}</span>
-              {idea.description && <span className={styles.description}>{idea.description}</span>}
-              <time className={styles.date} dateTime={idea.createdAt} title={fullFmt.format(new Date(idea.createdAt))}>
-                {createdLabel(idea.createdAt, today)}
-              </time>
-            </button>
+            <SwipeToDelete
+              label={`Eliminar «${idea.title}»`}
+              className={styles.swipe}
+              onDelete={() => {
+                deleteIdea(idea.id);
+                toast('Idea eliminada.');
+              }}
+            >
+              <button type="button" className={styles.card} onClick={() => onOpen(idea)}>
+                <span className={styles.icon}>
+                  <Lightbulb />
+                </span>
+                <span className={styles.title}>{idea.title}</span>
+                {idea.description && <span className={styles.description}>{idea.description}</span>}
+                <time className={styles.date} dateTime={idea.createdAt} title={fullFmt.format(new Date(idea.createdAt))}>
+                  {createdLabel(idea.createdAt, today)}
+                </time>
+              </button>
+            </SwipeToDelete>
           </motion.li>
         ))}
       </AnimatePresence>

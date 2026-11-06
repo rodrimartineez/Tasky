@@ -1,0 +1,42 @@
+.wrap {
+  position: relative;
+  height: 100%;
+}
+/* Solo se recorta mientras se desliza: en reposo el contenido puede sobresalir (sombras, arrastre para ordenar). */
+.swiping {
+  overflow: hidden;
+}
+
+.content {
+  position: relative;
+  height: 100%;
+  /* El desplazamiento vertical de la página sigue siendo del navegador. */
+  touch-action: pan-y;
+}
+
+.action {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: flex-end;
+  background: var(--danger);
+  border-radius: inherit;
+}
+
+.trash {
+  width: 72px;
+  display: grid;
+  place-items: center;
+  border: none;
+  background: none;
+  color: #fff;
+  cursor: pointer;
+}
+.trash svg {
+  width: 20px;
+  height: 20px;
+  transition: transform var(--dur-fast) var(--ease);
+}
+.armed .trash svg {
+  transform: scale(1.25);
+}

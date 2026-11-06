@@ -4,6 +4,8 @@ import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, Pause, Play } from 'lucide-react';
 import type { LocalDate, Task } from '../../core/model';
 import { useTasky } from '../../state/store';
+import { SwipeToDelete } from '../components/SwipeToDelete';
+import { toast } from '../components/Toaster';
 import { DueBadge } from './DueBadge';
 import { TaskCheckbox } from './TaskCheckbox';
 import { TIME_SLOT_INFO } from './timeSlot';
@@ -26,23 +28,26 @@ export function SortableTaskItem({ task, today, onOpen }: TaskItemProps) {
   const style: CSSProperties = { transform: CSS.Translate.toString(transform), transition };
 
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={`${styles.row} ${isDragging ? styles.dragging : ''}`}
-      onMouseDown={listeners?.onMouseDown as React.MouseEventHandler | undefined}
-    >
-      <button
-        ref={setActivatorNodeRef}
-        type="button"
-        className={styles.handle}
-        aria-label={`Mover «${task.title}»`}
-        {...attributes}
-        {...listeners}
-      >
-        <GripVertical />
-      </button>
-      <TaskBody task={task} today={today} onOpen={onOpen} />
+    <div ref={setNodeRef} style={style} className={isDragging ? styles.lifted : undefined}>
+      <SwipeToDeleteTask task={task}>
+        <div
+          className={`${styles.row} ${isDragging ? styles.dragging : ''}`}
+          onMouseDown={listeners?.onMouseDown as React.MouseEventHandler | undefined}
+        >
+          <button
+            ref={setActivatorNodeRef}
+            type="button"
+            className={styles.handle}
+            aria-label={`Mover «${task.title}»`}
+            data-swipe-ignore
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical />
+          </button>
+          <TaskBody task={task} today={today} onOpen={onOpen} />
+        </div>
+      </SwipeToDeleteTask>
     </div>
   );
 }
@@ -50,10 +55,29 @@ export function SortableTaskItem({ task, today, onOpen }: TaskItemProps) {
 /** Fila de una tarea completada (sin arrastre). */
 export function DoneTaskItem({ task, today, onOpen }: TaskItemProps) {
   return (
-    <div className={`${styles.row} ${styles.done}`}>
-      <span className={styles.handleSpacer} />
-      <TaskBody task={task} today={today} onOpen={onOpen} />
-    </div>
+    <SwipeToDeleteTask task={task}>
+      <div className={`${styles.row} ${styles.done}`}>
+        <span className={styles.handleSpacer} />
+        <TaskBody task={task} today={today} onOpen={onOpen} />
+      </div>
+    </SwipeToDeleteTask>
+  );
+}
+
+/** En táctil, deslizar la fila a la izquierda la elimina. */
+function SwipeToDeleteTask({ task, children }: { task: Task; children: React.ReactNode }) {
+  const deleteTask = useTasky((s) => s.deleteTask);
+  return (
+    <SwipeToDelete
+      label={`Eliminar «${task.title}»`}
+      className={styles.swipe}
+      onDelete={() => {
+        deleteTask(task.id);
+        toast('Tarea eliminada.');
+      }}
+    >
+      {children}
+    </SwipeToDelete>
   );
 }
 
