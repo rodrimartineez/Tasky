@@ -1,7 +1,7 @@
 # TASKY_GUIDE.md
 
 > Documento de referencia del proyecto. Se consulta antes de cada fase y se actualiza al terminarla.
-> Última actualización: 2026-11-06 — **Fases 1–9 completadas.** Tasky instalada en Windows y publicada como PWA en https://tasky-2dd.pages.dev (iPhone), sincronizada con Supabase, privada y con funcionamiento sin conexión.
+> Última actualización: 2026-11-06 — **Fases 1–9 completadas + integración con Claude (MCP, §7.7).** Tasky instalada en Windows y publicada como PWA en https://tasky-2dd.pages.dev (iPhone), sincronizada con Supabase, privada y con funcionamiento sin conexión.
 
 ---
 
@@ -333,7 +333,7 @@ Eliminar marca `deletedAt` (en cascada: proyecto → tareas e ideas). Los select
 | UI responsive, drag & drop táctil, `HashRouter`, diálogos que en móvil son hojas | La interfaz móvil parte de los mismos componentes. |
 
 ### 7.2 Estado
-Todo lo previsto está implementado (Fases 1–9). Posibles mejoras futuras, no planificadas: Cloudflare Access delante del sitio, Supabase Realtime, LWW por campo.
+Todo lo previsto está implementado (Fases 1–9). Posibles mejoras futuras, no planificadas: Cloudflare Access delante del sitio, Supabase Realtime, LWW por campo. Integración con Claude por MCP: implementada (§7.7).
 
 ### 7.3 Windows — escritorio (Tauri 2)
 Aplicación principal. Instalador propio, icono, buscador de Windows, anclaje a la barra de tareas. Datos en `%APPDATA%\com.tasky.app\tasky.json`. Funciona sin conexión y sin iniciar sesión; si se activa la sync (Fase 9), inicia sesión una vez y guarda la sesión.
@@ -387,6 +387,29 @@ Aplicación principal. Instalador propio, icono, buscador de Windows, anclaje a 
 - **Hosting de la PWA:** sitio estático gratuito (Cloudflare Pages, Netlify o Vercel) con HTTPS. Los archivos de la app son públicos pero no contienen datos. Opcional: Cloudflare Access delante del sitio para que ni siquiera la pantalla de acceso sea visible a terceros.
 - **Sesión:** Supabase Auth con **email + contraseña** (el enlace mágico se descartó: en iPhone abre Safari y no la PWA instalada). La sesión se guarda en el dispositivo, se renueva sola y se cierra desde el indicador de sincronización. En escritorio es opcional (activa la sync).
 - **Plan gratuito de Supabase:** el proyecto se pausa tras 7 días sin uso; Tasky sigue funcionando en local y la sync vuelve al reactivarlo desde el panel.
+
+### 7.7 Integración con Claude (MCP)
+Permite gestionar Tasky conversando con la app oficial de Claude (también desde el iPhone con dictado), con el ordenador apagado. Solo requiere la suscripción Claude Pro (conectores personalizados); **no** usa la API de Anthropic.
+
+```
+Claude (nube de Anthropic) ──OAuth──▶ Supabase Auth (servidor OAuth 2.1, beta) ◀── /oauth/consent en la PWA
+        │ token del usuario
+        ▼
+Edge Function tasky-mcp (Supabase, plan gratuito) ──RLS──▶ projects / tasks / ideas
+                                                             │ sincronización existente
+                                                             ▼
+                                               Tasky Windows y PWA (≤ 60 s o al volver a la app)
+```
+
+- **Código:** `src/mcp/service.ts` (operaciones sobre las funciones de `core/`: `createTask`, `updateTask`, `deleteTask`, `createIdea`…, y `pendingChanges` para guardar solo lo que cambia), `src/mcp/server.ts` (12 herramientas MCP con anotaciones e instrucciones), `src/mcp/edge.ts` (repositorio sobre `adapters/supabaseRows.ts`, el mismo módulo de filas que usa la sincronización de la app). `supabase/functions/tasky-mcp/index.ts` envuelve todo con `@supabase/server`.
+- **Herramientas:** `get_projects`, `get_project`, `get_project_by_name` (sin mayúsculas ni acentos; `certain=false` → Claude debe preguntar), `get_tasks` (de un proyecto o de todos), `create_task`, `update_task`, `complete_task`, `delete_task`, `get_ideas`, `create_idea`, `update_idea`, `delete_idea`. No hay herramienta para borrar proyectos. Crear exige el id real de un proyecto vivo: Claude no puede inventar proyectos.
+- **Instrucciones del servidor:** consultar antes de actuar, preguntar si el proyecto es dudoso o si no está claro si es tarea o idea, títulos accionables sin inventar detalles, confirmar al final qué se ha hecho.
+- **Seguridad:** el servidor usa el token OAuth del usuario (ES256, verificado con el JWKS del proyecto): todas las operaciones pasan por RLS (dueño + lista blanca). Nunca usa la clave service_role. Sin token → 401 con `WWW-Authenticate` (descubrimiento RFC 9728). La autorización se aprueba en `/oauth/consent` (muestra la aplicación, la cuenta y el destino de vuelta). El borrado sigue siendo lógico. Lecturas marcadas `readOnlyHint`; eliminaciones `destructiveHint` (en Claude: «Needs approval»).
+- **Configuración en Supabase:** Authentication → URL Configuration → Site URL `https://tasky-2dd.pages.dev`; Authentication → OAuth Server activado, Authorization path `/oauth/consent`, registro dinámico de clientes activado. Claves de firma asimétricas (ES256, ya activas).
+- **Desplegar:** `npm run mcp:deploy` (empaqueta `src/mcp/edge.ts` con `vite.mcp.config.ts` en `supabase/functions/tasky-mcp/dist/` y publica con la CLI de Supabase, `--no-verify-jwt`). Requiere `npx supabase@latest login` una vez. Tras cambiar `core/` o `src/mcp/` hay que volver a desplegar.
+- **En Claude:** claude.ai → Customize → Connectors → Add custom connector → URL `https://yfcidccclkndbqhqpmzp.supabase.co/functions/v1/tasky-mcp`, OAuth client «Register automatically». Se añade desde la web; en la app del iPhone se usa ya configurado. Usar el **dictado** (no el modo voz, que no garantiza llamar a herramientas).
+- **Límites:** Edge Functions gratis: 500.000 invocaciones/mes y 2 s de CPU por petición; OAuth sin coste (cuenta como MAU). El servidor OAuth de Supabase está en **beta**. Si el proyecto se pausa (7 días sin uso), el conector falla hasta reactivarlo. Los mensajes con herramientas consumen más cuota de Claude Pro.
+- **Actualización en las apps:** los cambios de Claude llegan con la sincronización existente (cada 60 s, al volver a la app o al recuperar la red), sin reiniciar. Posible mejora: Supabase Realtime para que aparezcan al instante.
 
 ---
 
@@ -465,3 +488,4 @@ Cada fase termina con verificación real (app en ejecución + tests de `core/`),
 | Fase 7 — Instalador NSIS por usuario en español (1,8 MB), instancia única, instrucciones en README | ✅ Instalada en este PC: acceso en el menú Inicio (buscador), entrada en Aplicaciones, datos existentes cargados sin modificar, segunda apertura no crea otra instancia. Anclada a la barra de tareas por el usuario (Windows no permite anclar por programa); el usuario confirmó que se ve bien y que exportar a Descargas funciona. Se abre maximizada |
 | Fase 8 — IndexedDB, manifest + service worker (offline), iconos iOS, zonas seguras, interfaz móvil (barra inferior, botón «+», avisos arriba), arrastre táctil desde el asa | ✅ PC: vista móvil, IndexedDB con migración, offline con el servidor apagado, actualización automática, escritorio sin cambios. iPhone (Safari, red local): interfaz, «+», barra, hojas, arrastre y «Añadir a pantalla de inicio» confirmados por el usuario. Offline en iPhone pendiente de HTTPS (Fase 9) |
 | Fase 9 — Supabase (esquema con RLS, lista blanca, sin DELETE, LWW en servidor), registro desactivado, login email + contraseña (obligatorio en web, opcional en escritorio), sync local-first, indicador de estado; hosting en Cloudflare Pages (`tasky-2dd.pages.dev`, publica solo al subir a `main`) con CSP y cabeceras de seguridad | ✅ Verificado: acceso anónimo denegado, registro cerrado, sync Windows ↔ navegador en ambos sentidos (crear y borrar), web publicada sin errores de CSP. iPhone: instalación, sincronización y modo sin conexión confirmados por el usuario |
+| Integración con Claude (MCP) — Edge Function `tasky-mcp` con 12 herramientas sobre `core/`, OAuth 2.1 de Supabase, página `/oauth/consent` | ✅ 10 tests (servicio y protocolo HTTP); desplegada: sin token → 401 con metadatos OAuth; conector añadido en claude.ai y funcionando (confirmado por el usuario) |

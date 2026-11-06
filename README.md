@@ -49,6 +49,14 @@ Cada vez que se sube código a la rama `main` de GitHub, Cloudflare Pages public
 - La única cuenta se crea en el panel de Supabase (*Authentication → Users*); el registro público está desactivado y la cuenta debe estar en la lista blanca (ver el final de [supabase/schema.sql](supabase/schema.sql)).
 - Plan gratuito: si el proyecto de Supabase se pausa tras 7 días sin uso, reactívalo desde el panel; mientras tanto Tasky sigue funcionando en local.
 
+## Claude (conector MCP)
+
+Gestiona Tasky hablando con Claude (claude.ai o la app del iPhone, con el ordenador apagado). Detalles en la guía, §7.7.
+
+- **Conectar (una vez, desde claude.ai en el navegador):** Customize → Connectors → Add custom connector → URL `https://yfcidccclkndbqhqpmzp.supabase.co/functions/v1/tasky-mcp` → OAuth client «Register automatically» → inicia sesión en Tasky y pulsa *Autorizar*.
+- **Usar:** pide cosas como «Añade una tarea a Wynot para optimizar las fotos» o «¿Qué tengo pendiente?». En el iPhone, usa el micrófono de **dictado**.
+- **Publicar cambios del servidor** (tras cambiar `src/core/` o `src/mcp/`): `npm run mcp:deploy` (requiere `npx supabase@latest login` una vez).
+
 ## Probar la PWA en red local (desarrollo)
 
 ```bash
