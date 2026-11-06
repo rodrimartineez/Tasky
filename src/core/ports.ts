@@ -34,6 +34,15 @@ export interface SyncSession {
   email: string;
 }
 
+/** Petición de un asistente (p. ej. Claude) para acceder a Tasky en nombre del usuario (OAuth). */
+export interface AuthorizationRequest {
+  clientName: string;
+  /** Adónde vuelve el navegador tras decidir (se muestra para evitar engaños). */
+  redirectUri: string;
+  scope: string;
+  email: string;
+}
+
 /** Servidor de sincronización (Supabase en adapters/). Ver TASKY_GUIDE §7.5. */
 export interface SyncBackend {
   getSession(): Promise<SyncSession | null>;
@@ -49,4 +58,11 @@ export interface SyncBackend {
    * de esos devuelve la versión del servidor para incorporarla.
    */
   push(records: SyncRecords): Promise<SyncRecords>;
+  /**
+   * Autorización de asistentes (§7.7). Devuelve la petición a confirmar, o directamente la URL de vuelta
+   * si el usuario ya la había autorizado antes.
+   */
+  getAuthorizationRequest(id: string): Promise<AuthorizationRequest | { redirectUrl: string }>;
+  /** Aprueba o deniega la petición y devuelve la URL a la que volver. */
+  decideAuthorization(id: string, approve: boolean): Promise<string>;
 }

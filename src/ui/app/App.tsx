@@ -3,12 +3,16 @@ import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AnimatePresence, MotionConfig } from 'motion/react';
 import { useTasky } from '../../state/store';
 import { useSync } from '../../state/sync';
+import { ConsentPage } from '../sync/ConsentPage';
 import { LoginPage } from '../sync/LoginPage';
 import { AppLayout } from './AppLayout';
 import { LoadError } from './LoadError';
 import { Splash } from './Splash';
 import { HomePage } from '../projects/HomePage';
 import { ProjectPage } from '../projects/ProjectPage';
+
+/** Autorización OAuth de asistentes (Claude): ruta real, fuera del enrutado por # de la app. */
+const isConsentRoute = () => window.location.pathname.replace(/\/$/, '') === '/oauth/consent';
 
 const prefersReducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -23,7 +27,10 @@ export function App() {
   return (
     <MotionConfig reducedMotion="user">
       {requireAuth && syncStatus === 'signed_out' && <LoginPage />}
-      {!locked && status === 'ready' && (
+      {!locked && status === 'ready' && isConsentRoute() && (
+        <ConsentPage authorizationId={new URLSearchParams(window.location.search).get('authorization_id')} />
+      )}
+      {!locked && status === 'ready' && !isConsentRoute() && (
         <HashRouter>
           <Routes>
             <Route element={<AppLayout />}>

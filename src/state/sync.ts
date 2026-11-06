@@ -169,3 +169,9 @@ export async function signOut() {
 
 /** ¿Hay cambios locales que el servidor aún no tiene? */
 export const hasPendingChanges = () => countRecords(pendingChanges(useTasky.getState().data, versions)) > 0;
+
+/** Página de autorización de asistentes (OAuth). Solo disponible con Supabase configurado. */
+export function authorizationBackend() {
+  if (!backend) throw new Error('La sincronización no está configurada.');
+  return backend;
+}

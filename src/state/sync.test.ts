@@ -30,6 +30,8 @@ function fakeServer() {
     },
     signIn: async (email) => listener?.({ email }),
     signOut: async () => listener?.(null),
+    getAuthorizationRequest: async () => ({ redirectUrl: '' }),
+    decideAuthorization: async () => '',
     async pull(since) {
       const records = noRecords();
       let cursor = since;

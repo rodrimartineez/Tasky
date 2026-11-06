@@ -25,3 +25,6 @@ dist-ssr
 
 # TypeScript
 *.tsbuildinfo
+
+# Servidor MCP: se genera con npm run mcp:build
+supabase/functions/tasky-mcp/dist/
