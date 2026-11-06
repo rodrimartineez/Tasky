@@ -11,7 +11,7 @@
     "test": "vitest run",
     "lint": "eslint src",
     "mcp:build": "vite build --config vite.mcp.config.ts",
-    "mcp:deploy": "npm run mcp:build && npx supabase@latest functions deploy tasky-mcp --no-verify-jwt --use-api --project-ref yfcidccclkndbqhqpmzp"
+    "mcp:deploy": "npm run mcp:build && npx supabase@latest functions deploy tasky-mcp --no-verify-jwt --use-api --remote=yfcidccclkndbqhqpmzp --yes"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
