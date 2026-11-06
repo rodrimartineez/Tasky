@@ -14,6 +14,7 @@ function fakeServer() {
   const rows: Record<Table, Map<string, { rec: Rec; seq: number }>> = { projects: new Map(), tasks: new Map(), ideas: new Map() };
   const tables = Object.keys(rows) as Table[];
   let listener: ((s: { email: string } | null) => void) | null = null;
+  let remote: (() => void) | null = null;
 
   const write = (table: Table, rec: Rec) => {
     const old = rows[table].get(rec.id);
@@ -32,6 +33,10 @@ function fakeServer() {
     signOut: async () => listener?.(null),
     getAuthorizationRequest: async () => ({ redirectUrl: '' }),
     decideAuthorization: async () => '',
+    onRemoteChange(l) {
+      remote = l;
+      return () => (remote = null);
+    },
     async pull(since) {
       const records = noRecords();
       let cursor = since;
@@ -50,7 +55,12 @@ function fakeServer() {
       return newer;
     },
   };
-  return { backend, write, get: (t: Table, id: string) => rows[t].get(id)?.rec };
+  /** Escritura de otro cliente (p. ej. Claude por MCP) con su aviso de Realtime. */
+  const writeAndNotify = (table: Table, rec: Rec) => {
+    write(table, rec);
+    remote?.();
+  };
+  return { backend, write, writeAndNotify, get: (t: Table, id: string) => rows[t].get(id)?.rec };
 }
 
 const server = fakeServer();
@@ -96,6 +106,26 @@ describe('sincronización con el servidor', () => {
     await syncNow();
     expect(server.get('projects', p.id)).toMatchObject({ name: 'Editado en el iPhone' });
     expect(useTasky.getState().data.projects.find((x) => x.id === p.id)?.name).toBe('Editado en el iPhone');
+  });
+
+  it('un cambio hecho por Claude (MCP) llega solo, sin recargar, gracias al aviso de Realtime', async () => {
+    const p = useTasky.getState().data.projects.find((x) => x.name === 'Remoto')!;
+    server.writeAndNotify('tasks', {
+      id: 'desde-claude',
+      projectId: p.id,
+      title: 'Creada por Claude',
+      description: '',
+      status: 'todo',
+      dueDate: null,
+      timeSlot: 'evening',
+      rank: 'a0',
+      completedAt: null,
+      createdAt: T_FUTURE,
+      updatedAt: T_FUTURE,
+      deletedAt: null,
+    });
+    await new Promise((r) => setTimeout(r, 450)); // espera de agrupación de avisos + descarga
+    expect(useTasky.getState().data.tasks.find((t) => t.id === 'desde-claude')).toMatchObject({ title: 'Creada por Claude', timeSlot: 'evening' });
   });
 
   it('cerrar sesión en la web borra los datos del dispositivo', async () => {

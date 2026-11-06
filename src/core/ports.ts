@@ -51,6 +51,11 @@ export interface SyncBackend {
   /** Lanza un Error con un mensaje para el usuario si no se puede iniciar sesión. */
   signIn(email: string, password: string): Promise<void>;
   signOut(): Promise<void>;
+  /**
+   * Avisa (sin datos) en cuanto cambia algo en el servidor, venga de otro dispositivo o de un asistente,
+   * para descargarlo al momento con pull. Devuelve la función para dejar de escuchar.
+   */
+  onRemoteChange(listener: () => void): () => void;
   /** Registros cambiados en el servidor después del cursor (0 = todos) y el nuevo cursor. */
   pull(since: number): Promise<{ records: SyncRecords; cursor: number }>;
   /**

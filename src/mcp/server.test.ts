@@ -39,7 +39,7 @@ async function rpc(mcp: ReturnType<typeof createTaskyMcpHandler>, method: string
 }
 
 describe('servidor MCP por HTTP', () => {
-  it('se presenta con instrucciones y expone las 12 herramientas con sus anotaciones', async () => {
+  it('se presenta con instrucciones y expone las 16 herramientas con sus anotaciones', async () => {
     const { mcp } = handler();
     const init = await rpc(mcp, 'initialize', {
       protocolVersion: '2025-06-18',
@@ -48,13 +48,17 @@ describe('servidor MCP por HTTP', () => {
     });
     expect(init.status).toBe(200);
     expect(init.body.result.serverInfo.name).toBe('tasky');
-    expect(init.body.result.instructions).toMatch(/Nunca inventes proyectos/);
+    expect(init.body.result.instructions).toMatch(/Nunca inventes ids/);
 
     const { body } = await rpc(mcp, 'tools/list');
     const tools = body.result.tools as { name: string; annotations: Record<string, boolean> }[];
     expect(tools.map((t) => t.name).sort()).toEqual(
       [
         'complete_task',
+        'create_project',
+        'create_tasks',
+        'move_task',
+        'update_project',
         'create_idea',
         'create_task',
         'delete_idea',

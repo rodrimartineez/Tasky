@@ -1,6 +1,6 @@
 import { createClient, type Session } from '@supabase/supabase-js';
 import type { SyncBackend, SyncSession } from '../core/ports';
-import { fail, pullRecords, pushRecords } from './supabaseRows';
+import { fail, pullRecords, pushRecords, TABLES } from './supabaseRows';
 
 const AUTH_KEY = 'tasky-auth';
 
@@ -57,6 +57,14 @@ export function createSupabaseSync(url: string, key: string): SyncBackend {
         : await client.auth.oauth.denyAuthorization(id, options);
       if (error || !data) fail(error);
       return data.redirect_url;
+    },
+
+    onRemoteChange(listener) {
+      // Supabase Realtime: avisos de cambios en las tablas (filtrados por RLS: solo las filas del usuario).
+      const channel = client.channel('tasky-changes');
+      for (const table of TABLES) channel.on('postgres_changes', { event: '*', schema: 'public', table }, () => listener());
+      channel.subscribe();
+      return () => void client.removeChannel(channel);
     },
 
     pull: (since) => pullRecords(client, since),

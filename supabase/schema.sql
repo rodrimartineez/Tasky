@@ -137,3 +137,16 @@ revoke all on sequence public.tasky_change_seq from anon;
 -- insert into private.allowed_users (user_id)
 --   select id from auth.users where email = 'TU-EMAIL@ejemplo.com'
 --   on conflict do nothing;
+
+-- ── Realtime: avisos de cambios para que las apps descarguen al momento (también los de Claude por MCP) ──
+-- Los avisos respetan RLS: cada cliente solo recibe los de sus propias filas, y solo si está en la lista blanca.
+do $$
+declare t text;
+begin
+  foreach t in array array['projects', 'tasks', 'ideas'] loop
+    if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t) then
+      execute format('alter publication supabase_realtime add table public.%I', t);
+    end if;
+  end loop;
+end;
+$$;

@@ -2,17 +2,22 @@ import { createMcpHandler, McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import { ToolError, type TaskyService } from './service';
 
-const INSTRUCTIONS = `Tasky es el gestor personal de proyectos, tareas e ideas del usuario. Tasky es la fuente de verdad: consulta siempre antes de actuar.
+const INSTRUCTIONS = `Tasky es el gestor personal de proyectos, tareas e ideas del usuario. Tasky es la fuente de verdad: consulta siempre antes de actuar. Todo lo que hagas aquí se guarda en Supabase y aparece al momento en la app de Windows, la web y el iPhone.
 
 Reglas:
-- Para crear algo necesitas el id real del proyecto: obtenlo con get_project_by_name o get_projects. Nunca inventes proyectos ni ids.
-- Si get_project_by_name devuelve certain=false (varias coincidencias, coincidencia parcial o ninguna), pregunta al usuario a qué proyecto se refiere ANTES de crear o modificar nada. Nunca crees elementos en un proyecto dudoso.
+- Para trabajar en un proyecto necesitas su id real: obtenlo con get_project_by_name o get_projects. Nunca inventes ids.
+- Si get_project_by_name devuelve certain=false (varias coincidencias, coincidencia parcial o ninguna), pregunta al usuario a qué proyecto se refiere ANTES de crear o modificar nada.
+- Crea un proyecto (create_project) solo cuando el usuario lo pida o acepte, y comprueba antes con get_project_by_name que no existe ya.
 - Tarea = algo concreto que hacer. Idea = algo a explorar o recordar más adelante. Si no está claro qué es, pregunta antes de crearlo.
-- Títulos breves y accionables en el idioma del usuario (las tareas empiezan por un verbo); la descripción añade el contexto útil que haya dado el usuario. No inventes detalles.
-- Para localizar una tarea o idea por su texto, consulta primero get_tasks o get_ideas y usa su id. Si hay varias candidatas, pregunta.
+- Títulos breves y accionables en el idioma del usuario (las tareas empiezan por un verbo); la descripción añade el contexto útil (criterios de terminado, notas). No inventes detalles.
+- Para desglosar un proyecto usa create_tasks con todas las tareas en orden de trabajo; el orden de la lista es el orden en Tasky (la primera abierta es «la siguiente»). Usa move_task para reordenar.
+- Repetir una creación no duplica: si ya hay una tarea abierta, una idea o un proyecto con el mismo título, se devuelve en already_existed. Ante un error de conexión puedes reintentar con seguridad.
+- Estados: todo = pendiente, in_progress = en curso, done = completada. Marca in_progress al empezar una tarea y done (complete_task) SOLO cuando el trabajo esté terminado y verificado (pruebas pasadas, comprobado en la app…). Si no se ha podido verificar, déjala en curso y explica qué falta en su descripción.
+- Para localizar una tarea o idea por su texto, consulta primero get_tasks, get_project o get_ideas y usa su id. Si hay varias candidatas, pregunta.
 - "Dividir una tarea": crea las nuevas tareas en el mismo proyecto y después elimina la original solo si el usuario lo ha pedido o lo confirma.
 - Fechas límite en formato AAAA-MM-DD; el campo today de las respuestas indica la fecha actual del usuario.
 - Franja horaria (time_slot): morning = mañana, afternoon = tarde, evening = noche, all_day = día completo (por defecto). Úsala si el usuario dice cuándo hará la tarea.
+- No hay herramienta para borrar proyectos: para retirar uno, cambia su estado a done (finalizado) o on_hold (en espera) con update_project.
 - Al terminar, confirma en una lista breve qué has creado o cambiado y en qué proyecto.`;
 
 const id = z.string().min(1);
@@ -21,6 +26,7 @@ const date = z
   .regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato AAAA-MM-DD')
   .nullable();
 const taskStatus = z.enum(['todo', 'in_progress', 'done']).describe('todo = pendiente, in_progress = en curso, done = completada');
+const projectStatus = z.enum(['active', 'on_hold', 'done']).describe('active = activo, on_hold = en espera, done = finalizado');
 const timeSlot = z
   .enum(['morning', 'afternoon', 'evening', 'all_day'])
   .describe('Cuándo hacerla: morning = mañana, afternoon = tarde, evening = noche, all_day = día completo');
@@ -36,6 +42,10 @@ async function run(fn: () => Promise<unknown>) {
     return { content: [{ type: 'text' as const, text: JSON.stringify(result) }] };
   } catch (e) {
     if (e instanceof ToolError) return { isError: true, content: [{ type: 'text' as const, text: e.message }] };
+    // Fallos de red o de Supabase (supabaseRows.fail): nada a medias que deshacer, se puede reintentar.
+    if (e instanceof Error && /^(Sin conexión|Error del servidor)/.test(e.message)) {
+      return { isError: true, content: [{ type: 'text' as const, text: `${e.message} Reintenta la operación: repetirla no duplica nada.` }] };
+    }
     console.error(e);
     return { isError: true, content: [{ type: 'text' as const, text: 'Error interno de Tasky. Inténtalo de nuevo.' }] };
   }
@@ -77,6 +87,37 @@ export function createTaskyMcpServer(service: TaskyService): McpServer {
     ({ name }) => run(() => service.getProjectByName(name)),
   );
 
+  server.registerTool(
+    'create_project',
+    {
+      title: 'Crear proyecto',
+      description:
+        'Crea un proyecto nuevo (activo por defecto). Úsala solo si el usuario lo pide. Si ya existe uno con ese nombre, lo devuelve en already_existed sin duplicarlo.',
+      inputSchema: z.object({
+        name: z.string().min(1).max(120),
+        description: z.string().max(2000).optional(),
+        status: projectStatus.optional(),
+      }),
+      annotations: WRITE,
+    },
+    ({ name, description, status }) => run(() => service.createProject({ name, description, status })),
+  );
+  server.registerTool(
+    'update_project',
+    {
+      title: 'Modificar proyecto',
+      description: 'Cambia el nombre, la descripción o el estado (activo, en espera, finalizado) de un proyecto. Lo que no se indique se conserva.',
+      inputSchema: z.object({
+        project_id: id,
+        name: z.string().min(1).max(120).optional(),
+        description: z.string().max(2000).optional(),
+        status: projectStatus.optional(),
+      }),
+      annotations: WRITE,
+    },
+    ({ project_id, name, description, status }) => run(() => service.updateProject(project_id, { name, description, status })),
+  );
+
   // ── Tareas ──
   server.registerTool(
     'get_tasks',
@@ -110,6 +151,47 @@ export function createTaskyMcpServer(service: TaskyService): McpServer {
       run(() => service.createTask(project_id, { title, description, dueDate: due_date, timeSlot: time_slot, status })),
   );
   server.registerTool(
+    'create_tasks',
+    {
+      title: 'Crear varias tareas',
+      description:
+        'Crea varias tareas de un proyecto en una sola operación, al final de su lista y en el orden dado (útil para desglosar un proyecto). Las que ya existan abiertas con el mismo título no se duplican.',
+      inputSchema: z.object({
+        project_id: id,
+        tasks: z
+          .array(
+            z.object({
+              title: z.string().min(1).max(200),
+              description: z.string().max(2000).optional(),
+              due_date: date.optional(),
+              time_slot: timeSlot.optional(),
+              status: taskStatus.optional(),
+            }),
+          )
+          .min(1)
+          .max(50),
+      }),
+      annotations: WRITE,
+    },
+    ({ project_id, tasks }) =>
+      run(() =>
+        service.createTasks(
+          project_id,
+          tasks.map((t) => ({ title: t.title, description: t.description, dueDate: t.due_date, timeSlot: t.time_slot, status: t.status })),
+        ),
+      ),
+  );
+  server.registerTool(
+    'move_task',
+    {
+      title: 'Reordenar tarea',
+      description: 'Mueve una tarea abierta a otra posición del orden de trabajo de su proyecto (1 = la primera, la «siguiente»).',
+      inputSchema: z.object({ task_id: id, position: z.number().int().min(1) }),
+      annotations: WRITE,
+    },
+    ({ task_id, position }) => run(() => service.moveTask(task_id, position)),
+  );
+  server.registerTool(
     'update_task',
     {
       title: 'Modificar tarea',
@@ -131,7 +213,7 @@ export function createTaskyMcpServer(service: TaskyService): McpServer {
     'complete_task',
     {
       title: 'Completar tarea',
-      description: 'Marca una tarea como completada.',
+      description: 'Marca una tarea como completada. Úsala solo cuando el trabajo esté terminado y verificado; si falta comprobar algo, déjala en curso (in_progress).',
       inputSchema: z.object({ task_id: id }),
       annotations: { ...WRITE, idempotentHint: true },
     },

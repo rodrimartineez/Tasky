@@ -30,7 +30,9 @@ export const useSync = create<SyncState>()(() => ({
 
 /** Espera tras un cambio local antes de enviarlo (agrupa ráfagas de cambios). */
 const PUSH_DELAY_MS = 1500;
-/** Comprobación periódica de cambios de otros dispositivos mientras la app está visible. */
+/** Espera tras un aviso de Realtime: agrupa los avisos de una misma operación (p. ej. 15 tareas creadas a la vez). */
+const REMOTE_DELAY_MS = 300;
+/** Comprobación periódica de respaldo (por si se pierde algún aviso de Realtime) mientras la app está visible. */
 const POLL_MS = 60_000;
 
 let backend: SyncBackend | null = null;
@@ -96,7 +98,8 @@ export function syncNow(): Promise<void> {
 
 /** Sesión iniciada: descarga completa y, a partir de ahí, sincronización automática. */
 function startSession(email: string) {
-  if (useSync.getState().email === email && stopSession) return;
+  const b = backend;
+  if (!b || (useSync.getState().email === email && stopSession)) return;
   stopSession?.();
   versions = new Map();
   cursor = 0;
@@ -111,6 +114,12 @@ function startSession(email: string) {
       if (countRecords(pendingChanges(useTasky.getState().data, versions)) > 0) void syncNow();
     }, PUSH_DELAY_MS);
   });
+  // Cambios de otros dispositivos o de Claude (MCP): llegan al momento por Realtime.
+  let remoteTimer: ReturnType<typeof setTimeout> | undefined;
+  const stopRemote = b.onRemoteChange(() => {
+    clearTimeout(remoteTimer);
+    remoteTimer = setTimeout(() => void syncNow(), REMOTE_DELAY_MS);
+  });
   const onVisible = () => document.visibilityState === 'visible' && void syncNow();
   const onOnline = () => void syncNow();
   const poll = setInterval(() => document.visibilityState === 'visible' && void syncNow(), POLL_MS);
@@ -121,6 +130,8 @@ function startSession(email: string) {
 
   stopSession = () => {
     clearTimeout(pushTimer);
+    clearTimeout(remoteTimer);
+    stopRemote();
     clearInterval(poll);
     unsubscribeData();
     document.removeEventListener('visibilitychange', onVisible);

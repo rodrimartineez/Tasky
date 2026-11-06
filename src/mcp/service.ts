@@ -1,9 +1,10 @@
 import { emptyData } from '../core/data';
 import { createIdea, deleteIdea, updateIdea } from '../core/ideas';
-import type { Idea, LocalDate, Project, Task, TaskStatus, TaskyData, TimeSlot, Timestamp } from '../core/model';
+import type { Idea, LocalDate, Project, ProjectStatus, Task, TaskStatus, TaskyData, TimeSlot, Timestamp } from '../core/model';
+import { createProject, updateProject } from '../core/projects';
 import { projectIdeas, projectSummariesByStatus, projectTasks } from '../core/selectors';
 import { countRecords, pendingChanges, rememberVersions, type ServerVersions, type SyncRecords } from '../core/sync';
-import { createTask, deleteTask, updateTask } from '../core/tasks';
+import { createTask, deleteTask, moveTask, updateTask } from '../core/tasks';
 
 /**
  * Operaciones de Tasky para el asistente (servidor MCP). Toda la lógica de negocio es la de core/:
@@ -49,6 +50,14 @@ function nameScore(query: string, name: string): number {
   return shared === 0 ? 0 : (0.6 * shared) / Math.max(qWords.size, nWords.length);
 }
 
+export interface TaskFields {
+  title: string;
+  description?: string;
+  dueDate?: LocalDate | null;
+  timeSlot?: TimeSlot;
+  status?: TaskStatus;
+}
+
 export function createTaskyService(repo: TaskyRepository, env: ServiceEnv) {
   const toData = (r: SyncRecords): TaskyData => ({ ...emptyData(), ...r });
 
@@ -86,6 +95,21 @@ export function createTaskyService(repo: TaskyRepository, env: ServiceEnv) {
     const idea = data.ideas.find((i) => i.id === id && !i.deletedAt);
     if (!idea) throw new ToolError(`No existe ninguna idea con id «${id}». Usa get_ideas.`);
     return idea;
+  }
+
+  // ── Idempotencia: repetir una creación (p. ej. un reintento tras un corte) no duplica nada ──
+  const sameText = (a: string, b: string) => normalize(a) === normalize(b);
+  const liveProjectNamed = (d: TaskyData, name: string) => d.projects.find((p) => !p.deletedAt && sameText(p.name, name));
+  const openTaskTitled = (d: TaskyData, projectId: string, title: string) =>
+    d.tasks.find((t) => t.projectId === projectId && !t.deletedAt && t.status !== 'done' && sameText(t.title, title));
+  const ideaTitled = (d: TaskyData, projectId: string, title: string) =>
+    d.ideas.find((i) => i.projectId === projectId && !i.deletedAt && sameText(i.title, title));
+
+  /** Crea una tarea con la misma función que la app y, si se pide, le pone ya su estado. */
+  function addTask(d: TaskyData, projectId: string, input: TaskFields, id: string): TaskyData {
+    const fields = { title: input.title, description: input.description ?? '', dueDate: input.dueDate ?? null, timeSlot: input.timeSlot };
+    const created = createTask(d, projectId, fields, id, env.now());
+    return input.status && input.status !== 'todo' ? updateTask(created, id, { status: input.status }, env.now()) : created;
   }
 
   const projectName = (data: TaskyData, id: string) => data.projects.find((p) => p.id === id)?.name ?? '';
@@ -166,6 +190,34 @@ export function createTaskyService(repo: TaskyRepository, env: ServiceEnv) {
       };
     },
 
+    /** Crea un proyecto (activo salvo que se indique otro estado). Si ya hay uno con ese nombre, lo devuelve sin duplicarlo. */
+    async createProject(input: { name: string; description?: string; status?: ProjectStatus }) {
+      const id = env.newId();
+      let existing: Project | undefined;
+      const data = await mutate((d) => {
+        existing = liveProjectNamed(d, input.name);
+        if (existing) return d;
+        const created = createProject(d, { name: input.name, description: input.description ?? '' }, id, env.now());
+        return input.status && input.status !== 'active' ? updateProject(created, id, { status: input.status }, env.now()) : created;
+      });
+      const view = (projectId: string) => projectViews(data).find((p) => p.id === projectId);
+      return existing
+        ? { already_existed: view(existing.id), note: 'Ya existía un proyecto con ese nombre; no se ha creado otro.' }
+        : { created: view(id) };
+    },
+
+    async updateProject(projectId: string, patch: { name?: string; description?: string; status?: ProjectStatus }) {
+      const data = await mutate((d) => {
+        requireProject(d, projectId);
+        if (patch.name !== undefined) {
+          const clash = liveProjectNamed(d, patch.name);
+          if (clash && clash.id !== projectId) throw new ToolError(`Ya existe otro proyecto llamado «${clash.name}».`);
+        }
+        return updateProject(d, projectId, patch, env.now());
+      });
+      return { updated: projectViews(data).find((p) => p.id === projectId) };
+    },
+
     async getTasks(projectId: string | undefined, which: 'open' | 'done' | 'all') {
       const data = await load();
       if (projectId) return { tasks: tasksOf(data, requireProject(data, projectId).id, which), today: env.today() };
@@ -173,23 +225,52 @@ export function createTaskyService(repo: TaskyRepository, env: ServiceEnv) {
       return { tasks: projects.flatMap((p) => tasksOf(data, p.id, which)), today: env.today() };
     },
 
-    async createTask(
-      projectId: string,
-      input: { title: string; description?: string; dueDate?: LocalDate | null; timeSlot?: TimeSlot; status?: TaskStatus },
-    ) {
-      const id = env.newId();
+    /**
+     * Crea varias tareas al final del proyecto, en el orden dado y en una sola escritura.
+     * Las que ya existen abiertas con el mismo título no se duplican: se devuelven en already_existed.
+     */
+    async createTasks(projectId: string, inputs: TaskFields[]) {
+      const results: { id: string; existed: boolean }[] = [];
       const data = await mutate((d) => {
         requireProject(d, projectId);
-        const created = createTask(
-          d,
-          projectId,
-          { title: input.title, description: input.description ?? '', dueDate: input.dueDate ?? null, timeSlot: input.timeSlot },
-          id,
-          env.now(),
-        );
-        return input.status && input.status !== 'todo' ? updateTask(created, id, { status: input.status }, env.now()) : created;
+        results.length = 0;
+        let next = d;
+        for (const input of inputs) {
+          const existing = openTaskTitled(next, projectId, input.title);
+          if (existing) {
+            results.push({ id: existing.id, existed: true });
+            continue;
+          }
+          const id = env.newId();
+          next = addTask(next, projectId, input, id);
+          results.push({ id, existed: false });
+        }
+        return next;
       });
-      return { created: taskView(data, requireTask(data, id)) };
+      const views = (existed: boolean) => results.filter((r) => r.existed === existed).map((r) => taskView(data, requireTask(data, r.id)));
+      return { created: views(false), already_existed: views(true) };
+    },
+
+    async createTask(projectId: string, input: TaskFields) {
+      const { created, already_existed } = await this.createTasks(projectId, [input]);
+      return created.length > 0
+        ? { created: created[0] }
+        : { already_existed: already_existed[0], note: 'Ya había una tarea abierta con ese título en el proyecto; no se ha duplicado.' };
+    },
+
+    /** Cambia el orden de trabajo: position 1 = la primera de las tareas abiertas del proyecto. */
+    async moveTask(taskId: string, position: number) {
+      const data = await mutate((d) => {
+        const task = requireTask(d, taskId);
+        if (task.status === 'done') throw new ToolError('Las tareas completadas no tienen orden; reábrela antes si quieres moverla.');
+        const open = projectTasks(d, task.projectId).open;
+        const others = open.filter((t) => t.id !== taskId);
+        const index = Math.min(Math.max(Math.round(position) - 1, 0), others.length);
+        if (open.findIndex((t) => t.id === taskId) === index) return d;
+        return moveTask(d, taskId, others[index - 1]?.id ?? null, others[index]?.id ?? null, env.now());
+      });
+      const task = requireTask(data, taskId);
+      return { moved: taskView(data, task), open_tasks: tasksOf(data, task.projectId, 'open').map((t) => t.title) };
     },
 
     async updateTask(
@@ -222,13 +303,18 @@ export function createTaskyService(repo: TaskyRepository, env: ServiceEnv) {
       return { ideas: ids.flatMap((id) => projectIdeas(data, id).map((i) => ideaView(data, i))) };
     },
 
+    /** Si el proyecto ya tiene una idea con ese título, la devuelve sin duplicarla. */
     async createIdea(projectId: string, input: { title: string; description?: string }) {
       const id = env.newId();
+      let existing: Idea | undefined;
       const data = await mutate((d) => {
         requireProject(d, projectId);
-        return createIdea(d, projectId, { title: input.title, description: input.description ?? '' }, id, env.now());
+        existing = ideaTitled(d, projectId, input.title);
+        return existing ? d : createIdea(d, projectId, { title: input.title, description: input.description ?? '' }, id, env.now());
       });
-      return { created: ideaView(data, requireIdea(data, id)) };
+      return existing
+        ? { already_existed: ideaView(data, existing), note: 'Ya había una idea con ese título en el proyecto; no se ha duplicado.' }
+        : { created: ideaView(data, requireIdea(data, id)) };
     },
 
     async updateIdea(ideaId: string, patch: { title?: string; description?: string }) {
