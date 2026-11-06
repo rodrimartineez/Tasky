@@ -93,3 +93,8 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Móvil: hueco para el botón «+» */
+.withFab {
+  padding-bottom: calc(72px + env(safe-area-inset-bottom));
+}

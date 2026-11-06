@@ -1,5 +1,6 @@
 import { isTauri } from '@tauri-apps/api/core';
 import { BaseDirectory, writeTextFile } from '@tauri-apps/plugin-fs';
+import { registerSW } from 'virtual:pwa-register';
 import type { FileExport, Storage } from '../core/ports';
 import { tauriStorage } from './tauriStorage';
 import { webStorage } from './webStorage';
@@ -30,5 +31,8 @@ const webExport: FileExport = {
 
 /** Único punto donde se decide la plataforma. El resto de la app solo conoce los puertos. */
 export function createPlatform(): Platform {
-  return isTauri() ? { storage: tauriStorage, fileExport: tauriExport } : { storage: webStorage, fileExport: webExport };
+  if (isTauri()) return { storage: tauriStorage, fileExport: tauriExport };
+  // Navegador/PWA: service worker para funcionar sin conexión (solo en el build; en desarrollo no hay).
+  if (import.meta.env.PROD) registerSW({ immediate: true });
+  return { storage: webStorage, fileExport: webExport };
 }

@@ -54,5 +54,8 @@
   --dur-fast: 120ms;
   --dur: 200ms;
 
+  /* Altura de la barra inferior móvil (sin la zona segura) */
+  --bottom-bar-h: 60px;
+
   --shadow-lift: 0 8px 24px -12px rgba(0, 0, 0, 0.6);
 }

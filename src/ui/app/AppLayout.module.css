@@ -10,7 +10,10 @@
   z-index: 10;
   background: rgba(10, 10, 11, 0.78);
   backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
+  /* PWA a pantalla completa en iPhone: deja libre la barra de estado */
+  padding-top: env(safe-area-inset-top);
 }
 
 .inner,

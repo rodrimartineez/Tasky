@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { ArrowLeft, Ellipsis, Lightbulb, ListTodo, Pencil, Plus, Trash2 } from 'lucide-react';
@@ -7,10 +8,12 @@ import { countProjectItems, findProject } from '../../core/selectors';
 import { useTasky } from '../../state/store';
 import { Button } from '../components/Button';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { Fab } from '../components/Fab';
 import { Kbd } from '../components/Kbd';
 import { Menu } from '../components/Menu';
 import { Segmented, type SegmentedOption } from '../components/Segmented';
 import { PROJECT_STATUS_LABEL } from '../components/StatusBadge';
+import { MOBILE_QUERY, useMediaQuery } from '../components/useMediaQuery';
 import { useShortcut } from '../shortcuts/useShortcut';
 import { IdeaFormDialog } from '../ideas/IdeaFormDialog';
 import { IdeaGrid } from '../ideas/IdeaGrid';
@@ -33,6 +36,7 @@ export function ProjectPage() {
   const data = useTasky((s) => s.data);
   const updateProject = useTasky((s) => s.updateProject);
   const deleteProject = useTasky((s) => s.deleteProject);
+  const isMobile = useMediaQuery(MOBILE_QUERY);
   const [tab, setTab] = useState<Tab>('tasks');
   const [editing, setEditing] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -61,8 +65,33 @@ export function ProjectPage() {
     { id: 'ideas', label: 'Ideas', icon: <Lightbulb />, count: counts.ideas },
   ];
 
+  const tabButtons = tabs.map((t) => (
+    <button
+      key={t.id}
+      type="button"
+      role="tab"
+      aria-selected={tab === t.id}
+      tabIndex={tab === t.id ? 0 : -1}
+      onKeyDown={(e) => {
+        // Patrón de pestañas: las flechas cambian de pestaña.
+        if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+        const next = tab === 'tasks' ? 'ideas' : 'tasks';
+        setTab(next);
+        (e.currentTarget.parentElement?.querySelector(`[data-tab="${next}"]`) as HTMLElement | null)?.focus();
+      }}
+      data-tab={t.id}
+      className={`${styles.tab} ${tab === t.id ? styles.tabSelected : ''}`}
+      onClick={() => setTab(t.id)}
+    >
+      {t.icon}
+      {t.label}
+      <span className={styles.tabCount}>{t.count}</span>
+      {tab === t.id && <motion.span layoutId="tab-indicator" className={isMobile ? styles.pill : styles.underline} />}
+    </button>
+  ));
+
   return (
-    <div className={styles.page}>
+    <div className={`${styles.page} ${isMobile ? styles.withBottomBar : ''}`}>
       <Link to="/" className={styles.back}>
         <ArrowLeft /> Proyectos <Kbd>Esc</Kbd>
       </Link>
@@ -90,42 +119,30 @@ export function ProjectPage() {
         </div>
       </header>
 
-      <nav className={styles.tabs} role="tablist" aria-label="Contenido del proyecto">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            role="tab"
-            aria-selected={tab === t.id}
-            tabIndex={tab === t.id ? 0 : -1}
-            onKeyDown={(e) => {
-              // Patrón de pestañas: las flechas cambian de pestaña.
-              if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
-              const next = tab === 'tasks' ? 'ideas' : 'tasks';
-              setTab(next);
-              (e.currentTarget.parentElement?.querySelector(`[data-tab="${next}"]`) as HTMLElement | null)?.focus();
-            }}
-            data-tab={t.id}
-            className={`${styles.tab} ${tab === t.id ? styles.tabSelected : ''}`}
-            onClick={() => setTab(t.id)}
-          >
-            {t.icon}
-            {t.label}
-            <span className={styles.tabCount}>{t.count}</span>
-            {tab === t.id && <motion.span layoutId="tab-underline" className={styles.underline} />}
-          </button>
-        ))}
-        <span className={styles.tabsSpacer} />
-        {tab === 'tasks' ? (
-          <Button variant="primary" icon={<Plus />} shortcut="T" className={styles.tabAction} onClick={newTask}>
-            Nueva tarea
-          </Button>
-        ) : (
-          <Button icon={<Plus />} shortcut="I" className={styles.tabAction} onClick={newIdea}>
-            Nueva idea
-          </Button>
-        )}
-      </nav>
+      {isMobile ? (
+        // Móvil: las pestañas pasan a una barra inferior (montada en body para que quede fija a la pantalla)
+        // y «Nueva tarea/idea» al botón «+».
+        createPortal(
+          <nav className={styles.bottomBar} role="tablist" aria-label="Contenido del proyecto">
+            {tabButtons}
+          </nav>,
+          document.body,
+        )
+      ) : (
+        <nav className={styles.tabs} role="tablist" aria-label="Contenido del proyecto">
+          {tabButtons}
+          <span className={styles.tabsSpacer} />
+          {tab === 'tasks' ? (
+            <Button variant="primary" icon={<Plus />} shortcut="T" className={styles.tabAction} onClick={newTask}>
+              Nueva tarea
+            </Button>
+          ) : (
+            <Button icon={<Plus />} shortcut="I" className={styles.tabAction} onClick={newIdea}>
+              Nueva idea
+            </Button>
+          )}
+        </nav>
+      )}
 
       <div role="tabpanel">
         {tab === 'tasks' ? (
@@ -134,6 +151,8 @@ export function ProjectPage() {
           <IdeaGrid projectId={project.id} onCreate={newIdea} onOpen={(idea) => setIdeaDialog({ idea })} />
         )}
       </div>
+
+      {isMobile && <Fab aboveBar label={tab === 'tasks' ? 'Nueva tarea' : 'Nueva idea'} onClick={tab === 'tasks' ? newTask : newIdea} />}
 
       <TaskFormDialog
         open={taskDialog !== null}

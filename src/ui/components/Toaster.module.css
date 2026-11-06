@@ -37,3 +37,11 @@
 .error svg {
   color: var(--danger);
 }
+
+/* Móvil: arriba, para no tapar la barra inferior ni el botón «+» */
+@media (max-width: 640px) {
+  .region {
+    top: calc(64px + env(safe-area-inset-top));
+    bottom: auto;
+  }
+}

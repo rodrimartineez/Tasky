@@ -1,7 +1,7 @@
 # TASKY_GUIDE.md
 
 > Documento de referencia del proyecto. Se consulta antes de cada fase y se actualiza al terminarla.
-> Última actualización: 2026-11-05 — Fases 1–7 completadas: Tasky instalada en Windows. Siguiente: Fase 8 (web móvil + PWA). Incluye los requisitos de rapidez/atajos/fechas límite y de plataforma Windows + iPhone (PWA) con Supabase.
+> Última actualización: 2026-11-05 — Fases 1–8 completadas: Tasky instalada en Windows y PWA probada en iPhone (red local). Siguiente: Fase 9 (Supabase: privacidad, sync y hosting). Incluye los requisitos de rapidez/atajos/fechas límite y de plataforma Windows + iPhone (PWA) con Supabase.
 
 ---
 
@@ -333,7 +333,7 @@ Eliminar marca `deletedAt` (en cascada: proyecto → tareas e ideas). Los select
 | UI responsive, drag & drop táctil, `HashRouter`, diálogos que en móvil son hojas | La interfaz móvil parte de los mismos componentes. |
 
 ### 7.2 Qué NO se hace todavía
-Hosting, autenticación, Supabase, cola de sync, service worker, IndexedDB. Nada de esto existe en el código hasta su fase.
+Hosting, autenticación, Supabase y cola de sync. Nada de esto existe en el código hasta la Fase 9.
 
 ### 7.3 Windows — escritorio (Tauri 2)
 Aplicación principal. Instalador propio, icono, buscador de Windows, anclaje a la barra de tareas. Datos en `%APPDATA%\com.tasky.app\tasky.json`. Funciona sin conexión y sin iniciar sesión; si se activa la sync (Fase 9), inicia sesión una vez y guarda la sesión.
@@ -348,6 +348,14 @@ Aplicación principal. Instalador propio, icono, buscador de Windows, anclaje a 
 - **Por qué PWA y no app nativa:** una app iOS nativa (Tauri móvil, Capacitor, React Native) exige cuenta de Apple Developer (de pago) o reinstalar cada 7 días. La PWA se añade a la pantalla de inicio desde Safari, se abre a pantalla completa con su icono y funciona offline.
 - **Mismo código:** el build web de Vite es la PWA; solo cambian el adaptador de almacenamiento (IndexedDB) y lo específico de PWA (manifest, service worker con `vite-plugin-pwa`, iconos `apple-touch-icon`, `viewport-fit=cover` y zonas seguras).
 - **Interfaz adaptada, no reducida:** barra inferior con pestañas Tareas/Ideas, botón flotante «+» (no hay teclado físico para atajos), formularios como hojas inferiores, objetivos táctiles ≥ 44 px, arrastre con pulsación larga mediante un asa visible, sin estados de hover imprescindibles.
+- **Implementado (Fase 8):**
+  - `adapters/webStorage.ts`: el documento JSON en **IndexedDB** (base `tasky`, almacén `documents`, clave `data`). Migra solo los datos que hubiera en `localStorage` (`tasky:data`) y pide almacenamiento persistente (`navigator.storage.persist`).
+  - `vite-plugin-pwa` (`vite.config.ts`): manifest (`standalone`, vertical, colores `#0A0A0B`), service worker Workbox que precachea la app completa (JS, CSS, fuentes, iconos) → funciona sin conexión. El registro lo hace `adapters/index.ts` solo en navegador y solo en el build (nunca en Tauri ni en `npm run dev`). Versión nueva: se activa al abrir la app y recarga una vez (`skipWaiting` + `clientsClaim`).
+  - Iconos en `public/icons/` (180 `apple-touch-icon`, 192, 512, 512 *maskable*), generados con `tauri icon` desde `src-tauri/icons/source/tasky-icon-pwa.svg` (sello sobre fondo oscuro, con margen para recortes).
+  - `index.html`: `viewport-fit=cover`, `theme-color`, metas `apple-mobile-web-app-*` (barra de estado translúcida). La cabecera respeta `safe-area-inset-top`; la barra inferior, las hojas y el botón «+», `safe-area-inset-bottom`.
+  - Interfaz móvil (≤ 640 px, `useMediaQuery`): en Inicio, «Nuevo proyecto» pasa al botón flotante «+»; en un proyecto, las pestañas Tareas/Ideas pasan a una **barra inferior** fija y «Nueva tarea/idea» al «+». Barra y «+» se montan en `body` (portal) para que la transición de página no altere su posición fija. Los avisos se muestran arriba. En pantallas táctiles se ocultan los atajos y «Atajos».
+  - Arrastre: ratón desde cualquier punto de la fila (`MouseSensor`); táctil solo desde el asa con pulsación de 150 ms (`TouchSensor`), así deslizar la lista nunca mueve tareas.
+- **Probar en el iPhone (red local):** `npm run build` y `npx vite preview --host --port 4173` → en el iPhone (misma Wi-Fi) abrir `http://<IP del PC>:4173`. Por HTTP el iPhone no permite service worker (exige HTTPS), así que el modo sin conexión en el iPhone se comprueba en la Fase 9 con el hosting HTTPS; en el PC se verificó con `localhost`.
 - **Limitaciones conocidas de iOS:** el almacenamiento de una PWA puede borrarse si no se usa durante semanas → con Supabase (Fase 9) el servidor es la copia de seguridad y el móvil se rehidrata al abrir. Sin sync, la PWA en iPhone no tendría sentido como segundo dispositivo, por eso las Fases 8 y 9 se publican juntas.
 
 ### 7.5 Sincronización con Supabase (Fase 9)
@@ -388,7 +396,7 @@ Aplicación principal. Instalador propio, icono, buscador de Windows, anclaje a 
 - **Exportar** (menú «Copias de seguridad» de la cabecera): escribe `tasky-copia-AAAA-MM-DD.json` en la carpeta Descargas (en el navegador, descarga normal).
 - **Importar**: se elige un archivo, se valida igual que al arrancar y se pide confirmación mostrando lo que contiene y lo que se va a sustituir. Antes de reemplazar se guarda `backups/tasky-antes-de-importar-<fecha>.json`.
 
-**Navegador** (desarrollo y, en la Fase 8, PWA): mismo documento en `localStorage` mientras se desarrolla; IndexedDB en la PWA.
+**Navegador y PWA:** mismo documento JSON en IndexedDB (§7.4). Sin copias automáticas; exportar/importar funciona igual que en escritorio (descarga y selector de archivo).
 
 ---
 
@@ -405,7 +413,7 @@ Cada fase termina con verificación real (app en ejecución + tests de `core/`),
 | **5. Ideas** ✅ | CRUD, `I`, cuadrícula, diferenciación visual, estados vacíos. | CRUD verificado y persistente. |
 | **6. Acabado UX** ✅ | Splash, pulido de animaciones, feedback, accesibilidad, backups e importación/exportación, revisión general. | Revisión visual y de teclado completa. |
 | **7. Instalación Windows** ✅ | Build del instalador, instalación, buscador de Windows, anclaje, instrucciones paso a paso. | Instalada y anclada en este PC. |
-| **8. Web móvil + PWA** | Adaptador IndexedDB, manifest, service worker, iconos iOS, interfaz móvil específica (barra inferior, botón «+», hojas, táctil). Probada en local, sin publicar. | Funciona en Safari de iPhone en red local. |
+| **8. Web móvil + PWA** ✅ | Adaptador IndexedDB, manifest, service worker, iconos iOS, interfaz móvil específica (barra inferior, botón «+», hojas, táctil). Probada en local, sin publicar. | Funciona en Safari de iPhone en red local. |
 | **9. Supabase: privacidad + sync + hosting** | Proyecto Supabase, esquema, RLS y lista blanca, registro desactivado, login, sync local-first, hosting estático con HTTPS, instalación en iPhone. | Mismos datos en Windows e iPhone, offline y privado. |
 
 ---
@@ -450,5 +458,5 @@ Cada fase termina con verificación real (app en ejecución + tests de `core/`),
 | Fase 5 — Ideas: crear (`I`, cambia a la pestaña Ideas), editar, eliminar con confirmación; cuadrícula tipo nota con acento ámbar y fecha de creación relativa | ✅ |
 | Fase 6 — Splash (trazo del sello, ~0,7 s, se omite con «reducir movimiento»), avisos (toasts), copias diarias rotativas, restaurar copia desde la pantalla de error, exportar/importar con confirmación; accesibilidad: contraste de `--text-faint`, flechas en las pestañas, títulos en botones de icono | ✅ Verificado en navegador y tests; compilación Rust correcta |
 | Fase 7 — Instalador NSIS por usuario en español (1,8 MB), instancia única, instrucciones en README | ✅ Instalada en este PC: acceso en el menú Inicio (buscador), entrada en Aplicaciones, datos existentes cargados sin modificar, segunda apertura no crea otra instancia. Anclada a la barra de tareas por el usuario (Windows no permite anclar por programa); el usuario confirmó que se ve bien y que exportar a Descargas funciona. Se abre maximizada |
-| Fase 8 — Web móvil + PWA | 🔒 Diseñada (§7.4) |
+| Fase 8 — IndexedDB, manifest + service worker (offline), iconos iOS, zonas seguras, interfaz móvil (barra inferior, botón «+», avisos arriba), arrastre táctil desde el asa | ✅ PC: vista móvil, IndexedDB con migración, offline con el servidor apagado, actualización automática, escritorio sin cambios. iPhone (Safari, red local): interfaz, «+», barra, hojas, arrastre y «Añadir a pantalla de inicio» confirmados por el usuario. Offline en iPhone pendiente de HTTPS (Fase 9) |
 | Fase 9 — Supabase: privacidad + sync + hosting | 🔒 Diseñada (§7.5–7.6) |

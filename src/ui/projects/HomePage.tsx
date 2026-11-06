@@ -7,6 +7,8 @@ import { projectSummariesByStatus } from '../../core/selectors';
 import { useTasky } from '../../state/store';
 import { Button } from '../components/Button';
 import { EmptyState } from '../components/EmptyState';
+import { Fab } from '../components/Fab';
+import { MOBILE_QUERY, TOUCH_QUERY, useMediaQuery } from '../components/useMediaQuery';
 import { useShortcut } from '../shortcuts/useShortcut';
 import { ProjectCard } from './ProjectCard';
 import { ProjectFormDialog } from './ProjectFormDialog';
@@ -33,6 +35,8 @@ const SECTIONS: { status: ProjectStatus; title: string; emptyIcon: ReactNode; em
 export function HomePage() {
   const data = useTasky((s) => s.data);
   const [creating, setCreating] = useState(false);
+  const isMobile = useMediaQuery(MOBILE_QUERY);
+  const isTouch = useMediaQuery(TOUCH_QUERY);
   useShortcut('p', () => setCreating(true));
 
   const sections = useMemo(
@@ -44,21 +48,23 @@ export function HomePage() {
   const isEmpty = sections.every((s) => s.summaries.length === 0);
 
   return (
-    <div className={styles.page}>
+    <div className={`${styles.page} ${isMobile ? styles.withFab : ''}`}>
       <div className={styles.intro}>
         <div>
           <h1 className={styles.title}>Proyectos</h1>
           <p className={styles.subtitle}>
             {active.length === 0
-              ? 'Pulsa P para crear tu primer proyecto.'
+              ? `Pulsa ${isTouch ? '+' : 'P'} para crear tu primer proyecto.`
               : `${active.length} ${active.length === 1 ? 'proyecto activo' : 'proyectos activos'} · ${pendingTasks} ${
                   pendingTasks === 1 ? 'tarea pendiente' : 'tareas pendientes'
                 }`}
           </p>
         </div>
-        <Button variant="primary" icon={<Plus />} shortcut="P" onClick={() => setCreating(true)}>
-          Nuevo proyecto
-        </Button>
+        {!isMobile && (
+          <Button variant="primary" icon={<Plus />} shortcut="P" onClick={() => setCreating(true)}>
+            Nuevo proyecto
+          </Button>
+        )}
       </div>
 
       {sections.map((section) => {
@@ -111,6 +117,7 @@ export function HomePage() {
         );
       })}
 
+      {isMobile && <Fab label="Nuevo proyecto" onClick={() => setCreating(true)} />}
       <ProjectFormDialog open={creating} onClose={() => setCreating(false)} />
     </div>
   );

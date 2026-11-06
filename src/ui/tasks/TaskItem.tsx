@@ -29,7 +29,7 @@ export function SortableTaskItem({ task, today, onOpen }: TaskItemProps) {
       ref={setNodeRef}
       style={style}
       className={`${styles.row} ${isDragging ? styles.dragging : ''}`}
-      onPointerDown={listeners?.onPointerDown as React.PointerEventHandler | undefined}
+      onMouseDown={listeners?.onMouseDown as React.MouseEventHandler | undefined}
     >
       <button
         ref={setActivatorNodeRef}

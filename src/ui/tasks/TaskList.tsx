@@ -3,7 +3,8 @@ import { AnimatePresence, motion } from 'motion/react';
 import {
   DndContext,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   closestCenter,
   useSensor,
   useSensors,
@@ -42,7 +43,9 @@ export function TaskList({ projectId, onCreate, onOpen }: TaskListProps) {
   const today = getToday();
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    // Ratón: desde cualquier punto de la fila. Táctil: solo desde el asa y con pulsación breve, para no interferir con el scroll.
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 

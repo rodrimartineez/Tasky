@@ -1,6 +1,7 @@
 {
   "version": "0.0.1",
   "configurations": [
-    { "name": "tasky-web", "runtimeExecutable": "npm", "runtimeArgs": ["run", "dev"], "port": 1420 }
+    { "name": "tasky-web", "runtimeExecutable": "npm", "runtimeArgs": ["run", "dev"], "port": 1420 },
+    { "name": "tasky-pwa", "runtimeExecutable": "npx", "runtimeArgs": ["vite", "preview", "--port", "4173", "--strictPort", "--host"], "port": 4173 }
   ]
 }
