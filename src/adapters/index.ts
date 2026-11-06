@@ -1,13 +1,18 @@
 import { isTauri } from '@tauri-apps/api/core';
 import { BaseDirectory, writeTextFile } from '@tauri-apps/plugin-fs';
 import { registerSW } from 'virtual:pwa-register';
-import type { FileExport, Storage } from '../core/ports';
+import type { FileExport, Storage, SyncBackend } from '../core/ports';
+import { createSupabaseSync } from './supabaseSync';
 import { tauriStorage } from './tauriStorage';
 import { webStorage } from './webStorage';
 
 export interface Platform {
   storage: Storage;
   fileExport: FileExport;
+  /** Servidor de sincronización, o null si este build no tiene Supabase configurado. */
+  sync: SyncBackend | null;
+  /** Web/PWA: sin sesión no se muestra ningún dato. En escritorio la sesión es opcional (activa la sync). */
+  requireAuth: boolean;
 }
 
 /** Escritorio: el archivo se guarda directamente en la carpeta Descargas. */
@@ -29,10 +34,18 @@ const webExport: FileExport = {
   },
 };
 
+/** URL y clave pública de Supabase (públicas por diseño: la protección son las políticas RLS). */
+function createSync(): SyncBackend | null {
+  const url = import.meta.env.VITE_SUPABASE_URL;
+  const key = import.meta.env.VITE_SUPABASE_KEY;
+  return url && key ? createSupabaseSync(url, key) : null;
+}
+
 /** Único punto donde se decide la plataforma. El resto de la app solo conoce los puertos. */
 export function createPlatform(): Platform {
-  if (isTauri()) return { storage: tauriStorage, fileExport: tauriExport };
+  const sync = createSync();
+  if (isTauri()) return { storage: tauriStorage, fileExport: tauriExport, sync, requireAuth: false };
   // Navegador/PWA: service worker para funcionar sin conexión (solo en el build; en desarrollo no hay).
   if (import.meta.env.PROD) registerSW({ immediate: true });
-  return { storage: webStorage, fileExport: webExport };
+  return { storage: webStorage, fileExport: webExport, sync, requireAuth: sync !== null };
 }

@@ -8,6 +8,7 @@ import { Logo } from '../components/Logo';
 import { Toaster } from '../components/Toaster';
 import { ShortcutsHelp } from '../shortcuts/ShortcutsHelp';
 import { DataMenu } from './DataMenu';
+import { SyncButton } from '../sync/SyncButton';
 import { useShortcut } from '../shortcuts/useShortcut';
 import styles from './AppLayout.module.css';
 
@@ -29,6 +30,7 @@ export function AppLayout() {
             <Button variant="ghost" icon={<Keyboard />} shortcut="?" className={styles.help} onClick={() => setHelpOpen(true)}>
               Atajos
             </Button>
+            <SyncButton />
             <DataMenu />
           </div>
         </div>

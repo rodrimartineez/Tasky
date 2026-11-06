@@ -4,6 +4,7 @@ import { DataError, emptyData, parseData } from '../core/data';
 import { newId } from '../core/ids';
 import type { TaskyData } from '../core/model';
 import type { FileExport, Storage } from '../core/ports';
+import { countRecords, mergeRemote, type SyncRecords } from '../core/sync';
 import { createProject, deleteProject, updateProject, type ProjectInput, type ProjectPatch } from '../core/projects';
 import { createIdea, deleteIdea, updateIdea, type IdeaInput } from '../core/ideas';
 import { createTask, deleteTask, moveTask, updateTask, type TaskInput, type TaskPatch } from '../core/tasks';
@@ -24,6 +25,10 @@ interface TaskyState {
   exportData(): Promise<string>;
   /** Sustituye todos los datos por otros ya validados, guardando antes una copia de los actuales. */
   importData(data: TaskyData): Promise<void>;
+  /** Incorpora cambios llegados del servidor de sincronización (última escritura gana). */
+  applyRemote(records: SyncRecords): void;
+  /** Borra los datos de este dispositivo (al cerrar sesión en la web). */
+  clearLocalData(): void;
   createProject(input: ProjectInput): string;
   updateProject(id: string, patch: ProjectPatch): void;
   deleteProject(id: string): void;
@@ -122,6 +127,12 @@ export const useTasky = create<TaskyState>()((set, get) => {
       set({ data });
       persist(data);
     },
+
+    applyRemote(records) {
+      if (countRecords(records) > 0) commit((d) => mergeRemote(d, records, now()));
+    },
+
+    clearLocalData: () => commit(() => emptyData()),
 
     createProject(input) {
       const id = newId();

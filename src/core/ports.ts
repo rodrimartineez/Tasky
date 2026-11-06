@@ -1,4 +1,5 @@
 import type { LocalDate, TaskyData } from './model';
+import type { SyncRecords } from './sync';
 
 export interface Backup {
   /** Identificador legible de la copia (nombre de archivo). */
@@ -26,4 +27,26 @@ export interface Storage {
 export interface FileExport {
   /** Guarda un archivo de texto para el usuario y devuelve dónde ha quedado (texto legible). */
   exportText(fileName: string, text: string): Promise<string>;
+}
+
+/** Sesión iniciada en el servidor de sincronización. */
+export interface SyncSession {
+  email: string;
+}
+
+/** Servidor de sincronización (Supabase en adapters/). Ver TASKY_GUIDE §7.5. */
+export interface SyncBackend {
+  getSession(): Promise<SyncSession | null>;
+  /** Avisa cuando la sesión empieza, termina o caduca. Devuelve la función para dejar de escuchar. */
+  onSessionChange(listener: (session: SyncSession | null) => void): () => void;
+  /** Lanza un Error con un mensaje para el usuario si no se puede iniciar sesión. */
+  signIn(email: string, password: string): Promise<void>;
+  signOut(): Promise<void>;
+  /** Registros cambiados en el servidor después del cursor (0 = todos) y el nuevo cursor. */
+  pull(since: number): Promise<{ records: SyncRecords; cursor: number }>;
+  /**
+   * Envía cambios locales. El servidor ignora los que son más antiguos que su versión;
+   * de esos devuelve la versión del servidor para incorporarla.
+   */
+  push(records: SyncRecords): Promise<SyncRecords>;
 }

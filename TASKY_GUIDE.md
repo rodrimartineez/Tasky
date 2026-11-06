@@ -363,25 +363,30 @@ Aplicación principal. Instalador propio, icono, buscador de Windows, anclaje a 
 
 **Esquema:** tablas `projects`, `tasks`, `ideas` que replican §6.1 (`snake_case`), más `user_id uuid` y `server_seq bigint` (asignado por un trigger con una secuencia en cada insert/update).
 
-**Flujo:**
-1. **Push:** se envían los registros con `updatedAt` posterior al último envío confirmado (`upsert` por `id`, incluye lápidas). El servidor solo acepta el cambio si su `updated_at` es más reciente que el guardado (*last-write-wins* aplicado también en el servidor).
-2. **Pull:** se piden los registros con `server_seq` mayor que el último cursor del dispositivo (cursor independiente del reloj local).
-3. **Merge:** por registro gana el `updatedAt` más reciente; empate → mayor `id`. Tras el merge se reaplica la cascada de borrados.
-4. **Cuándo:** al arrancar, al recuperar conexión, tras cada cambio local (agrupado unos segundos) y periódicamente; opcionalmente Supabase Realtime para recibir cambios al instante.
-5. **Offline:** los cambios quedan en local y se envían al volver la red.
+**Flujo implementado** (`core/sync.ts` puro + `state/sync.ts` + `adapters/supabaseSync.ts`; esquema en `supabase/schema.sql`):
+1. **Al iniciar sesión o abrir la app: descarga completa** (`server_seq > 0`). Con un solo usuario son pocos KB, y así ningún dispositivo necesita guardar metadatos de sync: el mapa «id → versión que tiene el servidor» vive en memoria y se reconstruye en cada arranque.
+2. **Merge** (`mergeRemote`): por registro gana el `updatedAt` más reciente; en empate, la versión del servidor. Después se reaplica la cascada (tarea o idea viva de un proyecto borrado en otro dispositivo → borrada).
+3. **Push** (`pendingChanges`): se envían los registros cuya versión local no coincide con la del servidor (no depende de relojes). `upsert` por `id`; el trigger del servidor **ignora una versión igual o más antigua** que la suya (última escritura gana también en el servidor) y la app descarga la versión ganadora de esos registros.
+4. **Pull incremental:** después, solo filas con `server_seq` mayor que el cursor (secuencia del servidor, independiente de los relojes). Se descartan los ecos de los propios envíos.
+5. **Cuándo:** al iniciar sesión y al arrancar; 1,5 s después de un cambio local; al volver a la app (`visibilitychange`, `focus`); al recuperar la red; y cada 60 s mientras está visible. Sin Realtime (no hace falta con un usuario).
+6. **Sin conexión:** los cambios quedan en local; el indicador de la cabecera muestra «Sin conexión» y se envían al volver la red. Con un token caducado y sin red, la sesión guardada sigue permitiendo trabajar en local.
+7. **Indicador** (`ui/sync/SyncButton.tsx`): nube con ✓ (sincronizado), girando (sincronizando), tachada (sin conexión / desactivada), alerta (error). Menú: «Sincronizar ahora», «Cerrar sesión»; en escritorio sin sesión, «Activar sincronización…».
 
-**Casos límite:** misma tarea editada en dos dispositivos → gana la última edición (refinable a LWW por campo); reordenaciones simultáneas → cada tarea conserva su último `rank`; tarea creada en un proyecto borrado en otro dispositivo → queda borrada por la cascada; relojes desajustados → riesgo bajo con un usuario, sustituible por un reloj híbrido (HLC) en `clock.ts`.
+**Casos límite:** misma tarea editada en dos dispositivos → gana la última edición; reordenaciones simultáneas → cada tarea conserva su último `rank`; tarea creada en un proyecto borrado en otro dispositivo → borrada por la cascada; relojes desajustados → riesgo bajo con un usuario (sustituible por HLC en `clock.ts`). Las lápidas se purgan en local a los 30 días pero el servidor las conserva (vuelven como borradas en la descarga completa: inofensivo).
 
-**Cambios necesarios en el código:** adaptador `adapters/supabase/` (cliente, auth, sync), metadatos de sync en el almacenamiento local (`lastPushAt`, `pullCursor`), pantalla de inicio de sesión e indicador de estado de sync. `core/` y la UI de proyectos/tareas/ideas no cambian.
+**Configuración:** `.env` con `VITE_SUPABASE_URL` y `VITE_SUPABASE_KEY` (clave *publishable*, pública por diseño; se versiona porque la necesita el build de Cloudflare). Sin `.env`, la app funciona solo en local, como antes.
 
 ### 7.6 Privacidad y acceso restringido (Fase 9)
 - **Autenticación obligatoria** en la web: sin sesión válida solo se muestra la pantalla de acceso; no se carga ni se muestra ningún dato.
 - **Sin registro público:** en Supabase se desactiva *Allow new users to sign up*; la única cuenta se crea manualmente desde el panel. La UI no tiene pantalla de registro.
-- **RLS en todas las tablas:** `enable row level security` + políticas `using (user_id = auth.uid())` y `with check (user_id = auth.uid())` para select/insert/update/delete. Sin políticas para `anon`.
-- **Lista blanca:** las políticas comprueban además que `auth.uid()` es el id de la cuenta autorizada (o un `email` concreto), de modo que aunque alguien consiguiera crear una cuenta no vería ni escribiría nada.
+- **RLS en todas las tablas** (`enable` + `force row level security`): políticas `using`/`with check (user_id = auth.uid() and private.is_allowed())` para select/insert/update, solo para `authenticated`. `anon` no tiene permisos sobre las tablas. **Sin DELETE**: el borrado es lógico, así que ni la propia cuenta puede destruir filas.
+- **Lista blanca:** tabla `private.allowed_users` (esquema no expuesto por la API) + función `private.is_allowed()`; aunque alguien consiguiera crear una cuenta, no vería ni escribiría nada.
+- **Verificado (2026-11-06):** sin sesión, leer o escribir `projects`/`tasks`/`ideas` → `permission denied`; `allowed_users` e `is_allowed` no son accesibles por la API; `disable_signup: true`; credenciales incorrectas → «Email o contraseña incorrectos.».
+- **Cerrar sesión en la web** borra los datos del dispositivo (antes intenta enviar lo pendiente y, si no puede, pide confirmación). En escritorio, cerrar sesión solo desactiva la sync y conserva los datos.
 - **Claves:** en el cliente solo la *anon/publishable key* (pública por diseño; la protección es RLS). La *service role key* nunca sale del panel de Supabase.
 - **Hosting de la PWA:** sitio estático gratuito (Cloudflare Pages, Netlify o Vercel) con HTTPS. Los archivos de la app son públicos pero no contienen datos. Opcional: Cloudflare Access delante del sitio para que ni siquiera la pantalla de acceso sea visible a terceros.
-- **Sesión:** Supabase Auth con email + contraseña (o enlace mágico); la sesión se renueva sola y se puede cerrar desde ajustes.
+- **Sesión:** Supabase Auth con **email + contraseña** (el enlace mágico se descartó: en iPhone abre Safari y no la PWA instalada). La sesión se guarda en el dispositivo, se renueva sola y se cierra desde el indicador de sincronización. En escritorio es opcional (activa la sync).
+- **Plan gratuito de Supabase:** el proyecto se pausa tras 7 días sin uso; Tasky sigue funcionando en local y la sync vuelve al reactivarlo desde el panel.
 
 ---
 

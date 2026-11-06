@@ -1,0 +1,77 @@
+/* ── Pantalla de acceso (web) ── */
+.page {
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  padding: calc(var(--space-5) + env(safe-area-inset-top)) var(--space-4) calc(var(--space-5) + env(safe-area-inset-bottom));
+}
+
+.card {
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-5);
+}
+
+.heading {
+  text-align: center;
+}
+.heading h1 {
+  font-size: var(--fs-lg);
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+.heading p {
+  margin-top: var(--space-1);
+  color: var(--text-muted);
+}
+
+/* ── Formulario ── */
+.form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.submit {
+  justify-content: center;
+  margin-top: var(--space-1);
+}
+
+.error {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--danger);
+  font-size: var(--fs-sm);
+}
+.error svg {
+  flex: none;
+  width: 15px;
+  height: 15px;
+}
+
+/* El formulario dentro del diálogo de escritorio deja hueco abajo como los demás */
+.dialogBody {
+  padding-bottom: var(--space-5);
+}
+
+/* ── Indicador de la cabecera ── */
+.syncing svg {
+  animation: spin 1s linear infinite;
+}
+.offline {
+  color: var(--text-faint);
+}
+.problem {
+  color: var(--danger);
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
