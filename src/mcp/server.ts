@@ -12,6 +12,7 @@ Reglas:
 - Para localizar una tarea o idea por su texto, consulta primero get_tasks o get_ideas y usa su id. Si hay varias candidatas, pregunta.
 - "Dividir una tarea": crea las nuevas tareas en el mismo proyecto y después elimina la original solo si el usuario lo ha pedido o lo confirma.
 - Fechas límite en formato AAAA-MM-DD; el campo today de las respuestas indica la fecha actual del usuario.
+- Franja horaria (time_slot): morning = mañana, afternoon = tarde, evening = noche, all_day = día completo (por defecto). Úsala si el usuario dice cuándo hará la tarea.
 - Al terminar, confirma en una lista breve qué has creado o cambiado y en qué proyecto.`;
 
 const id = z.string().min(1);
@@ -20,6 +21,9 @@ const date = z
   .regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato AAAA-MM-DD')
   .nullable();
 const taskStatus = z.enum(['todo', 'in_progress', 'done']).describe('todo = pendiente, in_progress = en curso, done = completada');
+const timeSlot = z
+  .enum(['morning', 'afternoon', 'evening', 'all_day'])
+  .describe('Cuándo hacerla: morning = mañana, afternoon = tarde, evening = noche, all_day = día completo');
 
 const READ = { readOnlyHint: true, destructiveHint: false, openWorldHint: false } as const;
 const WRITE = { readOnlyHint: false, destructiveHint: false, openWorldHint: false } as const;
@@ -97,29 +101,31 @@ export function createTaskyMcpServer(service: TaskyService): McpServer {
         title: z.string().min(1).max(200),
         description: z.string().max(2000).optional(),
         due_date: date.optional(),
+        time_slot: timeSlot.optional(),
         status: taskStatus.optional(),
       }),
       annotations: WRITE,
     },
-    ({ project_id, title, description, due_date, status }) =>
-      run(() => service.createTask(project_id, { title, description, dueDate: due_date, status })),
+    ({ project_id, title, description, due_date, time_slot, status }) =>
+      run(() => service.createTask(project_id, { title, description, dueDate: due_date, timeSlot: time_slot, status })),
   );
   server.registerTool(
     'update_task',
     {
       title: 'Modificar tarea',
-      description: 'Cambia el título, la descripción, la fecha límite (null para quitarla) o el estado de una tarea.',
+      description: 'Cambia el título, la descripción, la fecha límite (null para quitarla), la franja horaria o el estado de una tarea.',
       inputSchema: z.object({
         task_id: id,
         title: z.string().min(1).max(200).optional(),
         description: z.string().max(2000).optional(),
         due_date: date.optional(),
+        time_slot: timeSlot.optional(),
         status: taskStatus.optional(),
       }),
       annotations: WRITE,
     },
-    ({ task_id, title, description, due_date, status }) =>
-      run(() => service.updateTask(task_id, { title, description, dueDate: due_date, status })),
+    ({ task_id, title, description, due_date, time_slot, status }) =>
+      run(() => service.updateTask(task_id, { title, description, dueDate: due_date, timeSlot: time_slot, status })),
   );
   server.registerTool(
     'complete_task',

@@ -1,4 +1,5 @@
-import type { Idea, LocalDate, Project, ProjectStatus, Task, TaskyData } from './model';
+import type { Idea, LocalDate, Project, ProjectStatus, Task, TaskyData, TimeSlot } from './model';
+import { compareProjects } from './projects';
 import { compareRank } from './rank';
 
 export interface ProjectSummary {
@@ -8,18 +9,23 @@ export interface ProjectSummary {
   /** Fecha límite más cercana entre las tareas no completadas (puede estar vencida). */
   nextDue: LocalDate | null;
   overdue: number;
+  /** Primera tarea no completada según el orden manual del proyecto. */
+  nextTask: Task | null;
 }
 
-/** Proyectos visibles de un estado, más recientes primero, con contadores y fechas de sus tareas. */
+const emptyStats = (): Omit<ProjectSummary, 'project'> => ({ pending: 0, completed: 0, nextDue: null, overdue: 0, nextTask: null });
+
+/** Proyectos visibles de un estado, en el orden de Inicio, con contadores y fechas de sus tareas. */
 export function projectSummariesByStatus(data: TaskyData, status: ProjectStatus, today: LocalDate): ProjectSummary[] {
   const stats = new Map<string, Omit<ProjectSummary, 'project'>>();
   for (const task of data.tasks) {
     if (task.deletedAt) continue;
-    const s = stats.get(task.projectId) ?? { pending: 0, completed: 0, nextDue: null, overdue: 0 };
+    const s = stats.get(task.projectId) ?? emptyStats();
     if (task.status === 'done') {
       s.completed++;
     } else {
       s.pending++;
+      if (!s.nextTask || compareRank(task, s.nextTask) < 0) s.nextTask = task;
       if (task.dueDate) {
         if (task.dueDate < today) s.overdue++;
         if (!s.nextDue || task.dueDate < s.nextDue) s.nextDue = task.dueDate;
@@ -30,8 +36,29 @@ export function projectSummariesByStatus(data: TaskyData, status: ProjectStatus,
 
   return data.projects
     .filter((p) => !p.deletedAt && p.status === status)
-    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
-    .map((project) => ({ project, ...(stats.get(project.id) ?? { pending: 0, completed: 0, nextDue: null, overdue: 0 }) }));
+    .sort(compareProjects)
+    .map((project) => ({ project, ...(stats.get(project.id) ?? emptyStats()) }));
+}
+
+/** Orden de las franjas del día. */
+export const TIME_SLOTS: TimeSlot[] = ['morning', 'afternoon', 'evening', 'all_day'];
+
+export interface TodayGroup {
+  slot: TimeSlot;
+  items: { task: Task; project: Project }[];
+}
+
+/**
+ * Tareas no completadas con fecha de hoy, agrupadas por franja (solo las franjas con tareas).
+ * Dentro de cada franja, por proyecto y en el orden manual de cada proyecto.
+ */
+export function todayTasks(data: TaskyData, today: LocalDate): TodayGroup[] {
+  const projects = new Map(data.projects.filter((p) => !p.deletedAt).map((p) => [p.id, p]));
+  const items = data.tasks
+    .filter((t) => !t.deletedAt && t.status !== 'done' && t.dueDate === today && projects.has(t.projectId))
+    .map((task) => ({ task, project: projects.get(task.projectId)! }))
+    .sort((a, b) => a.project.name.localeCompare(b.project.name, 'es') || a.project.id.localeCompare(b.project.id) || compareRank(a.task, b.task));
+  return TIME_SLOTS.map((slot) => ({ slot, items: items.filter((i) => i.task.timeSlot === slot) })).filter((g) => g.items.length > 0);
 }
 
 export function findProject(data: TaskyData, id: string): Project | undefined {

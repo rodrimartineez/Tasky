@@ -69,6 +69,16 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: var(--space-2);
+  border-radius: 50%;
+  background: var(--project);
+  vertical-align: 1px;
+}
+
 .featured .name {
   font-size: var(--fs-md);
 }
@@ -83,6 +93,31 @@
 }
 .featured .description {
   -webkit-line-clamp: 2;
+}
+
+.next {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: var(--fs-sm);
+}
+.next svg {
+  flex: none;
+  width: 13px;
+  height: 13px;
+  color: var(--orange-400);
+}
+.nextLabel {
+  flex: none;
+  color: var(--text-faint);
+  font-size: var(--fs-xs);
+}
+.nextTitle {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .footer {

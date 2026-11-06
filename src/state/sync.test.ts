@@ -77,6 +77,7 @@ describe('sincronización con el servidor', () => {
       name: 'Remoto',
       description: '',
       status: 'active',
+      rank: null,
       createdAt: T_OLD,
       updatedAt: T_OLD,
       deletedAt: null,

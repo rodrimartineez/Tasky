@@ -1,16 +1,19 @@
-import type { LocalDate, Task, TaskStatus, TaskyData, Timestamp } from './model';
+import type { LocalDate, Task, TaskStatus, TaskyData, TimeSlot, Timestamp } from './model';
 import { compareRank, rankBetween } from './rank';
 
 export interface TaskInput {
   title: string;
   description: string;
   dueDate: LocalDate | null;
+  /** Por defecto, «Día completo». */
+  timeSlot?: TimeSlot;
 }
 
 export interface TaskPatch {
   title?: string;
   description?: string;
   dueDate?: LocalDate | null;
+  timeSlot?: TimeSlot;
   status?: TaskStatus;
 }
 
@@ -33,6 +36,7 @@ export function createTask(data: TaskyData, projectId: string, input: TaskInput,
     description: input.description.trim(),
     status: 'todo',
     dueDate: input.dueDate,
+    timeSlot: input.timeSlot ?? 'all_day',
     rank: rankBetween(last?.rank ?? null, null),
     completedAt: null,
     createdAt: now,
@@ -54,11 +58,16 @@ export function updateTask(data: TaskyData, id: string, patch: TaskPatch, now: T
         title: patch.title !== undefined ? cleanTitle(patch.title) : t.title,
         description: patch.description !== undefined ? patch.description.trim() : t.description,
         dueDate: patch.dueDate !== undefined ? patch.dueDate : t.dueDate,
+        timeSlot: patch.timeSlot ?? t.timeSlot,
         status,
         completedAt: status === 'done' ? (t.status === 'done' ? t.completedAt : now) : null,
       };
       const changed =
-        next.title !== t.title || next.description !== t.description || next.dueDate !== t.dueDate || next.status !== t.status;
+        next.title !== t.title ||
+        next.description !== t.description ||
+        next.dueDate !== t.dueDate ||
+        next.timeSlot !== t.timeSlot ||
+        next.status !== t.status;
       return changed ? { ...next, updatedAt: now } : t;
     }),
   };

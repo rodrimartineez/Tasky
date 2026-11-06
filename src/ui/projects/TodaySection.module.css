@@ -1,0 +1,124 @@
+.empty {
+  color: var(--text-faint);
+  font-size: var(--fs-sm);
+}
+
+.groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-3);
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.groupTitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 var(--space-2) var(--space-1);
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+.groupTitle svg {
+  width: 14px;
+  height: 14px;
+}
+
+.groupCount {
+  margin-left: auto;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 34px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-sm);
+  transition: background var(--dur-fast) var(--ease);
+}
+.item:hover {
+  background: var(--surface-2);
+}
+
+.dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--project);
+}
+
+.title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.progress {
+  flex: none;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--orange-glow);
+  color: var(--orange-300);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.project {
+  flex: none;
+  max-width: 40%;
+  margin-left: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-faint);
+  font-size: var(--fs-xs);
+}
+
+@media (pointer: coarse) {
+  .item {
+    min-height: 42px;
+  }
+}
+
+/* Móvil: un solo bloque con las franjas separadas por una línea */
+@media (max-width: 480px) {
+  .groups {
+    grid-template-columns: 1fr;
+    gap: 0;
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+  }
+  .group {
+    background: none;
+    border: none;
+    border-radius: 0;
+  }
+  .group + .group {
+    border-top: 1px solid var(--border);
+  }
+}

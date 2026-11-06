@@ -67,7 +67,7 @@ describe('servicio MCP', () => {
   it('crea tareas e ideas con la lógica de core y guarda solo lo nuevo', async () => {
     const { service, state, saves } = setup();
     const { created } = await service.createTask('wynot', { title: '  Implementar compresión de fotos ', description: 'Reducir peso' });
-    expect(created).toMatchObject({ project: 'Wynot', title: 'Implementar compresión de fotos', status: 'todo', due_date: null });
+    expect(created).toMatchObject({ project: 'Wynot', title: 'Implementar compresión de fotos', status: 'todo', due_date: null, time_slot: 'all_day' });
     await service.createIdea('wynot', { title: 'Investigar formatos de imagen' });
     expect(state.tasks).toHaveLength(1);
     expect(state.ideas).toHaveLength(1);
@@ -86,8 +86,9 @@ describe('servicio MCP', () => {
     const { service, state } = setup();
     const a = (await service.createTask('wynot', { title: 'A' })).created.id;
     const b = (await service.createTask('wynot', { title: 'B', dueDate: '2026-11-10' })).created.id;
-    await service.updateTask(a, { title: 'A2', dueDate: '2026-11-01' });
-    expect((await service.getProjects()).projects.find((p) => p.id === 'wynot')).toMatchObject({ pending_tasks: 2, overdue_tasks: 1, next_due_date: '2026-11-01' });
+    await service.updateTask(a, { title: 'A2', dueDate: '2026-11-01', timeSlot: 'afternoon' });
+    expect((await service.getTasks('wynot', 'open')).tasks[0]).toMatchObject({ title: 'A2', time_slot: 'afternoon' });
+    expect((await service.getProjects()).projects.find((p) => p.id === 'wynot')).toMatchObject({ pending_tasks: 2, overdue_tasks: 1, next_due_date: '2026-11-01', next_task: 'A2' });
 
     const done = await service.completeTask(a);
     expect(done.updated).toMatchObject({ status: 'done' });

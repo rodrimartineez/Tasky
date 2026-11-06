@@ -5,11 +5,11 @@ import { projectSummariesByStatus } from './selectors';
 const base = { createdAt: '2026-01-01T00:00:00.000Z', deletedAt: null };
 
 const project = (id: string, status: Project['status'], updatedAt: string, deletedAt: string | null = null): Project => ({
-  ...base, id, name: id, description: '', status, updatedAt, deletedAt,
+  ...base, id, name: id, description: '', status, rank: null, updatedAt, deletedAt,
 });
 
 const task = (id: string, projectId: string, status: Task['status'], deletedAt: string | null = null): Task => ({
-  ...base, id, projectId, title: id, description: '', status, dueDate: null, rank: 'a0', completedAt: null,
+  ...base, id, projectId, title: id, description: '', status, dueDate: null, timeSlot: 'all_day', rank: 'a0', completedAt: null,
   updatedAt: base.createdAt, deletedAt,
 });
 

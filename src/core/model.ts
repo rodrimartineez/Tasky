@@ -16,12 +16,16 @@ const baseRecord = {
 
 export const projectStatusSchema = z.enum(['active', 'on_hold', 'done']);
 export const taskStatusSchema = z.enum(['todo', 'in_progress', 'done']);
+/** Cuándo está previsto hacer la tarea dentro de su día. Los datos anteriores a este campo pasan a «Día completo». */
+export const timeSlotSchema = z.enum(['morning', 'afternoon', 'evening', 'all_day']);
 
 export const projectSchema = z.object({
   ...baseRecord,
   name: z.string().min(1),
   description: z.string(),
   status: projectStatusSchema,
+  /** Orden manual en Inicio. null = aún no se ha ordenado a mano (va detrás, por actualización reciente). */
+  rank: z.string().min(1).nullable().default(null),
 });
 
 export const taskSchema = z.object({
@@ -31,6 +35,7 @@ export const taskSchema = z.object({
   description: z.string(),
   status: taskStatusSchema,
   dueDate: localDate.nullable(),
+  timeSlot: timeSlotSchema.default('all_day'),
   rank: z.string().min(1),
   completedAt: timestamp.nullable(),
 });
@@ -53,6 +58,7 @@ export type Timestamp = string;
 export type LocalDate = string;
 export type ProjectStatus = z.infer<typeof projectStatusSchema>;
 export type TaskStatus = z.infer<typeof taskStatusSchema>;
+export type TimeSlot = z.infer<typeof timeSlotSchema>;
 export type Project = z.infer<typeof projectSchema>;
 export type Task = z.infer<typeof taskSchema>;
 export type Idea = z.infer<typeof ideaSchema>;

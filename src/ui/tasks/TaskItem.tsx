@@ -6,6 +6,7 @@ import type { LocalDate, Task } from '../../core/model';
 import { useTasky } from '../../state/store';
 import { DueBadge } from './DueBadge';
 import { TaskCheckbox } from './TaskCheckbox';
+import { TIME_SLOT_INFO } from './timeSlot';
 import styles from './TaskItem.module.css';
 
 interface TaskItemProps {
@@ -85,6 +86,12 @@ function TaskBody({ task, today, onOpen }: TaskItemProps) {
       </button>
       <span className={styles.meta}>
         {inProgress && <span className={styles.progressChip}>En curso</span>}
+        {!done && task.timeSlot !== 'all_day' && (
+          <span className={styles.slot} title={`Franja: ${TIME_SLOT_INFO[task.timeSlot].label.toLowerCase()}`}>
+            {TIME_SLOT_INFO[task.timeSlot].icon}
+            <span className={styles.slotLabel}>{TIME_SLOT_INFO[task.timeSlot].label}</span>
+          </span>
+        )}
         {task.dueDate && <DueBadge due={task.dueDate} today={today} muted={done} />}
         {!done && (
           <button

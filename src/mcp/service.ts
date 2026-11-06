@@ -1,6 +1,6 @@
 import { emptyData } from '../core/data';
 import { createIdea, deleteIdea, updateIdea } from '../core/ideas';
-import type { Idea, LocalDate, Project, Task, TaskStatus, TaskyData, Timestamp } from '../core/model';
+import type { Idea, LocalDate, Project, Task, TaskStatus, TaskyData, TimeSlot, Timestamp } from '../core/model';
 import { projectIdeas, projectSummariesByStatus, projectTasks } from '../core/selectors';
 import { countRecords, pendingChanges, rememberVersions, type ServerVersions, type SyncRecords } from '../core/sync';
 import { createTask, deleteTask, updateTask } from '../core/tasks';
@@ -98,6 +98,7 @@ export function createTaskyService(repo: TaskyRepository, env: ServiceEnv) {
     description: t.description,
     status: t.status,
     due_date: t.dueDate,
+    time_slot: t.timeSlot,
     completed_at: t.completedAt,
   });
 
@@ -122,6 +123,7 @@ export function createTaskyService(repo: TaskyRepository, env: ServiceEnv) {
         completed_tasks: s.completed,
         ideas: projectIdeas(data, s.project.id).length,
         next_due_date: s.nextDue,
+        next_task: s.nextTask?.title ?? null,
         overdue_tasks: s.overdue,
       })),
     );
@@ -171,17 +173,29 @@ export function createTaskyService(repo: TaskyRepository, env: ServiceEnv) {
       return { tasks: projects.flatMap((p) => tasksOf(data, p.id, which)), today: env.today() };
     },
 
-    async createTask(projectId: string, input: { title: string; description?: string; dueDate?: LocalDate | null; status?: TaskStatus }) {
+    async createTask(
+      projectId: string,
+      input: { title: string; description?: string; dueDate?: LocalDate | null; timeSlot?: TimeSlot; status?: TaskStatus },
+    ) {
       const id = env.newId();
       const data = await mutate((d) => {
         requireProject(d, projectId);
-        const created = createTask(d, projectId, { title: input.title, description: input.description ?? '', dueDate: input.dueDate ?? null }, id, env.now());
+        const created = createTask(
+          d,
+          projectId,
+          { title: input.title, description: input.description ?? '', dueDate: input.dueDate ?? null, timeSlot: input.timeSlot },
+          id,
+          env.now(),
+        );
         return input.status && input.status !== 'todo' ? updateTask(created, id, { status: input.status }, env.now()) : created;
       });
       return { created: taskView(data, requireTask(data, id)) };
     },
 
-    async updateTask(taskId: string, patch: { title?: string; description?: string; dueDate?: LocalDate | null; status?: TaskStatus }) {
+    async updateTask(
+      taskId: string,
+      patch: { title?: string; description?: string; dueDate?: LocalDate | null; timeSlot?: TimeSlot; status?: TaskStatus },
+    ) {
       const data = await mutate((d) => {
         requireTask(d, taskId);
         return updateTask(d, taskId, patch, env.now());

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Trash2 } from 'lucide-react';
 import { today as getToday } from '../../core/clock';
 import { addDays } from '../../core/dueDates';
-import type { LocalDate, Task, TaskStatus } from '../../core/model';
+import type { LocalDate, Task, TaskStatus, TimeSlot } from '../../core/model';
 import { useTasky } from '../../state/store';
 import { Button } from '../components/Button';
 import { ConfirmDialog } from '../components/ConfirmDialog';
@@ -10,6 +10,7 @@ import { Dialog } from '../components/Dialog';
 import { TextArea, TextField } from '../components/Field';
 import { Segmented, type SegmentedOption } from '../components/Segmented';
 import { dueLabel } from './DueBadge';
+import { TIME_SLOT_OPTIONS } from './timeSlot';
 import form from '../components/Form.module.css';
 import styles from './TaskFormDialog.module.css';
 
@@ -39,6 +40,7 @@ function TaskForm({ projectId, task, onDone }: { projectId: string; task?: Task;
   const [title, setTitle] = useState(task?.title ?? '');
   const [description, setDescription] = useState(task?.description ?? '');
   const [dueDate, setDueDate] = useState<LocalDate | null>(task?.dueDate ?? null);
+  const [timeSlot, setTimeSlot] = useState<TimeSlot>(task?.timeSlot ?? 'all_day');
   const [status, setStatus] = useState<TaskStatus>(task?.status ?? 'todo');
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const createTask = useTasky((s) => s.createTask);
@@ -55,8 +57,8 @@ function TaskForm({ projectId, task, onDone }: { projectId: string; task?: Task;
 
   const submit = () => {
     if (!canSubmit) return;
-    if (task) updateTask(task.id, { title, description, dueDate, status });
-    else createTask(projectId, { title, description, dueDate });
+    if (task) updateTask(task.id, { title, description, dueDate, timeSlot, status });
+    else createTask(projectId, { title, description, dueDate, timeSlot });
     onDone();
   };
 
@@ -120,6 +122,14 @@ function TaskForm({ projectId, task, onDone }: { projectId: string; task?: Task;
             </button>
           )}
         </div>
+      </div>
+
+      <div className={form.field}>
+        <span className={form.label}>
+          Franja horaria
+          <span className={form.hint}>¿Cuándo piensas hacerla?</span>
+        </span>
+        <Segmented label="Franja horaria" value={timeSlot} options={TIME_SLOT_OPTIONS} onChange={setTimeSlot} />
       </div>
 
       {task && (

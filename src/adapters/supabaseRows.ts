@@ -26,6 +26,7 @@ export const fromRow: { [K in Table]: (r: Row) => SyncRecords[K][number] } = {
       name: r.name,
       description: r.description,
       status: r.status,
+      rank: r.rank ?? null,
       createdAt: ts(r.created_at),
       updatedAt: ts(r.updated_at),
       deletedAt: ts(r.deleted_at),
@@ -38,6 +39,7 @@ export const fromRow: { [K in Table]: (r: Row) => SyncRecords[K][number] } = {
       description: r.description,
       status: r.status,
       dueDate: r.due_date ?? null,
+      timeSlot: r.time_slot ?? undefined,
       rank: r.rank,
       completedAt: ts(r.completed_at),
       createdAt: ts(r.created_at),
@@ -64,7 +66,7 @@ const base = (r: Project | Task | Idea) => ({
 });
 
 export const toRow = {
-  projects: (p: Project) => ({ ...base(p), name: p.name, description: p.description, status: p.status }),
+  projects: (p: Project) => ({ ...base(p), name: p.name, description: p.description, status: p.status, rank: p.rank }),
   tasks: (t: Task) => ({
     ...base(t),
     project_id: t.projectId,
@@ -72,6 +74,7 @@ export const toRow = {
     description: t.description,
     status: t.status,
     due_date: t.dueDate,
+    time_slot: t.timeSlot,
     rank: t.rank,
     completed_at: t.completedAt,
   }),

@@ -39,6 +39,7 @@ create table if not exists public.projects (
   name        text not null check (length(name) > 0),
   description text not null default '',
   status      text not null check (status in ('active', 'on_hold', 'done')),
+  rank        text,
   created_at  timestamptz not null,
   updated_at  timestamptz not null,
   deleted_at  timestamptz,
@@ -53,6 +54,7 @@ create table if not exists public.tasks (
   description  text not null default '',
   status       text not null check (status in ('todo', 'in_progress', 'done')),
   due_date     date,
+  time_slot    text not null default 'all_day' check (time_slot in ('morning', 'afternoon', 'evening', 'all_day')),
   rank         text not null,
   completed_at timestamptz,
   created_at   timestamptz not null,
@@ -72,6 +74,12 @@ create table if not exists public.ideas (
   deleted_at  timestamptz,
   server_seq  bigint not null default nextval('public.tasky_change_seq')
 );
+
+-- Columnas añadidas después de la Fase 9 (en bases ya creadas se añaden aquí):
+-- orden manual de proyectos y franja horaria de tareas.
+alter table public.projects add column if not exists rank text;
+alter table public.tasks add column if not exists time_slot text not null default 'all_day'
+  check (time_slot in ('morning', 'afternoon', 'evening', 'all_day'));
 
 -- ── Trigger: última escritura gana + nuevo número de cambio en cada escritura ──────────────────
 create or replace function public.tasky_before_write()

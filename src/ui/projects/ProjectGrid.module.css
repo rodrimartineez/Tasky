@@ -1,0 +1,20 @@
+.item {
+  height: 100%;
+  position: relative;
+  /* Mantener pulsado no debe abrir el menú del enlace (iPhone) ni seleccionar texto */
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.dragging {
+  z-index: 10;
+  cursor: grabbing;
+}
+.dragging > * {
+  border-color: var(--orange-500);
+  box-shadow:
+    var(--shadow-lift),
+    0 0 0 3px var(--orange-glow);
+  transform: scale(1.02);
+}

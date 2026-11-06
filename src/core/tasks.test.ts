@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { emptyData } from './data';
+import { emptyData, parseData } from './data';
 import { addDays, daysBetween, dueState } from './dueDates';
 import type { TaskyData } from './model';
 import { createProject } from './projects';
-import { projectSummariesByStatus, projectTasks } from './selectors';
+import { projectSummariesByStatus, projectTasks, todayTasks } from './selectors';
 import { createTask, deleteTask, moveTask, updateTask } from './tasks';
 
 const T0 = '2026-11-05T10:00:00.000Z';
@@ -76,5 +76,50 @@ describe('fechas límite', () => {
     d = updateTask(d, 'c', { dueDate: '2026-11-20' }, T1);
     const [s] = projectSummariesByStatus(d, 'active', TODAY);
     expect(s).toMatchObject({ pending: 2, completed: 1, overdue: 1, nextDue: '2026-11-01' });
+  });
+});
+
+describe('franja horaria y vistas de la pantalla principal', () => {
+  it('por defecto es «Día completo», se puede elegir al crear y se conserva al editar', () => {
+    let d = setup();
+    expect(d.tasks[0].timeSlot).toBe('all_day');
+    d = createTask(d, 'p', { title: 'D', description: '', dueDate: TODAY, timeSlot: 'evening' }, 'd', T0);
+    d = updateTask(d, 'd', { title: 'D2' }, T1);
+    expect(d.tasks.find((t) => t.id === 'd')).toMatchObject({ title: 'D2', timeSlot: 'evening', updatedAt: T1 });
+    const changed = updateTask(d, 'a', { timeSlot: 'morning' }, T1);
+    expect(changed.tasks[0]).toMatchObject({ timeSlot: 'morning', updatedAt: T1 });
+  });
+
+  it('los datos guardados antes de existir la franja pasan a «Día completo»', () => {
+    const legacy: Record<string, unknown> = { ...setup().tasks[0] };
+    delete legacy.timeSlot;
+    const parsed = parseData({ ...emptyData(), tasks: [legacy] }, T1);
+    expect(parsed.tasks[0].timeSlot).toBe('all_day');
+  });
+
+  it('la siguiente tarea es la primera no completada según el orden manual', () => {
+    let d = setup();
+    d = moveTask(d, 'c', null, 'a', T1);
+    d = updateTask(d, 'c', { status: 'done' }, T1);
+    expect(projectSummariesByStatus(d, 'active', TODAY)[0].nextTask?.id).toBe('a');
+    for (const id of ['a', 'b']) d = updateTask(d, id, { status: 'done' }, T1);
+    expect(projectSummariesByStatus(d, 'active', TODAY)[0].nextTask).toBeNull();
+  });
+
+  it('hoy: solo tareas abiertas con fecha de hoy, agrupadas por franja en orden', () => {
+    let d = setup();
+    d = createProject(d, { name: 'Otro', description: '' }, 'q', T0);
+    d = createTask(d, 'q', { title: 'Noche', description: '', dueDate: TODAY, timeSlot: 'evening' }, 'n', T0);
+    d = updateTask(d, 'a', { dueDate: TODAY, timeSlot: 'morning' }, T1);
+    d = updateTask(d, 'b', { dueDate: TODAY, status: 'in_progress' }, T1);
+    d = updateTask(d, 'c', { dueDate: TODAY, timeSlot: 'morning', status: 'done' }, T1);
+    d = createTask(d, 'q', { title: 'Mañana', description: '', dueDate: addDays(TODAY, 1) }, 'm', T0);
+    const groups = todayTasks(d, TODAY);
+    expect(groups.map((g) => [g.slot, g.items.map((i) => i.task.id)])).toEqual([
+      ['morning', ['a']],
+      ['evening', ['n']],
+      ['all_day', ['b']],
+    ]);
+    expect(groups[1].items[0].project.name).toBe('Otro');
   });
 });

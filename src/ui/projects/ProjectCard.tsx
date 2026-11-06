@@ -1,9 +1,11 @@
+import type { CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
-import { Circle, CircleAlert, CircleCheck } from 'lucide-react';
+import { ArrowRight, Circle, CircleAlert, CircleCheck } from 'lucide-react';
 import { today as getToday } from '../../core/clock';
 import type { ProjectSummary } from '../../core/selectors';
 import { StatusBadge } from '../components/StatusBadge';
 import { DueBadge } from '../tasks/DueBadge';
+import { projectColor } from './projectColor';
 import styles from './ProjectCard.module.css';
 
 interface ProjectCardProps {
@@ -12,18 +14,34 @@ interface ProjectCardProps {
 }
 
 export function ProjectCard({ summary, variant }: ProjectCardProps) {
-  const { project, pending, completed, nextDue, overdue } = summary;
+  const { project, pending, completed, nextDue, overdue, nextTask } = summary;
   const total = pending + completed;
   const progress = total === 0 ? 0 : completed / total;
 
   return (
-    <Link to={`/project/${project.id}`} className={`${styles.card} ${styles[variant]} ${styles[project.status]}`}>
+    <Link
+      to={`/project/${project.id}`}
+      draggable={false}
+      className={`${styles.card} ${styles[variant]} ${styles[project.status]}`}
+      style={{ '--project': projectColor(project.id) } as CSSProperties}
+    >
       <div className={styles.head}>
-        <h3 className={styles.name}>{project.name}</h3>
+        <h3 className={styles.name}>
+          <span className={styles.dot} aria-hidden />
+          {project.name}
+        </h3>
         <StatusBadge status={project.status} />
       </div>
 
       {project.description && <p className={styles.description}>{project.description}</p>}
+
+      {nextTask && (
+        <p className={styles.next} title={`Siguiente tarea: ${nextTask.title}`}>
+          <ArrowRight />
+          <span className={styles.nextLabel}>Siguiente</span>
+          <span className={styles.nextTitle}>{nextTask.title}</span>
+        </p>
+      )}
 
       <div className={styles.footer}>
         {variant === 'featured' && (

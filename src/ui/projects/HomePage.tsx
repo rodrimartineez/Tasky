@@ -1,17 +1,17 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { AnimatePresence, motion } from 'motion/react';
 import { Archive, FolderKanban, Hourglass, Plus } from 'lucide-react';
 import type { ProjectStatus } from '../../core/model';
 import { today } from '../../core/clock';
-import { projectSummariesByStatus } from '../../core/selectors';
+import { projectSummariesByStatus, todayTasks } from '../../core/selectors';
 import { useTasky } from '../../state/store';
 import { Button } from '../components/Button';
 import { EmptyState } from '../components/EmptyState';
 import { Fab } from '../components/Fab';
 import { MOBILE_QUERY, TOUCH_QUERY, useMediaQuery } from '../components/useMediaQuery';
 import { useShortcut } from '../shortcuts/useShortcut';
-import { ProjectCard } from './ProjectCard';
+import { ProjectGrid } from './ProjectGrid';
 import { ProjectFormDialog } from './ProjectFormDialog';
+import { TodaySection } from './TodaySection';
 import styles from './HomePage.module.css';
 
 const SECTIONS: { status: ProjectStatus; title: string; emptyIcon: ReactNode; emptyTitle: string; emptyText?: string }[] = [
@@ -39,10 +39,13 @@ export function HomePage() {
   const isTouch = useMediaQuery(TOUCH_QUERY);
   useShortcut('p', () => setCreating(true));
 
-  const sections = useMemo(
-    () => SECTIONS.map((section) => ({ ...section, summaries: projectSummariesByStatus(data, section.status, today()) })),
-    [data],
-  );
+  const { sections, todayGroups } = useMemo(() => {
+    const day = today();
+    return {
+      sections: SECTIONS.map((section) => ({ ...section, summaries: projectSummariesByStatus(data, section.status, day) })),
+      todayGroups: todayTasks(data, day),
+    };
+  }, [data]);
   const active = sections[0].summaries;
   const pendingTasks = active.reduce((sum, s) => sum + s.pending, 0);
   const isEmpty = sections.every((s) => s.summaries.length === 0);
@@ -66,6 +69,8 @@ export function HomePage() {
           </Button>
         )}
       </div>
+
+      {!isEmpty && <TodaySection groups={todayGroups} />}
 
       {sections.map((section) => {
         const featured = section.status === 'active';
@@ -96,22 +101,11 @@ export function HomePage() {
                 }
               />
             ) : (
-              <div className={featured ? styles.gridFeatured : styles.gridCompact}>
-                <AnimatePresence initial={false} mode="popLayout">
-                  {section.summaries.map((summary) => (
-                    <motion.div
-                      key={summary.project.id}
-                      layout
-                      initial={{ opacity: 0, scale: 0.96 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.96 }}
-                      transition={{ duration: 0.2, ease: [0.2, 0.8, 0.2, 1] }}
-                    >
-                      <ProjectCard summary={summary} variant={featured ? 'featured' : 'compact'} />
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-              </div>
+              <ProjectGrid
+                summaries={section.summaries}
+                variant={featured ? 'featured' : 'compact'}
+                className={featured ? styles.gridFeatured : styles.gridCompact}
+              />
             )}
           </section>
         );

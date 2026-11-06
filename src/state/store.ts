@@ -5,7 +5,7 @@ import { newId } from '../core/ids';
 import type { TaskyData } from '../core/model';
 import type { FileExport, Storage } from '../core/ports';
 import { countRecords, mergeRemote, type SyncRecords } from '../core/sync';
-import { createProject, deleteProject, updateProject, type ProjectInput, type ProjectPatch } from '../core/projects';
+import { createProject, deleteProject, reorderProject, updateProject, type ProjectInput, type ProjectPatch } from '../core/projects';
 import { createIdea, deleteIdea, updateIdea, type IdeaInput } from '../core/ideas';
 import { createTask, deleteTask, moveTask, updateTask, type TaskInput, type TaskPatch } from '../core/tasks';
 
@@ -32,6 +32,8 @@ interface TaskyState {
   createProject(input: ProjectInput): string;
   updateProject(id: string, patch: ProjectPatch): void;
   deleteProject(id: string): void;
+  /** `orderedIds`: orden de la sección de Inicio tras soltar el proyecto. */
+  reorderProject(orderedIds: string[], movedId: string): void;
   createTask(projectId: string, input: TaskInput): string;
   updateTask(id: string, patch: TaskPatch): void;
   /** Coloca la tarea entre dos vecinas (null = extremo de la lista). */
@@ -141,6 +143,7 @@ export const useTasky = create<TaskyState>()((set, get) => {
     },
     updateProject: (id, patch) => commit((d) => updateProject(d, id, patch, now())),
     deleteProject: (id) => commit((d) => deleteProject(d, id, now())),
+    reorderProject: (orderedIds, movedId) => commit((d) => reorderProject(d, orderedIds, movedId, now())),
 
     createTask(projectId, input) {
       const id = newId();

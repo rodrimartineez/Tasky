@@ -1,7 +1,7 @@
 # TASKY_GUIDE.md
 
 > Documento de referencia del proyecto. Se consulta antes de cada fase y se actualiza al terminarla.
-> Última actualización: 2026-11-06 — **Fases 1–9 completadas + integración con Claude (MCP, §7.7).** Tasky instalada en Windows y publicada como PWA en https://tasky-2dd.pages.dev (iPhone), sincronizada con Supabase, privada y con funcionamiento sin conexión.
+> Última actualización: 2026-11-06 — **Fases 1–9 completadas + integración con Claude (MCP, §7.7) + franja horaria, «Hoy», siguiente tarea y orden manual de proyectos (§3.2, §3.5).** Tasky instalada en Windows y publicada como PWA en https://tasky-2dd.pages.dev (iPhone), sincronizada con Supabase, privada y con funcionamiento sin conexión.
 
 ---
 
@@ -62,13 +62,13 @@ Página de proyecto                                  Atajos: T nueva tarea · I 
 ### 3.2 Tareas
 | Requisito | Detalle |
 |---|---|
-| Campos | Título (obligatorio), descripción (opcional), estado, **fecha límite (opcional)**, orden, fecha de creación. |
+| Campos | Título (obligatorio), descripción (opcional), estado, **fecha límite (opcional)**, **franja horaria** (Mañana · Tarde · Noche · Día completo; por defecto «Día completo»), orden, fecha de creación. |
 | Crear | Tecla **T** (dentro de un proyecto) o botón → diálogo con foco en el título; descripción y fecha límite opcionales. Enter crea. |
 | Editar / eliminar | Clic en la tarea → mismo diálogo; eliminar con confirmación ligera. |
 | Estados | `todo` (Pendiente) · `in_progress` (En curso) · `done` (Completada). |
 | Completar | Checkbox de un clic en la propia fila: el check se dibuja (~260 ms) y la tarea pasa a «Completadas». Botón ▶ en la fila para marcar/quitar «En curso» con un clic. |
 | Reordenar | Drag & drop: con el ratón desde cualquier punto de la fila; con teclado desde el asa (`Espacio` para coger, flechas para mover, `Espacio` para soltar); en táctil desde el asa. El orden define la secuencia de trabajo. |
-| Visualización | Lista única: abiertas arriba en su orden; completadas en una sección plegable. Cada fila: título, descripción (si existe), estado y fecha límite (si existe). |
+| Visualización | Lista única: abiertas arriba en su orden; completadas en una sección plegable. Cada fila: título, descripción (si existe), estado, franja (si no es «Día completo») y fecha límite (si existe). |
 
 ### 3.3 Fechas límite
 - Opcionales, solo en tareas. Representan **el día máximo** para terminar la tarea (no inicio ni creación).
@@ -92,8 +92,11 @@ Página de proyecto                                  Atajos: T nueva tarea · I 
 
 ### 3.5 Pantalla principal
 - Sin login en escritorio. Es la primera pantalla al abrir.
+- Sección **Hoy** antes de los proyectos: tareas pendientes y en curso con fecha de hoy, agrupadas por franja (Mañana, Tarde, Noche, Día completo; solo las franjas con tareas). Cada fila: punto con el color del proyecto, título, «En curso» si lo está y nombre del proyecto; al pulsarla se abre el proyecto. Las completadas no aparecen. En móvil, las franjas van en un solo bloque.
 - Tres secciones: Activos (mayor protagonismo), En espera, Finalizados.
-- Tarjeta de proyecto: nombre, descripción breve, estado, nº tareas pendientes, nº completadas, barra de progreso, próxima fecha límite y nº de vencidas (si existen).
+- **Orden manual de proyectos:** mantener pulsada una tarjeta (~250 ms, ratón o dedo) y arrastrarla; las demás se apartan en tiempo real. Se ordena dentro de cada sección. Un clic normal sigue abriendo el proyecto y soltar no lo abre. Los proyectos nuevos aparecen los primeros; los que nunca se han ordenado van detrás, del más reciente al más antiguo. El orden se guarda en `Project.rank` (índice fraccional, como las tareas) y se sincroniza.
+- Tarjeta de proyecto: punto de color, nombre, descripción breve, **siguiente tarea** (la primera no completada según el orden manual; sin tareas pendientes no se muestra), estado, nº tareas pendientes, nº completadas, barra de progreso, próxima fecha límite y nº de vencidas (si existen).
+- **Color de proyecto:** se deriva del id (paleta fija de 10 colores, `ui/projects/projectColor.ts`); no se guarda, así que es el mismo en todos los dispositivos.
 - Botón «Nuevo proyecto» siempre visible con su atajo (`P`).
 - Estados vacíos diseñados para cada sección.
 
@@ -277,6 +280,7 @@ interface Project extends BaseRecord {
   name: string;
   description: string;        // '' si no hay
   status: ProjectStatus;
+  rank: string | null;        // orden manual en Inicio (null = aún sin ordenar)
 }
 
 interface Task extends BaseRecord {
@@ -285,6 +289,7 @@ interface Task extends BaseRecord {
   description: string;
   status: TaskStatus;
   dueDate: LocalDate | null;  // fecha límite opcional
+  timeSlot: 'morning' | 'afternoon' | 'evening' | 'all_day';  // franja; los datos anteriores se leen como 'all_day'
   rank: string;               // orden fraccional dentro del proyecto
   completedAt: Timestamp | null;
 }
@@ -489,3 +494,5 @@ Cada fase termina con verificación real (app en ejecución + tests de `core/`),
 | Fase 8 — IndexedDB, manifest + service worker (offline), iconos iOS, zonas seguras, interfaz móvil (barra inferior, botón «+», avisos arriba), arrastre táctil desde el asa | ✅ PC: vista móvil, IndexedDB con migración, offline con el servidor apagado, actualización automática, escritorio sin cambios. iPhone (Safari, red local): interfaz, «+», barra, hojas, arrastre y «Añadir a pantalla de inicio» confirmados por el usuario. Offline en iPhone pendiente de HTTPS (Fase 9) |
 | Fase 9 — Supabase (esquema con RLS, lista blanca, sin DELETE, LWW en servidor), registro desactivado, login email + contraseña (obligatorio en web, opcional en escritorio), sync local-first, indicador de estado; hosting en Cloudflare Pages (`tasky-2dd.pages.dev`, publica solo al subir a `main`) con CSP y cabeceras de seguridad | ✅ Verificado: acceso anónimo denegado, registro cerrado, sync Windows ↔ navegador en ambos sentidos (crear y borrar), web publicada sin errores de CSP. iPhone: instalación, sincronización y modo sin conexión confirmados por el usuario |
 | Integración con Claude (MCP) — Edge Function `tasky-mcp` con 12 herramientas sobre `core/`, OAuth 2.1 de Supabase, página `/oauth/consent` | ✅ 10 tests (servicio y protocolo HTTP); desplegada: sin token → 401 con metadatos OAuth; conector añadido en claude.ai y funcionando (confirmado por el usuario) |
+| Franja horaria, sección «Hoy» y siguiente tarea en las tarjetas — `timeSlot` en core (zod con valor por defecto, sin cambio de versión de esquema), columna `time_slot` en Supabase, `time_slot` en `create_task`/`update_task` y `next_task` en `get_projects` del MCP | ✅ 48 tests; navegador (escritorio y móvil): crear con franja, editar conservándola, reordenar actualiza la siguiente tarea, completadas excluidas de «Hoy» |
+| Orden manual de proyectos en Inicio — `rank` en `Project` (core + columna `rank` en Supabase), mantener pulsado y arrastrar con dnd-kit (ratón y táctil), el MCP devuelve los proyectos en el mismo orden | ✅ 50 tests; navegador: arrastre con ratón y con toque simulado, movimiento en tiempo real, el orden persiste, soltar no abre el proyecto y el clic normal sí |

@@ -116,6 +116,19 @@
   gap: var(--space-3);
 }
 
+.slot {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+}
+.slot svg {
+  width: 13px;
+  height: 13px;
+}
+
 .progressChip {
   padding: 2px 8px;
   border-radius: 999px;
@@ -173,5 +186,8 @@
 @media (max-width: 480px) {
   .meta {
     gap: var(--space-2);
+  }
+  .slotLabel {
+    display: none;
   }
 }
