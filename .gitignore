@@ -28,3 +28,11 @@ dist-ssr
 
 # Servidor MCP: se genera con npm run mcp:build
 supabase/functions/tasky-mcp/dist/
+
+# Entorno local: nunca versionar (usar .env.example como plantilla)
+.env
+.env.*
+!.env.example
+
+# Estado local de la CLI de Supabase
+supabase/.temp/
