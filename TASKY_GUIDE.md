@@ -1,7 +1,7 @@
 # TASKY_GUIDE.md
 
 > Documento de referencia del proyecto. Se consulta antes de cada fase y se actualiza al terminarla.
-> Última actualización: 2026-11-05 — Fases 1–8 completadas: Tasky instalada en Windows y PWA probada en iPhone (red local). Siguiente: Fase 9 (Supabase: privacidad, sync y hosting). Incluye los requisitos de rapidez/atajos/fechas límite y de plataforma Windows + iPhone (PWA) con Supabase.
+> Última actualización: 2026-11-06 — **Fases 1–9 completadas.** Tasky instalada en Windows y publicada como PWA en https://tasky-2dd.pages.dev (iPhone), sincronizada con Supabase, privada y con funcionamiento sin conexión.
 
 ---
 
@@ -332,8 +332,8 @@ Eliminar marca `deletedAt` (en cascada: proyecto → tareas e ideas). Los select
 | Validación zod en la frontera | Los datos remotos se validarán igual que los locales. |
 | UI responsive, drag & drop táctil, `HashRouter`, diálogos que en móvil son hojas | La interfaz móvil parte de los mismos componentes. |
 
-### 7.2 Qué NO se hace todavía
-Hosting, autenticación, Supabase y cola de sync. Nada de esto existe en el código hasta la Fase 9.
+### 7.2 Estado
+Todo lo previsto está implementado (Fases 1–9). Posibles mejoras futuras, no planificadas: Cloudflare Access delante del sitio, Supabase Realtime, LWW por campo.
 
 ### 7.3 Windows — escritorio (Tauri 2)
 Aplicación principal. Instalador propio, icono, buscador de Windows, anclaje a la barra de tareas. Datos en `%APPDATA%\com.tasky.app\tasky.json`. Funciona sin conexión y sin iniciar sesión; si se activa la sync (Fase 9), inicia sesión una vez y guarda la sesión.
@@ -419,7 +419,7 @@ Cada fase termina con verificación real (app en ejecución + tests de `core/`),
 | **6. Acabado UX** ✅ | Splash, pulido de animaciones, feedback, accesibilidad, backups e importación/exportación, revisión general. | Revisión visual y de teclado completa. |
 | **7. Instalación Windows** ✅ | Build del instalador, instalación, buscador de Windows, anclaje, instrucciones paso a paso. | Instalada y anclada en este PC. |
 | **8. Web móvil + PWA** ✅ | Adaptador IndexedDB, manifest, service worker, iconos iOS, interfaz móvil específica (barra inferior, botón «+», hojas, táctil). Probada en local, sin publicar. | Funciona en Safari de iPhone en red local. |
-| **9. Supabase: privacidad + sync + hosting** | Proyecto Supabase, esquema, RLS y lista blanca, registro desactivado, login, sync local-first, hosting estático con HTTPS, instalación en iPhone. | Mismos datos en Windows e iPhone, offline y privado. |
+| **9. Supabase: privacidad + sync + hosting** ✅ | Proyecto Supabase, esquema, RLS y lista blanca, registro desactivado, login, sync local-first, hosting estático con HTTPS, instalación en iPhone. | Mismos datos en Windows e iPhone, offline y privado. |
 
 ---
 
@@ -464,4 +464,4 @@ Cada fase termina con verificación real (app en ejecución + tests de `core/`),
 | Fase 6 — Splash (trazo del sello, ~0,7 s, se omite con «reducir movimiento»), avisos (toasts), copias diarias rotativas, restaurar copia desde la pantalla de error, exportar/importar con confirmación; accesibilidad: contraste de `--text-faint`, flechas en las pestañas, títulos en botones de icono | ✅ Verificado en navegador y tests; compilación Rust correcta |
 | Fase 7 — Instalador NSIS por usuario en español (1,8 MB), instancia única, instrucciones en README | ✅ Instalada en este PC: acceso en el menú Inicio (buscador), entrada en Aplicaciones, datos existentes cargados sin modificar, segunda apertura no crea otra instancia. Anclada a la barra de tareas por el usuario (Windows no permite anclar por programa); el usuario confirmó que se ve bien y que exportar a Descargas funciona. Se abre maximizada |
 | Fase 8 — IndexedDB, manifest + service worker (offline), iconos iOS, zonas seguras, interfaz móvil (barra inferior, botón «+», avisos arriba), arrastre táctil desde el asa | ✅ PC: vista móvil, IndexedDB con migración, offline con el servidor apagado, actualización automática, escritorio sin cambios. iPhone (Safari, red local): interfaz, «+», barra, hojas, arrastre y «Añadir a pantalla de inicio» confirmados por el usuario. Offline en iPhone pendiente de HTTPS (Fase 9) |
-| Fase 9 — Supabase: privacidad + sync + hosting | 🔒 Diseñada (§7.5–7.6) |
+| Fase 9 — Supabase (esquema con RLS, lista blanca, sin DELETE, LWW en servidor), registro desactivado, login email + contraseña (obligatorio en web, opcional en escritorio), sync local-first, indicador de estado; hosting en Cloudflare Pages (`tasky-2dd.pages.dev`, publica solo al subir a `main`) con CSP y cabeceras de seguridad | ✅ Verificado: acceso anónimo denegado, registro cerrado, sync Windows ↔ navegador en ambos sentidos (crear y borrar), web publicada sin errores de CSP. iPhone: instalación, sincronización y modo sin conexión confirmados por el usuario |

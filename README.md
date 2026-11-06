@@ -35,13 +35,25 @@ npm test              # tests
 npm run lint
 ```
 
-## Probar la versión móvil (PWA) en el iPhone
+## iPhone (PWA)
 
-Con el iPhone en la misma Wi-Fi que el PC:
+1. En Safari abre **https://tasky-2dd.pages.dev** → *Compartir → Añadir a pantalla de inicio*.
+2. Abre Tasky desde el icono e inicia sesión con tu cuenta. Funciona también sin conexión.
+
+Cada vez que se sube código a la rama `main` de GitHub, Cloudflare Pages publica la versión nueva sola; la app instalada se actualiza al abrirla.
+
+## Sincronización (Supabase)
+
+- **Escritorio:** icono de nube de la cabecera → *Activar sincronización…* → tu email y contraseña. Sin sesión, Tasky funciona solo en local como siempre.
+- **Web/iPhone:** el acceso es obligatorio. *Cerrar sesión* borra los datos de ese dispositivo (siguen en el servidor).
+- La única cuenta se crea en el panel de Supabase (*Authentication → Users*); el registro público está desactivado y la cuenta debe estar en la lista blanca (ver el final de [supabase/schema.sql](supabase/schema.sql)).
+- Plan gratuito: si el proyecto de Supabase se pausa tras 7 días sin uso, reactívalo desde el panel; mientras tanto Tasky sigue funcionando en local.
+
+## Probar la PWA en red local (desarrollo)
 
 ```bash
 npm run build
 npx vite preview --host --port 4173
 ```
 
-Abre en Safari `http://<IP del PC>:4173` y, si quieres, *Compartir → Añadir a pantalla de inicio*. Por HTTP el modo sin conexión no está disponible en el iPhone (requiere HTTPS, Fase 9).
+Abre en Safari `http://<IP del PC>:4173`. Por HTTP no hay modo sin conexión (requiere HTTPS).
