@@ -8,6 +8,7 @@ import { Logo } from '../components/Logo';
 import { Toaster } from '../components/Toaster';
 import { ShortcutsHelp } from '../shortcuts/ShortcutsHelp';
 import { DataMenu } from './DataMenu';
+import { ModeSwitch } from './ModeSwitch';
 import { SyncButton } from '../sync/SyncButton';
 import { useShortcut } from '../shortcuts/useShortcut';
 import styles from './AppLayout.module.css';
@@ -23,9 +24,12 @@ export function AppLayout() {
     <div className={styles.shell}>
       <header className={styles.header}>
         <div className={styles.inner}>
-          <Link to="/" className={styles.brand} aria-label="Tasky — inicio">
-            <Logo size={34} withWordmark />
-          </Link>
+          <div className={styles.headerStart}>
+            <Link to="/" className={styles.brand} aria-label="Tasky — inicio">
+              <Logo size={34} withWordmark />
+            </Link>
+            <ModeSwitch />
+          </div>
           <div className={styles.headerActions}>
             <Button variant="ghost" icon={<Keyboard />} shortcut="?" className={styles.help} onClick={() => setHelpOpen(true)}>
               Atajos

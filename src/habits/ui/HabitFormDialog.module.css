@@ -1,0 +1,30 @@
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: var(--space-3);
+}
+
+.fixed {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--text);
+}
+.fixed span {
+  color: var(--text-faint);
+}
+
+.hint {
+  margin: 0;
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+.hint strong {
+  color: #d9ccff;
+}
+
+@media (max-width: 480px) {
+  .row {
+    grid-template-columns: 1fr 1fr;
+  }
+}

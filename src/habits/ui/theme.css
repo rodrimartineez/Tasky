@@ -1,0 +1,55 @@
+/*
+ * Identidad visual del modo Hábitos: noche índigo, oro y bordes de píxel.
+ * Solo se aplica mientras el modo está abierto (HabitsApp pone data-mode="habits" en <html>):
+ * así los componentes compartidos (diálogos, botones, campos) adoptan estos colores sin cambiar en Proyectos.
+ */
+:root[data-mode='habits'] {
+  --hb-bg: #0d0b1a;
+  --hb-surface-1: #151229;
+  --hb-surface-2: #1d1938;
+  --hb-surface-3: #282249;
+  --hb-border: #342c5e;
+  --hb-border-strong: #4a3f80;
+  --hb-ink: #07060f;
+  --hb-gold: #f6c945;
+  --hb-gold-deep: #c9901f;
+  --hb-build: #5ee08a;
+  --hb-build-deep: #2c9a56;
+  --hb-reduce: #ff8a5c;
+  --hb-reduce-deep: #c4502a;
+  --hb-flame: #ff9f3a;
+  --hb-gem: #9d7bff;
+  --hb-pixel-font: 'Pixelify Sans', var(--font);
+  /* Borde de píxel: anillo oscuro + luz interior arriba, sombra interior abajo. */
+  --hb-pixel-edge: 0 0 0 2px var(--hb-ink), inset 0 2px 0 rgba(255, 255, 255, 0.06), inset 0 -3px 0 rgba(0, 0, 0, 0.35);
+
+  --bg: var(--hb-bg);
+  --surface-1: var(--hb-surface-1);
+  --surface-2: var(--hb-surface-2);
+  --surface-3: var(--hb-surface-3);
+  --border: var(--hb-border);
+  --border-strong: var(--hb-border-strong);
+  --text: #f1edff;
+  --text-muted: #b3abd6;
+  --text-faint: #8c84b3;
+  --orange-300: #ffe08a;
+  --orange-400: var(--hb-gold);
+  --orange-500: #e8b030;
+  --orange-600: var(--hb-gold-deep);
+  --orange-glow: rgba(246, 201, 69, 0.18);
+  --orange-gradient: linear-gradient(180deg, var(--hb-gold), var(--hb-gold-deep));
+  /* Texto sobre el oro de los botones principales: oscuro, para mantener el contraste. */
+  --on-primary: var(--hb-ink);
+  --radius-sm: 3px;
+  --radius: 5px;
+  --radius-lg: 7px;
+
+  background: var(--hb-bg);
+}
+
+:root[data-mode='habits'] body {
+  background:
+    radial-gradient(1200px 500px at 50% -200px, rgba(157, 123, 255, 0.14), transparent 70%),
+    var(--hb-bg);
+  background-attachment: fixed;
+}

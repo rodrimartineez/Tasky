@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AnimatePresence, MotionConfig } from 'motion/react';
 import { useTasky } from '../../state/store';
@@ -10,6 +10,9 @@ import { LoadError } from './LoadError';
 import { Splash } from './Splash';
 import { HomePage } from '../projects/HomePage';
 import { ProjectPage } from '../projects/ProjectPage';
+
+/** Modo Hábitos: se descarga solo al entrar en él (Proyectos no carga nada del juego). */
+const HabitsApp = lazy(() => import('../../habits/ui/HabitsApp'));
 
 /** Autorización OAuth de asistentes (Claude): ruta real, fuera del enrutado por # de la app. */
 const isConsentRoute = () => window.location.pathname.replace(/\/$/, '') === '/oauth/consent';
@@ -38,6 +41,14 @@ export function App() {
               <Route path="project/:projectId" element={<ProjectPage />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Route>
+            <Route
+              path="habits/*"
+              element={
+                <Suspense fallback={null}>
+                  <HabitsApp />
+                </Suspense>
+              }
+            />
           </Routes>
         </HashRouter>
       )}

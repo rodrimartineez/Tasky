@@ -31,6 +31,13 @@
   justify-content: space-between;
 }
 
+.headerStart {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
 .headerActions {
   display: flex;
   align-items: center;
@@ -70,7 +77,17 @@
   padding-bottom: var(--space-7);
 }
 
+/* Móvil estrecho: el selector de modo necesita el sitio de la palabra «tasky» (queda el sello). */
+@media (max-width: 440px) {
+  .brand > span > span {
+    display: none;
+  }
+}
+
 @media (max-width: 640px) {
+  .headerStart {
+    gap: var(--space-3);
+  }
   .inner,
   .main {
     padding-left: var(--space-4);

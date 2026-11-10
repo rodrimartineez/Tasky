@@ -49,6 +49,12 @@ Cada vez que se sube código a la rama `main` de GitHub, Cloudflare Pages public
 - La única cuenta se crea en el panel de Supabase (*Authentication → Users*); el registro público está desactivado y la cuenta debe estar en la lista blanca (ver el final de [supabase/schema.sql](supabase/schema.sql)).
 - Plan gratuito: si el proyecto de Supabase se pausa tras 7 días sin uso, reactívalo desde el panel; mientras tanto Tasky sigue funcionando en local.
 
+## Modo Hábitos
+
+Selector *Proyectos · Hábitos* en la cabecera. Diseño y estado: [HABITS_GUIDE.md](HABITS_GUIDE.md).
+- Datos propios: `%APPDATA%\com.tasky.app\habits.json` en escritorio (IndexedDB en web), independientes de `tasky.json`.
+- Para sincronizarlos, vuelve a ejecutar [supabase/schema.sql](supabase/schema.sql) en el SQL Editor de Supabase (es idempotente: añade las tablas de Hábitos sin tocar las de Proyectos).
+
 ## Claude (conector MCP)
 
 Gestiona Tasky hablando con Claude (claude.ai o la app del iPhone, con el ordenador apagado). Detalles en la guía, §7.7.

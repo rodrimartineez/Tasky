@@ -157,3 +157,95 @@ begin
   end loop;
 end;
 $$;
+
+-- ══ Modo Hábitos (HABITS_GUIDE.md §4 y §6) ═════════════════════════════════════════════════════
+-- Tablas independientes de las de Proyectos (el servidor MCP no las usa). Mismas reglas: RLS + lista blanca,
+-- sin DELETE, cursor server_seq y avisos por Realtime.
+--   · habit_profile y habits: última escritura gana (mismo trigger que projects/tasks/ideas).
+--   · habit_logs y habit_ledger: inmutables. Solo INSERT (ni siquiera UPDATE): un asiento repetido
+--     (mismo id determinista, p. ej. 'reward:<hábito>:<periodo>') se ignora, así nunca cuenta dos veces.
+
+create table if not exists public.habit_profile (
+  user_id     uuid primary key default auth.uid() references auth.users (id) on delete cascade,
+  time_zone   text not null check (length(time_zone) > 0),
+  started_on  date not null,
+  created_at  timestamptz not null,
+  updated_at  timestamptz not null,
+  deleted_at  timestamptz,
+  server_seq  bigint not null default nextval('public.tasky_change_seq')
+);
+
+create table if not exists public.habits (
+  id          uuid primary key,
+  user_id     uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  name        text not null check (length(name) > 0),
+  kind        text not null check (kind in ('build', 'reduce')),
+  period      text not null check (period in ('daily', 'weekly')),
+  unit        text not null default '',
+  step        numeric not null check (step > 0),
+  targets     jsonb not null,
+  archived_at timestamptz,
+  created_at  timestamptz not null,
+  updated_at  timestamptz not null,
+  deleted_at  timestamptz,
+  server_seq  bigint not null default nextval('public.tasky_change_seq')
+);
+
+create table if not exists public.habit_logs (
+  id          uuid primary key,
+  user_id     uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  habit_id    uuid not null,
+  period      text not null check (period ~ '^W?\d{4}-\d{2}-\d{2}$'),
+  delta       numeric not null,
+  created_at  timestamptz not null,
+  server_seq  bigint not null default nextval('public.tasky_change_seq')
+);
+
+create table if not exists public.habit_ledger (
+  id          text primary key,
+  user_id     uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  kind        text not null check (kind in ('habit_reward')),
+  points      integer not null default 0,
+  gold        integer not null default 0,
+  habit_id    uuid,
+  period      text,
+  created_at  timestamptz not null,
+  server_seq  bigint not null default nextval('public.tasky_change_seq')
+);
+
+do $$
+declare t text;
+begin
+  foreach t in array array['habit_profile', 'habits', 'habit_logs', 'habit_ledger'] loop
+    -- El trigger asigna server_seq en cada escritura (y en las tablas LWW ignora versiones antiguas).
+    execute format('drop trigger if exists tasky_before_write on public.%I', t);
+    execute format('create trigger tasky_before_write before insert or update on public.%I
+                    for each row execute function public.tasky_before_write()', t);
+    execute format('create index if not exists %I on public.%I (user_id, server_seq)', t || '_user_seq_idx', t);
+
+    execute format('alter table public.%I enable row level security', t);
+    execute format('alter table public.%I force row level security', t);
+    execute format('revoke all on public.%I from anon, authenticated', t);
+    execute format('drop policy if exists tasky_select on public.%I', t);
+    execute format('drop policy if exists tasky_insert on public.%I', t);
+    execute format('drop policy if exists tasky_update on public.%I', t);
+    execute format('create policy tasky_select on public.%I for select to authenticated
+                    using (user_id = (select auth.uid()) and (select private.is_allowed()))', t);
+    execute format('create policy tasky_insert on public.%I for insert to authenticated
+                    with check (user_id = (select auth.uid()) and (select private.is_allowed()))', t);
+
+    if t in ('habit_profile', 'habits') then
+      execute format('grant select, insert, update on public.%I to authenticated', t);
+      execute format('create policy tasky_update on public.%I for update to authenticated
+                      using (user_id = (select auth.uid()) and (select private.is_allowed()))
+                      with check (user_id = (select auth.uid()) and (select private.is_allowed()))', t);
+    else
+      execute format('grant select, insert on public.%I to authenticated', t);
+    end if;
+
+    if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t) then
+      execute format('alter publication supabase_realtime add table public.%I', t);
+    end if;
+  end loop;
+end;
+$$;

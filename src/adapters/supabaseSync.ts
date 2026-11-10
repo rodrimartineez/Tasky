@@ -1,8 +1,12 @@
 import { createClient, type Session } from '@supabase/supabase-js';
 import type { SyncBackend, SyncSession } from '../core/ports';
-import { fail, pullRecords, pushRecords, TABLES } from './supabaseRows';
+import { fail, pullRecords, pushRecords, TABLES, type SupabaseLike } from './supabaseRows';
 
 const AUTH_KEY = 'tasky-auth';
+
+/** Cliente (y sesión) compartido con la sincronización del modo Hábitos. */
+let sharedClient: SupabaseLike | null = null;
+export const getSupabaseClient = () => sharedClient;
 
 const toSession = (s: Session | null): SyncSession | null => (s?.user ? { email: s.user.email ?? '' } : null);
 
@@ -10,6 +14,7 @@ export function createSupabaseSync(url: string, key: string): SyncBackend {
   const client = createClient(url, key, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storageKey: AUTH_KEY },
   });
+  sharedClient = client;
 
   return {
     async getSession() {
