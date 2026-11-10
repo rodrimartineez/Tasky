@@ -26,6 +26,7 @@
   --danger: #f87171;
   --status-active: var(--orange-400);
   --status-on-hold: #8b8b94;
+  --status-upcoming: #60a5fa;
   --status-done: var(--success);
 
   /* Tipografía */

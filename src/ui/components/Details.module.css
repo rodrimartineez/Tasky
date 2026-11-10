@@ -1,0 +1,52 @@
+/* Vista de detalle (tareas, ideas): pares etiqueta / valor. */
+.description {
+  color: var(--text);
+  font-size: var(--fs-sm);
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.list {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 10px var(--space-4);
+  margin: 0;
+  font-size: var(--fs-sm);
+}
+
+.term {
+  color: var(--text-faint);
+  font-size: var(--fs-xs);
+  font-weight: 550;
+  line-height: 20px;
+}
+
+.value {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  color: var(--text);
+  line-height: 20px;
+}
+.value svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.muted {
+  color: var(--text-faint);
+}
+
+.dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--project);
+}

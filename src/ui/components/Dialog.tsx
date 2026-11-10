@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion, useIsPresent } from 'motion/react';
 import { useOverlay } from '../shortcuts/overlays';
@@ -41,10 +41,58 @@ export function Dialog({ open, onClose, title, description, children, footer }: 
   );
 }
 
+const EDITABLE = 'input, textarea, select, [contenteditable="true"]';
+
+/**
+ * Hoja inferior con teclado en pantalla (sobre todo iOS / PWA): el teclado no reduce la ventana,
+ * solo el área visible (visualViewport). La hoja se ajusta a esa área para quedar justo encima del teclado,
+ * su contenido se desplaza por dentro y el campo con el foco se mantiene siempre a la vista.
+ */
+function useKeyboardAwareSheet(enabled: boolean, rootRef: RefObject<HTMLDivElement | null>, panelRef: RefObject<HTMLDivElement | null>) {
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    const root = rootRef.current;
+    if (!enabled || !viewport || !root) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    const revealFocused = () => {
+      const el = document.activeElement;
+      if (el instanceof HTMLElement && panelRef.current?.contains(el) && el.matches(EDITABLE)) {
+        el.scrollIntoView({ block: 'nearest' });
+      }
+    };
+    const fit = () => {
+      root.style.top = `${viewport.offsetTop}px`;
+      root.style.height = `${viewport.height}px`;
+      revealFocused();
+    };
+    // Al cambiar de campo con el teclado ya abierto no cambia el área visible: basta con desplazar el contenido.
+    // Al abrirse el teclado, el área visible cambia algo después: se vuelve a ajustar cuando termina.
+    const onFocusIn = () => {
+      clearTimeout(timer);
+      timer = setTimeout(fit, 300);
+      requestAnimationFrame(revealFocused);
+    };
+
+    fit();
+    viewport.addEventListener('resize', fit);
+    viewport.addEventListener('scroll', fit);
+    root.addEventListener('focusin', onFocusIn);
+    return () => {
+      clearTimeout(timer);
+      viewport.removeEventListener('resize', fit);
+      viewport.removeEventListener('scroll', fit);
+      root.removeEventListener('focusin', onFocusIn);
+    };
+  }, [enabled, rootRef, panelRef]);
+}
+
 function DialogPanel({ onClose, title, description, children, footer }: Omit<DialogProps, 'open'>) {
+  const rootRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
   const sheet = isSheet();
+  useKeyboardAwareSheet(sheet, rootRef, panelRef);
 
   // Mientras se anima su salida, el diálogo ya está cerrado a todos los efectos: inerte, sin Esc
   // y con el foco devuelto. Así una tecla pulsada justo después de cerrar nunca le llega.
@@ -104,7 +152,7 @@ function DialogPanel({ onClose, title, description, children, footer }: Omit<Dia
   };
 
   return (
-    <div className={styles.root} onKeyDown={onKeyDown} inert={!isPresent}>
+    <div ref={rootRef} className={`${styles.root} ${sheet ? styles.sheetRoot : ''}`} onKeyDown={onKeyDown} inert={!isPresent}>
       <motion.div
         className={styles.backdrop}
         onClick={onClose}

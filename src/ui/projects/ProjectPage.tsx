@@ -3,20 +3,23 @@ import { createPortal } from 'react-dom';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { ArrowLeft, Ellipsis, Lightbulb, ListTodo, Pencil, Plus, Trash2 } from 'lucide-react';
-import type { Idea, ProjectStatus, Task } from '../../core/model';
+import type { Idea, Task } from '../../core/model';
 import { countProjectItems, findProject } from '../../core/selectors';
 import { useTasky } from '../../state/store';
 import { Button } from '../components/Button';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { Fab } from '../components/Fab';
+import { toast } from '../components/Toaster';
 import { Kbd } from '../components/Kbd';
 import { Menu } from '../components/Menu';
-import { Segmented, type SegmentedOption } from '../components/Segmented';
-import { PROJECT_STATUS_LABEL } from '../components/StatusBadge';
+import { Segmented } from '../components/Segmented';
+import { PROJECT_STATUS_OPTIONS } from '../components/StatusBadge';
 import { MOBILE_QUERY, useMediaQuery } from '../components/useMediaQuery';
 import { useShortcut } from '../shortcuts/useShortcut';
+import { IdeaDetailDialog } from '../ideas/IdeaDetailDialog';
 import { IdeaFormDialog } from '../ideas/IdeaFormDialog';
 import { IdeaGrid } from '../ideas/IdeaGrid';
+import { TaskDetailDialog } from '../tasks/TaskDetailDialog';
 import { TaskFormDialog } from '../tasks/TaskFormDialog';
 import { TaskList } from '../tasks/TaskList';
 import { ProjectFormDialog } from './ProjectFormDialog';
@@ -24,18 +27,14 @@ import styles from './ProjectPage.module.css';
 
 type Tab = 'tasks' | 'ideas';
 
-const STATUS_OPTIONS: SegmentedOption<ProjectStatus>[] = [
-  { value: 'active', label: PROJECT_STATUS_LABEL.active, color: 'var(--status-active)' },
-  { value: 'on_hold', label: PROJECT_STATUS_LABEL.on_hold, color: 'var(--status-on-hold)' },
-  { value: 'done', label: PROJECT_STATUS_LABEL.done, color: 'var(--status-done)' },
-];
-
 export function ProjectPage() {
   const { projectId = '' } = useParams();
   const navigate = useNavigate();
   const data = useTasky((s) => s.data);
   const updateProject = useTasky((s) => s.updateProject);
   const deleteProject = useTasky((s) => s.deleteProject);
+  const deleteTask = useTasky((s) => s.deleteTask);
+  const deleteIdea = useTasky((s) => s.deleteIdea);
   const isMobile = useMediaQuery(MOBILE_QUERY);
   const [tab, setTab] = useState<Tab>('tasks');
   const [editing, setEditing] = useState(false);
@@ -55,10 +54,48 @@ export function ProjectPage() {
   };
   useShortcut('t', newTask);
   useShortcut('i', newIdea);
+  // Detalle: se guarda el id para mostrar siempre la versión actual (también si cambia en otro dispositivo).
+  const [taskDetailId, setTaskDetailId] = useState<string | null>(null);
+  const [ideaDetailId, setIdeaDetailId] = useState<string | null>(null);
+  /** Confirmación de borrado desde el menú «···». */
+  const [pendingDelete, setPendingDelete] = useState<{ title: string; description: string; confirmLabel: string; run: () => void } | null>(
+    null,
+  );
 
   const project = findProject(data, projectId);
   if (!project) return <Navigate to="/" replace />;
   const counts = countProjectItems(data, project.id);
+  const detailTask = data.tasks.find((t) => t.id === taskDetailId && !t.deletedAt);
+  const detailIdea = data.ideas.find((i) => i.id === ideaDetailId && !i.deletedAt);
+
+  const editTask = (task: Task) => {
+    setTaskDetailId(null);
+    setTaskDialog({ task });
+  };
+  const editIdea = (idea: Idea) => {
+    setIdeaDetailId(null);
+    setIdeaDialog({ idea });
+  };
+  const confirmDeleteTask = (task: Task) =>
+    setPendingDelete({
+      title: '¿Eliminar esta tarea?',
+      description: `«${task.title}» se eliminará definitivamente.`,
+      confirmLabel: 'Eliminar tarea',
+      run: () => {
+        deleteTask(task.id);
+        toast('Tarea eliminada.');
+      },
+    });
+  const confirmDeleteIdea = (idea: Idea) =>
+    setPendingDelete({
+      title: '¿Eliminar esta idea?',
+      description: `«${idea.title}» se eliminará definitivamente.`,
+      confirmLabel: 'Eliminar idea',
+      run: () => {
+        deleteIdea(idea.id);
+        toast('Idea eliminada.');
+      },
+    });
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode; count: number }[] = [
     { id: 'tasks', label: 'Tareas', icon: <ListTodo />, count: counts.tasks },
@@ -105,7 +142,7 @@ export function ProjectPage() {
           <Segmented
             label="Estado del proyecto"
             value={project.status}
-            options={STATUS_OPTIONS}
+            options={PROJECT_STATUS_OPTIONS}
             onChange={(status) => updateProject(project.id, { status })}
           />
           <Menu
@@ -146,14 +183,39 @@ export function ProjectPage() {
 
       <div role="tabpanel">
         {tab === 'tasks' ? (
-          <TaskList projectId={project.id} onCreate={newTask} onOpen={(task) => setTaskDialog({ task })} />
+          <TaskList
+            projectId={project.id}
+            onCreate={newTask}
+            onOpen={(task) => setTaskDetailId(task.id)}
+            onEdit={editTask}
+            onDelete={confirmDeleteTask}
+          />
         ) : (
-          <IdeaGrid projectId={project.id} onCreate={newIdea} onOpen={(idea) => setIdeaDialog({ idea })} />
+          <IdeaGrid
+            projectId={project.id}
+            onCreate={newIdea}
+            onOpen={(idea) => setIdeaDetailId(idea.id)}
+            onEdit={editIdea}
+            onDelete={confirmDeleteIdea}
+          />
         )}
       </div>
 
       {isMobile && <Fab aboveBar label={tab === 'tasks' ? 'Nueva tarea' : 'Nueva idea'} onClick={tab === 'tasks' ? newTask : newIdea} />}
 
+      <TaskDetailDialog task={detailTask} project={project} onClose={() => setTaskDetailId(null)} onEdit={editTask} />
+      <IdeaDetailDialog idea={detailIdea} project={project} onClose={() => setIdeaDetailId(null)} onEdit={editIdea} />
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title={pendingDelete?.title ?? ''}
+        description={pendingDelete?.description ?? ''}
+        confirmLabel={pendingDelete?.confirmLabel ?? ''}
+        onClose={() => setPendingDelete(null)}
+        onConfirm={() => {
+          pendingDelete?.run();
+          setPendingDelete(null);
+        }}
+      />
       <TaskFormDialog
         open={taskDialog !== null}
         onClose={() => setTaskDialog(null)}

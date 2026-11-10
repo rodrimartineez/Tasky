@@ -38,7 +38,7 @@ create table if not exists public.projects (
   user_id     uuid not null default auth.uid() references auth.users (id) on delete cascade,
   name        text not null check (length(name) > 0),
   description text not null default '',
-  status      text not null check (status in ('active', 'on_hold', 'done')),
+  status      text not null check (status in ('active', 'on_hold', 'upcoming', 'done')),
   rank        text,
   created_at  timestamptz not null,
   updated_at  timestamptz not null,
@@ -55,6 +55,8 @@ create table if not exists public.tasks (
   status       text not null check (status in ('todo', 'in_progress', 'done')),
   due_date     date,
   time_slot    text not null default 'all_day' check (time_slot in ('morning', 'afternoon', 'evening', 'all_day')),
+  scheduled_days date[] not null default '{}',
+  repeat_weekly  boolean not null default false,
   rank         text not null,
   completed_at timestamptz,
   created_at   timestamptz not null,
@@ -80,6 +82,11 @@ create table if not exists public.ideas (
 alter table public.projects add column if not exists rank text;
 alter table public.tasks add column if not exists time_slot text not null default 'all_day'
   check (time_slot in ('morning', 'afternoon', 'evening', 'all_day'));
+-- Programación de tareas (días y repetición semanal) y estado «Próximos» de proyectos.
+alter table public.tasks add column if not exists scheduled_days date[] not null default '{}';
+alter table public.tasks add column if not exists repeat_weekly boolean not null default false;
+alter table public.projects drop constraint if exists projects_status_check;
+alter table public.projects add constraint projects_status_check check (status in ('active', 'on_hold', 'upcoming', 'done'));
 
 -- ── Trigger: última escritura gana + nuevo número de cambio en cada escritura ──────────────────
 create or replace function public.tasky_before_write()

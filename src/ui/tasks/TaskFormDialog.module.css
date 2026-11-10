@@ -1,4 +1,38 @@
-.dateRow {
+/* Bloques «Programación» y «Fecha límite»: separados visualmente para no confundirlos. */
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.legend {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  width: 100%;
+  /* La leyenda va dentro del bloque, no sobre el borde. */
+  float: left;
+  color: var(--text);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.legend + * {
+  clear: both;
+}
+.legend > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-xs);
+}
+
+.chips {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -47,12 +81,129 @@
   color: var(--orange-300);
 }
 
+.removable {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding-right: 8px;
+}
+.removable svg {
+  width: 13px;
+  height: 13px;
+  opacity: 0.7;
+}
+
+/* «Elegir día»: abre el calendario nativo (iOS incluido) */
+.pickDay {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 999px;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  font-weight: 550;
+  cursor: pointer;
+  transition:
+    border-color var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease);
+}
+.pickDay:hover,
+.pickDay:focus-within {
+  border-color: var(--orange-500);
+  color: var(--orange-300);
+}
+.pickDay svg {
+  width: 14px;
+  height: 14px;
+}
+.pickInput {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  /* iOS no amplía la página al enfocarlo */
+  font-size: 16px;
+}
+
+/* Interruptor «Repetir cada semana» */
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  cursor: pointer;
+}
+.toggleDisabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.toggleInput {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+
+.switch {
+  position: relative;
+  flex: none;
+  width: 36px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  border: 1px solid var(--border-strong);
+  transition: background var(--dur-fast) var(--ease);
+}
+.switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  transition:
+    transform var(--dur-fast) var(--ease),
+    background var(--dur-fast) var(--ease);
+}
+.toggleInput:checked + .switch {
+  background: var(--orange-500);
+  border-color: var(--orange-500);
+}
+.toggleInput:checked + .switch::after {
+  transform: translateX(16px);
+  background: #fff;
+}
+.toggleInput:focus-visible + .switch {
+  box-shadow: 0 0 0 3px var(--orange-glow);
+}
+
+.toggleText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--text);
+  font-size: var(--fs-sm);
+}
+.toggleText > span {
+  font-size: var(--fs-xs);
+}
+
 @media (pointer: coarse) {
   .date {
     height: 40px;
     font-size: 16px;
   }
-  .chip {
+  .chip,
+  .pickDay {
     height: 36px;
   }
 }

@@ -191,3 +191,20 @@ describe('gestión de proyectos de principio a fin (Claude Code)', () => {
     expect(state.ideas).toHaveLength(1);
   });
 });
+
+describe('programación y estado «próximo»', () => {
+  it('crea y modifica la programación de una tarea, independiente de la fecha límite', async () => {
+    const { service } = setup();
+    const { created } = await service.createTask('wynot', { title: 'Gimnasio', scheduledDays: ['2026-11-11', '2026-11-09'], repeatWeekly: true });
+    expect(created).toMatchObject({ scheduled_days: ['2026-11-09', '2026-11-11'], repeat_weekly: true, due_date: null });
+    const { updated } = await service.updateTask(created!.id, { dueDate: '2026-11-30' });
+    expect(updated).toMatchObject({ scheduled_days: ['2026-11-09', '2026-11-11'], repeat_weekly: true, due_date: '2026-11-30' });
+    expect((await service.updateTask(created!.id, { scheduledDays: [] })).updated).toMatchObject({ scheduled_days: [], repeat_weekly: false });
+  });
+
+  it('acepta el estado próximo en proyectos', async () => {
+    const { service } = setup();
+    expect((await service.createProject({ name: 'Más adelante', status: 'upcoming' })).created).toMatchObject({ status: 'próximo' });
+    expect((await service.getProjects()).projects.find((p) => p.name === 'Más adelante')).toMatchObject({ status: 'próximo' });
+  });
+});

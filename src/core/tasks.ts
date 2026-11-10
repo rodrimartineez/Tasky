@@ -7,6 +7,9 @@ export interface TaskInput {
   dueDate: LocalDate | null;
   /** Por defecto, «Día completo». */
   timeSlot?: TimeSlot;
+  /** Por defecto, sin programar. */
+  scheduledDays?: LocalDate[];
+  repeatWeekly?: boolean;
 }
 
 export interface TaskPatch {
@@ -14,8 +17,18 @@ export interface TaskPatch {
   description?: string;
   dueDate?: LocalDate | null;
   timeSlot?: TimeSlot;
+  scheduledDays?: LocalDate[];
+  repeatWeekly?: boolean;
   status?: TaskStatus;
 }
+
+/** Días ordenados y sin repetir; sin días no hay nada que repetir. */
+function cleanSchedule(days: LocalDate[], repeatWeekly: boolean): { scheduledDays: LocalDate[]; repeatWeekly: boolean } {
+  const scheduledDays = [...new Set(days)].sort();
+  return { scheduledDays, repeatWeekly: repeatWeekly && scheduledDays.length > 0 };
+}
+
+const sameDays = (a: LocalDate[], b: LocalDate[]) => a.length === b.length && a.every((d, i) => d === b[i]);
 
 function cleanTitle(title: string): string {
   const trimmed = title.trim();
@@ -37,6 +50,7 @@ export function createTask(data: TaskyData, projectId: string, input: TaskInput,
     status: 'todo',
     dueDate: input.dueDate,
     timeSlot: input.timeSlot ?? 'all_day',
+    ...cleanSchedule(input.scheduledDays ?? [], input.repeatWeekly ?? false),
     rank: rankBetween(last?.rank ?? null, null),
     completedAt: null,
     createdAt: now,
@@ -59,6 +73,7 @@ export function updateTask(data: TaskyData, id: string, patch: TaskPatch, now: T
         description: patch.description !== undefined ? patch.description.trim() : t.description,
         dueDate: patch.dueDate !== undefined ? patch.dueDate : t.dueDate,
         timeSlot: patch.timeSlot ?? t.timeSlot,
+        ...cleanSchedule(patch.scheduledDays ?? t.scheduledDays, patch.repeatWeekly ?? t.repeatWeekly),
         status,
         completedAt: status === 'done' ? (t.status === 'done' ? t.completedAt : now) : null,
       };
@@ -67,6 +82,8 @@ export function updateTask(data: TaskyData, id: string, patch: TaskPatch, now: T
         next.description !== t.description ||
         next.dueDate !== t.dueDate ||
         next.timeSlot !== t.timeSlot ||
+        !sameDays(next.scheduledDays, t.scheduledDays) ||
+        next.repeatWeekly !== t.repeatWeekly ||
         next.status !== t.status;
       return changed ? { ...next, updatedAt: now } : t;
     }),

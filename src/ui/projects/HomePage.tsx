@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { Archive, ChevronRight, FolderKanban, Hourglass, Plus } from 'lucide-react';
+import { Archive, ChevronRight, FolderKanban, Hourglass, Plus, Telescope } from 'lucide-react';
 import type { ProjectStatus } from '../../core/model';
 import { today } from '../../core/clock';
 import { projectSummariesByStatus, todayTasks } from '../../core/selectors';
@@ -15,6 +15,7 @@ import { ProjectFormDialog } from './ProjectFormDialog';
 import { TodaySection } from './TodaySection';
 import styles from './HomePage.module.css';
 
+/** Orden fijo de las secciones de Inicio. */
 const SECTIONS: { status: ProjectStatus; title: string; emptyIcon: ReactNode; emptyTitle: string; emptyText?: string }[] = [
   {
     status: 'active',
@@ -28,6 +29,13 @@ const SECTIONS: { status: ProjectStatus; title: string; emptyIcon: ReactNode; em
     title: 'En espera',
     emptyIcon: <Hourglass />,
     emptyTitle: 'Nada en espera',
+    emptyText: 'Aquí aparecerán los proyectos que hayas pausado.',
+  },
+  {
+    status: 'upcoming',
+    title: 'Próximos',
+    emptyIcon: <Telescope />,
+    emptyTitle: 'Nada previsto',
     emptyText: 'Aquí aparecerán los proyectos que quieras empezar más adelante.',
   },
   { status: 'done', title: 'Finalizados', emptyIcon: <Archive />, emptyTitle: 'Aún no has finalizado ningún proyecto' },
@@ -47,9 +55,9 @@ function readCollapsed(): ProjectStatus[] {
 
 function useCollapsedSections() {
   const [collapsed, setCollapsed] = useState(readCollapsed);
-  const toggle = (status: ProjectStatus) =>
+  const toggle = (key: ProjectStatus) =>
     setCollapsed((current) => {
-      const next = current.includes(status) ? current.filter((s) => s !== status) : [...current, status];
+      const next = current.includes(key) ? current.filter((s) => s !== key) : [...current, key];
       try {
         localStorage.setItem(COLLAPSED_KEY, JSON.stringify(next));
       } catch {
@@ -58,9 +66,63 @@ function useCollapsedSections() {
       return next;
     });
   return {
-    isCollapsed: (status: ProjectStatus) => collapsed.includes(status),
+    isCollapsed: (key: ProjectStatus) => collapsed.includes(key),
     toggle,
   };
+}
+
+interface CollapsibleSectionProps {
+  id: ProjectStatus;
+  title: string;
+  count: number;
+  collapsed: boolean;
+  onToggle: () => void;
+  children: ReactNode;
+}
+
+function CollapsibleSection({ id, title, count, collapsed, onToggle, children }: CollapsibleSectionProps) {
+  const bodyId = `section-body-${id}`;
+  return (
+    <section className={`${styles.section} ${styles.collapsible}`} aria-labelledby={`section-${id}`}>
+      <h2 id={`section-${id}`} className={styles.sectionHeading}>
+        <button
+          type="button"
+          className={styles.sectionToggle}
+          aria-expanded={!collapsed}
+          aria-controls={bodyId}
+          title={collapsed ? 'Mostrar sección' : 'Plegar sección'}
+          onClick={onToggle}
+        >
+          <motion.span className={styles.chevron} animate={{ rotate: collapsed ? 0 : 90 }} transition={{ duration: 0.15 }}>
+            <ChevronRight />
+          </motion.span>
+          <span className={`${styles.sectionDot} ${styles[id]}`} />
+          <span className={styles.sectionTitle}>{title}</span>
+          <span className={styles.sectionCount}>{count}</span>
+        </button>
+      </h2>
+
+      <AnimatePresence initial={false}>
+        {!collapsed && (
+          <motion.div
+            id={bodyId}
+            className={styles.sectionBody}
+            // Recortado solo mientras se pliega o despliega: abierto, las tarjetas pueden sobresalir al pasar el ratón o arrastrarlas.
+            initial={{ height: 0, opacity: 0, overflow: 'hidden' }}
+            animate={{
+              height: 'auto',
+              opacity: 1,
+              transitionEnd: { overflow: 'visible' },
+            }}
+            exit={{ height: 0, opacity: 0, overflow: 'hidden' }}
+            transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
+          >
+            {children}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </section>
+  );
 }
 
 export function HomePage() {
@@ -102,74 +164,44 @@ export function HomePage() {
         )}
       </div>
 
-      {!isEmpty && <TodaySection groups={todayGroups} />}
+      {/* «Hoy» solo existe si hay algo para hoy. */}
+      {todayGroups.length > 0 && <TodaySection groups={todayGroups} />}
 
       {sections.map((section) => {
         const featured = section.status === 'active';
         // Sin proyectos, solo se muestra la sección principal para no llenar la pantalla de vacíos.
         if (isEmpty && !featured) return null;
-        const collapsed = isCollapsed(section.status);
-        const bodyId = `section-body-${section.status}`;
         return (
-          <section key={section.status} className={`${styles.section} ${styles.collapsible}`} aria-labelledby={`section-${section.status}`}>
-            <h2 id={`section-${section.status}`} className={styles.sectionHeading}>
-              <button
-                type="button"
-                className={styles.sectionToggle}
-                aria-expanded={!collapsed}
-                aria-controls={bodyId}
-                title={collapsed ? 'Mostrar sección' : 'Plegar sección'}
-                onClick={() => toggle(section.status)}
-              >
-                <motion.span className={styles.chevron} animate={{ rotate: collapsed ? 0 : 90 }} transition={{ duration: 0.15 }}>
-                  <ChevronRight />
-                </motion.span>
-                <span className={`${styles.sectionDot} ${styles[section.status]}`} />
-                <span className={styles.sectionTitle}>{section.title}</span>
-                <span className={styles.sectionCount}>{section.summaries.length}</span>
-              </button>
-            </h2>
-
-            <AnimatePresence initial={false}>
-              {!collapsed && (
-                <motion.div
-                  id={bodyId}
-                  className={styles.sectionBody}
-                  // Recortado solo mientras se pliega o despliega: abierto, las tarjetas pueden sobresalir al pasar el ratón o arrastrarlas.
-                  initial={{ height: 0, opacity: 0, overflow: 'hidden' }}
-                  animate={{
-                    height: 'auto',
-                    opacity: 1,
-                    transitionEnd: { overflow: 'visible' },
-                  }}
-                  exit={{ height: 0, opacity: 0, overflow: 'hidden' }}
-                  transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
-                >
-                  {section.summaries.length === 0 ? (
-                    <EmptyState
-                      compact={!featured}
-                      icon={section.emptyIcon}
-                      title={section.emptyTitle}
-                      description={section.emptyText}
-                      action={
-                        featured && (
-                          <Button icon={<Plus />} shortcut="P" onClick={() => setCreating(true)}>
-                            Nuevo proyecto
-                          </Button>
-                        )
-                      }
-                    />
-                  ) : (
-                    <ProjectGrid
-                      summaries={section.summaries}
-                      variant={featured ? 'featured' : 'compact'}
-                      className={featured ? styles.gridFeatured : styles.gridCompact}
-                    />
-                  )}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </section>
+          <CollapsibleSection
+            key={section.status}
+            id={section.status}
+            title={section.title}
+            count={section.summaries.length}
+            collapsed={isCollapsed(section.status)}
+            onToggle={() => toggle(section.status)}
+          >
+            {section.summaries.length === 0 ? (
+              <EmptyState
+                compact={!featured}
+                icon={section.emptyIcon}
+                title={section.emptyTitle}
+                description={section.emptyText}
+                action={
+                  featured && (
+                    <Button icon={<Plus />} shortcut="P" onClick={() => setCreating(true)}>
+                      Nuevo proyecto
+                    </Button>
+                  )
+                }
+              />
+            ) : (
+              <ProjectGrid
+                summaries={section.summaries}
+                variant={featured ? 'featured' : 'compact'}
+                className={featured ? styles.gridFeatured : styles.gridCompact}
+              />
+            )}
+          </CollapsibleSection>
         );
       })}
 

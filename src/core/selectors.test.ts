@@ -9,7 +9,7 @@ const project = (id: string, status: Project['status'], updatedAt: string, delet
 });
 
 const task = (id: string, projectId: string, status: Task['status'], deletedAt: string | null = null): Task => ({
-  ...base, id, projectId, title: id, description: '', status, dueDate: null, timeSlot: 'all_day', rank: 'a0', completedAt: null,
+  ...base, id, projectId, title: id, description: '', status, dueDate: null, timeSlot: 'all_day', scheduledDays: [], repeatWeekly: false, rank: 'a0', completedAt: null,
   updatedAt: base.createdAt, deletedAt,
 });
 

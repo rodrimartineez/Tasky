@@ -4,6 +4,8 @@ import { rankBetween, ranksFor } from './rank';
 export interface ProjectInput {
   name: string;
   description: string;
+  /** Por defecto, activo. */
+  status?: ProjectStatus;
 }
 
 export interface ProjectPatch {
@@ -35,7 +37,7 @@ export function createProject(data: TaskyData, input: ProjectInput, id: string, 
     id,
     name: cleanName(input.name),
     description: input.description.trim(),
-    status: 'active',
+    status: input.status ?? 'active',
     rank: rankBetween(null, first),
     createdAt: now,
     updatedAt: now,

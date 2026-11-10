@@ -14,18 +14,16 @@ import { SortableContext, arrayMove, sortableKeyboardCoordinates, verticalListSo
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { ChevronRight, CircleCheckBig, ListTodo, Plus } from 'lucide-react';
 import { today as getToday } from '../../core/clock';
-import type { Task } from '../../core/model';
 import { projectTasks } from '../../core/selectors';
 import { useTasky } from '../../state/store';
 import { Button } from '../components/Button';
 import { EmptyState } from '../components/EmptyState';
-import { DoneTaskItem, SortableTaskItem } from './TaskItem';
+import { DoneTaskItem, SortableTaskItem, type TaskActions } from './TaskItem';
 import styles from './TaskList.module.css';
 
-interface TaskListProps {
+interface TaskListProps extends TaskActions {
   projectId: string;
   onCreate: () => void;
-  onOpen: (task: Task) => void;
 }
 
 const itemMotion = {
@@ -35,7 +33,7 @@ const itemMotion = {
   transition: { duration: 0.18, ease: [0.2, 0.8, 0.2, 1] as const },
 };
 
-export function TaskList({ projectId, onCreate, onOpen }: TaskListProps) {
+export function TaskList({ projectId, onCreate, ...actions }: TaskListProps) {
   const data = useTasky((s) => s.data);
   const moveTask = useTasky((s) => s.moveTask);
   const { open, done } = useMemo(() => projectTasks(data, projectId), [data, projectId]);
@@ -88,7 +86,7 @@ export function TaskList({ projectId, onCreate, onOpen }: TaskListProps) {
               <AnimatePresence initial={false}>
                 {open.map((task) => (
                   <motion.li key={task.id} {...itemMotion}>
-                    <SortableTaskItem task={task} today={today} onOpen={onOpen} />
+                    <SortableTaskItem task={task} today={today} {...actions} />
                   </motion.li>
                 ))}
               </AnimatePresence>
@@ -119,7 +117,7 @@ export function TaskList({ projectId, onCreate, onOpen }: TaskListProps) {
                   <AnimatePresence initial={false}>
                     {done.map((task) => (
                       <motion.li key={task.id} {...itemMotion}>
-                        <DoneTaskItem task={task} today={today} onOpen={onOpen} />
+                        <DoneTaskItem task={task} today={today} {...actions} />
                       </motion.li>
                     ))}
                   </AnimatePresence>

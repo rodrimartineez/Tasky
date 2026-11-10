@@ -117,11 +117,16 @@
   text-decoration-color: var(--text-faint);
 }
 
-.meta {
+.meta,
+.badges,
+.actions {
   flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: var(--space-3);
+}
+.actions {
+  gap: var(--space-1);
 }
 
 .slot {
@@ -191,11 +196,52 @@
   }
 }
 
+/* Móvil: los distintivos pasan a una segunda línea bajo el título y las acciones quedan a la derecha,
+   así el título conserva todo el ancho. */
 @media (max-width: 480px) {
-  .meta {
-    gap: var(--space-2);
+  .row {
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr) auto;
+    column-gap: var(--space-2);
   }
-  .slotLabel {
+  /* Asa (o hueco) y casilla */
+  .row > :nth-child(-n + 2) {
+    grid-row: 1 / span 2;
+  }
+  .content {
+    grid-column: 3;
+    grid-row: 1;
+  }
+  .meta {
+    display: contents;
+  }
+  .badges {
+    grid-column: 3;
+    grid-row: 2;
+    flex-wrap: wrap;
+    gap: 4px var(--space-3);
+    padding-bottom: 4px;
+  }
+  .badges:empty {
     display: none;
+  }
+  .actions {
+    grid-column: 4;
+    grid-row: 1 / span 2;
+  }
+}
+
+/* «···»: discreto, sin caja, del mismo tamaño que la acción rápida */
+.menuTrigger {
+  width: 28px;
+  height: 28px;
+  border-color: transparent;
+  background: none;
+  color: var(--text-faint);
+}
+@media (pointer: coarse) {
+  .menuTrigger {
+    width: 34px;
+    height: 34px;
   }
 }

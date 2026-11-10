@@ -14,10 +14,12 @@ interface MenuProps {
   label: string;
   trigger: ReactNode;
   items: MenuItem[];
+  /** Estilo alternativo del botón (p. ej. discreto dentro de una fila). */
+  triggerClassName?: string;
 }
 
 /** Menú desplegable accesible: flechas para moverse, Enter para elegir, Esc o clic fuera para cerrar. */
-export function Menu({ label, trigger, items }: MenuProps) {
+export function Menu({ label, trigger, items, triggerClassName }: MenuProps) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -59,7 +61,7 @@ export function Menu({ label, trigger, items }: MenuProps) {
       <button
         ref={triggerRef}
         type="button"
-        className={styles.trigger}
+        className={`${styles.trigger} ${triggerClassName ?? ''}`}
         aria-label={label}
         title={label}
         aria-haspopup="menu"

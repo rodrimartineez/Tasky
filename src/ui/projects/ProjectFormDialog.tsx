@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import type { Project } from '../../core/model';
+import type { Project, ProjectStatus } from '../../core/model';
 import { useTasky } from '../../state/store';
 import { Button } from '../components/Button';
 import { Dialog } from '../components/Dialog';
 import { TextArea, TextField } from '../components/Field';
+import { Segmented } from '../components/Segmented';
+import { PROJECT_STATUS_OPTIONS } from '../components/StatusBadge';
 import styles from '../components/Form.module.css';
 
 interface ProjectFormDialogProps {
@@ -25,14 +27,15 @@ export function ProjectFormDialog({ open, onClose, project }: ProjectFormDialogP
 function ProjectForm({ project, onDone }: { project?: Project; onDone: () => void }) {
   const [name, setName] = useState(project?.name ?? '');
   const [description, setDescription] = useState(project?.description ?? '');
+  const [status, setStatus] = useState<ProjectStatus>(project?.status ?? 'active');
   const createProject = useTasky((s) => s.createProject);
   const updateProject = useTasky((s) => s.updateProject);
   const canSubmit = name.trim().length > 0;
 
   const submit = () => {
     if (!canSubmit) return;
-    if (project) updateProject(project.id, { name, description });
-    else createProject({ name, description });
+    if (project) updateProject(project.id, { name, description, status });
+    else createProject({ name, description, status });
     onDone();
   };
 
@@ -66,6 +69,10 @@ function ProjectForm({ project, onDone }: { project?: Project; onDone: () => voi
           }
         }}
       />
+      <div className={styles.field}>
+        <span className={styles.label}>Estado</span>
+        <Segmented label="Estado del proyecto" value={status} options={PROJECT_STATUS_OPTIONS} onChange={setStatus} />
+      </div>
       <div className={styles.footer}>
         <span className={styles.spacer} />
         <Button variant="ghost" onClick={onDone} shortcut="Esc">

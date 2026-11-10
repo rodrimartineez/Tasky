@@ -28,16 +28,42 @@
   overflow: hidden;
 }
 
-/* Hoja inferior en móvil */
+/* Hoja inferior en móvil. El contenedor ocupa solo el área visible (sin el teclado): Dialog.tsx ajusta
+   su top y height a visualViewport. La hoja se apoya en su borde inferior, nunca es más alta que él
+   y su contenido se desplaza por dentro, así el campo con el foco no queda tapado. */
+.sheetRoot {
+  bottom: auto;
+  height: 100%;
+  padding: 0;
+}
+
 .sheet {
-  position: fixed;
+  position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
+  display: flex;
+  flex-direction: column;
   max-width: none;
+  max-height: calc(100% - max(12px, env(safe-area-inset-top)));
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   border-bottom: none;
   padding-bottom: env(safe-area-inset-bottom);
+}
+.sheet .header,
+.sheet .footer {
+  flex: none;
+}
+.sheet .body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+/* Margen al desplazar hasta el campo con el foco */
+.body :is(input, textarea, select) {
+  scroll-margin: var(--space-4);
 }
 
 .header {

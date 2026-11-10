@@ -15,18 +15,25 @@ Reglas:
 - Estados: todo = pendiente, in_progress = en curso, done = completada. Marca in_progress al empezar una tarea y done (complete_task) SOLO cuando el trabajo esté terminado y verificado (pruebas pasadas, comprobado en la app…). Si no se ha podido verificar, déjala en curso y explica qué falta en su descripción.
 - Para localizar una tarea o idea por su texto, consulta primero get_tasks, get_project o get_ideas y usa su id. Si hay varias candidatas, pregunta.
 - "Dividir una tarea": crea las nuevas tareas en el mismo proyecto y después elimina la original solo si el usuario lo ha pedido o lo confirma.
-- Fechas límite en formato AAAA-MM-DD; el campo today de las respuestas indica la fecha actual del usuario.
-- Franja horaria (time_slot): morning = mañana, afternoon = tarde, evening = noche, all_day = día completo (por defecto). Úsala si el usuario dice cuándo hará la tarea.
+- Fechas en formato AAAA-MM-DD; el campo today de las respuestas indica la fecha actual del usuario.
+- Programación y fecha límite son independientes: scheduled_days = días en que se hará (uno o varios; repeat_weekly = true para repetir cada semana esos días de la semana); due_date = cuándo debe estar terminada. Usa la programación si el usuario dice cuándo la hará y due_date solo si da un plazo.
+- Franja horaria (time_slot): morning = mañana, afternoon = tarde, evening = noche, all_day = día completo (por defecto).
+- Estados de proyecto: active = activo, on_hold = en espera, upcoming = próximo (previsto para más adelante), done = finalizado.
 - No hay herramienta para borrar proyectos: para retirar uno, cambia su estado a done (finalizado) o on_hold (en espera) con update_project.
 - Al terminar, confirma en una lista breve qué has creado o cambiado y en qué proyecto.`;
 
 const id = z.string().min(1);
-const date = z
-  .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato AAAA-MM-DD')
-  .nullable();
+const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato AAAA-MM-DD');
+const date = day.nullable();
+/** Programación: cuándo se hará (independiente de la fecha límite due_date). */
+const schedule = {
+  scheduled_days: z.array(day).max(31).optional().describe('Días en que se hará (AAAA-MM-DD); [] para quitar la programación'),
+  repeat_weekly: z.boolean().optional().describe('Repetir cada semana en esos días de la semana'),
+};
 const taskStatus = z.enum(['todo', 'in_progress', 'done']).describe('todo = pendiente, in_progress = en curso, done = completada');
-const projectStatus = z.enum(['active', 'on_hold', 'done']).describe('active = activo, on_hold = en espera, done = finalizado');
+const projectStatus = z
+  .enum(['active', 'on_hold', 'upcoming', 'done'])
+  .describe('active = activo, on_hold = en espera, upcoming = próximo (previsto, aún sin empezar), done = finalizado');
 const timeSlot = z
   .enum(['morning', 'afternoon', 'evening', 'all_day'])
   .describe('Cuándo hacerla: morning = mañana, afternoon = tarde, evening = noche, all_day = día completo');
@@ -106,7 +113,7 @@ export function createTaskyMcpServer(service: TaskyService): McpServer {
     'update_project',
     {
       title: 'Modificar proyecto',
-      description: 'Cambia el nombre, la descripción o el estado (activo, en espera, finalizado) de un proyecto. Lo que no se indique se conserva.',
+      description: 'Cambia el nombre, la descripción o el estado (activo, en espera, próximo, finalizado) de un proyecto. Lo que no se indique se conserva.',
       inputSchema: z.object({
         project_id: id,
         name: z.string().min(1).max(120).optional(),
@@ -143,12 +150,15 @@ export function createTaskyMcpServer(service: TaskyService): McpServer {
         description: z.string().max(2000).optional(),
         due_date: date.optional(),
         time_slot: timeSlot.optional(),
+        ...schedule,
         status: taskStatus.optional(),
       }),
       annotations: WRITE,
     },
-    ({ project_id, title, description, due_date, time_slot, status }) =>
-      run(() => service.createTask(project_id, { title, description, dueDate: due_date, timeSlot: time_slot, status })),
+    ({ project_id, due_date, time_slot, scheduled_days, repeat_weekly, ...rest }) =>
+      run(() =>
+        service.createTask(project_id, { ...rest, dueDate: due_date, timeSlot: time_slot, scheduledDays: scheduled_days, repeatWeekly: repeat_weekly }),
+      ),
   );
   server.registerTool(
     'create_tasks',
@@ -165,6 +175,7 @@ export function createTaskyMcpServer(service: TaskyService): McpServer {
               description: z.string().max(2000).optional(),
               due_date: date.optional(),
               time_slot: timeSlot.optional(),
+              ...schedule,
               status: taskStatus.optional(),
             }),
           )
@@ -177,7 +188,13 @@ export function createTaskyMcpServer(service: TaskyService): McpServer {
       run(() =>
         service.createTasks(
           project_id,
-          tasks.map((t) => ({ title: t.title, description: t.description, dueDate: t.due_date, timeSlot: t.time_slot, status: t.status })),
+          tasks.map(({ due_date, time_slot, scheduled_days, repeat_weekly, ...rest }) => ({
+            ...rest,
+            dueDate: due_date,
+            timeSlot: time_slot,
+            scheduledDays: scheduled_days,
+            repeatWeekly: repeat_weekly,
+          })),
         ),
       ),
   );
@@ -195,19 +212,22 @@ export function createTaskyMcpServer(service: TaskyService): McpServer {
     'update_task',
     {
       title: 'Modificar tarea',
-      description: 'Cambia el título, la descripción, la fecha límite (null para quitarla), la franja horaria o el estado de una tarea.',
+      description: 'Cambia el título, la descripción, la fecha límite (null para quitarla), la programación (días y repetición semanal), la franja horaria o el estado de una tarea.',
       inputSchema: z.object({
         task_id: id,
         title: z.string().min(1).max(200).optional(),
         description: z.string().max(2000).optional(),
         due_date: date.optional(),
         time_slot: timeSlot.optional(),
+        ...schedule,
         status: taskStatus.optional(),
       }),
       annotations: WRITE,
     },
-    ({ task_id, title, description, due_date, time_slot, status }) =>
-      run(() => service.updateTask(task_id, { title, description, dueDate: due_date, timeSlot: time_slot, status })),
+    ({ task_id, due_date, time_slot, scheduled_days, repeat_weekly, ...rest }) =>
+      run(() =>
+        service.updateTask(task_id, { ...rest, dueDate: due_date, timeSlot: time_slot, scheduledDays: scheduled_days, repeatWeekly: repeat_weekly }),
+      ),
   );
   server.registerTool(
     'complete_task',

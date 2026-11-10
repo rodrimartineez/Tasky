@@ -4,7 +4,7 @@ import type { Idea, LocalDate, Project, ProjectStatus, Task, TaskStatus, TaskyDa
 import { createProject, updateProject } from '../core/projects';
 import { projectIdeas, projectSummariesByStatus, projectTasks } from '../core/selectors';
 import { countRecords, pendingChanges, rememberVersions, type ServerVersions, type SyncRecords } from '../core/sync';
-import { createTask, deleteTask, moveTask, updateTask } from '../core/tasks';
+import { createTask, deleteTask, moveTask, updateTask, type TaskPatch } from '../core/tasks';
 
 /**
  * Operaciones de Tasky para el asistente (servidor MCP). Toda la lógica de negocio es la de core/:
@@ -27,7 +27,7 @@ export interface ServiceEnv {
 /** Error con un mensaje pensado para el asistente (se le devuelve tal cual). */
 export class ToolError extends Error {}
 
-const STATUS_LABEL = { active: 'activo', on_hold: 'en espera', done: 'finalizado' } as const;
+const STATUS_LABEL = { active: 'activo', on_hold: 'en espera', upcoming: 'próximo', done: 'finalizado' } as const;
 
 /** Minúsculas, sin acentos ni signos: «Wynot!» y «wynot» coinciden. */
 const normalize = (s: string) =>
@@ -55,6 +55,8 @@ export interface TaskFields {
   description?: string;
   dueDate?: LocalDate | null;
   timeSlot?: TimeSlot;
+  scheduledDays?: LocalDate[];
+  repeatWeekly?: boolean;
   status?: TaskStatus;
 }
 
@@ -107,7 +109,14 @@ export function createTaskyService(repo: TaskyRepository, env: ServiceEnv) {
 
   /** Crea una tarea con la misma función que la app y, si se pide, le pone ya su estado. */
   function addTask(d: TaskyData, projectId: string, input: TaskFields, id: string): TaskyData {
-    const fields = { title: input.title, description: input.description ?? '', dueDate: input.dueDate ?? null, timeSlot: input.timeSlot };
+    const fields = {
+      title: input.title,
+      description: input.description ?? '',
+      dueDate: input.dueDate ?? null,
+      timeSlot: input.timeSlot,
+      scheduledDays: input.scheduledDays,
+      repeatWeekly: input.repeatWeekly,
+    };
     const created = createTask(d, projectId, fields, id, env.now());
     return input.status && input.status !== 'todo' ? updateTask(created, id, { status: input.status }, env.now()) : created;
   }
@@ -123,6 +132,8 @@ export function createTaskyService(repo: TaskyRepository, env: ServiceEnv) {
     status: t.status,
     due_date: t.dueDate,
     time_slot: t.timeSlot,
+    scheduled_days: t.scheduledDays,
+    repeat_weekly: t.repeatWeekly,
     completed_at: t.completedAt,
   });
 
@@ -137,7 +148,7 @@ export function createTaskyService(repo: TaskyRepository, env: ServiceEnv) {
 
   function projectViews(data: TaskyData) {
     const today = env.today();
-    return (['active', 'on_hold', 'done'] as const).flatMap((status) =>
+    return (['active', 'on_hold', 'upcoming', 'done'] as const).flatMap((status) =>
       projectSummariesByStatus(data, status, today).map((s) => ({
         id: s.project.id,
         name: s.project.name,
@@ -197,8 +208,7 @@ export function createTaskyService(repo: TaskyRepository, env: ServiceEnv) {
       const data = await mutate((d) => {
         existing = liveProjectNamed(d, input.name);
         if (existing) return d;
-        const created = createProject(d, { name: input.name, description: input.description ?? '' }, id, env.now());
-        return input.status && input.status !== 'active' ? updateProject(created, id, { status: input.status }, env.now()) : created;
+        return createProject(d, { name: input.name, description: input.description ?? '', status: input.status }, id, env.now());
       });
       const view = (projectId: string) => projectViews(data).find((p) => p.id === projectId);
       return existing
@@ -275,7 +285,7 @@ export function createTaskyService(repo: TaskyRepository, env: ServiceEnv) {
 
     async updateTask(
       taskId: string,
-      patch: { title?: string; description?: string; dueDate?: LocalDate | null; timeSlot?: TimeSlot; status?: TaskStatus },
+      patch: TaskPatch,
     ) {
       const data = await mutate((d) => {
         requireTask(d, taskId);

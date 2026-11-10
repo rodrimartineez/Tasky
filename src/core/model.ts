@@ -14,7 +14,8 @@ const baseRecord = {
   deletedAt: timestamp.nullable(),
 };
 
-export const projectStatusSchema = z.enum(['active', 'on_hold', 'done']);
+/** upcoming = «Próximos»: aún no empezado, previsto para más adelante. */
+export const projectStatusSchema = z.enum(['active', 'on_hold', 'upcoming', 'done']);
 export const taskStatusSchema = z.enum(['todo', 'in_progress', 'done']);
 /** Cuándo está previsto hacer la tarea dentro de su día. Los datos anteriores a este campo pasan a «Día completo». */
 export const timeSlotSchema = z.enum(['morning', 'afternoon', 'evening', 'all_day']);
@@ -34,8 +35,13 @@ export const taskSchema = z.object({
   title: z.string().min(1),
   description: z.string(),
   status: taskStatusSchema,
+  /** Fecha límite: cuándo debe estar terminada (independiente de la programación). */
   dueDate: localDate.nullable(),
   timeSlot: timeSlotSchema.default('all_day'),
+  /** Programación: días en que se prevé hacerla (ordenados, sin repetir). Los datos anteriores quedan sin programar. */
+  scheduledDays: z.array(localDate).default([]),
+  /** Si está activa, se repite cada semana en los días de la semana de `scheduledDays`, desde el primero. */
+  repeatWeekly: z.boolean().default(false),
   rank: z.string().min(1),
   completedAt: timestamp.nullable(),
 });

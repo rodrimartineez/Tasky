@@ -43,7 +43,7 @@ describe('deleteProject', () => {
     const base = withProject();
     const data: TaskyData = {
       ...base,
-      tasks: [{ id: 't1', projectId: 'p1', title: 'x', description: '', status: 'todo', dueDate: null, timeSlot: 'all_day', rank: 'a0', completedAt: null, createdAt: T0, updatedAt: T0, deletedAt: null }],
+      tasks: [{ id: 't1', projectId: 'p1', title: 'x', description: '', status: 'todo', dueDate: null, timeSlot: 'all_day', scheduledDays: [], repeatWeekly: false, rank: 'a0', completedAt: null, createdAt: T0, updatedAt: T0, deletedAt: null }],
       ideas: [{ id: 'i1', projectId: 'p1', title: 'y', description: '', createdAt: T0, updatedAt: T0, deletedAt: null }],
     };
     const after = deleteProject(data, 'p1', T1);

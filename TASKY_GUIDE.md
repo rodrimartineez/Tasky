@@ -1,7 +1,7 @@
 # TASKY_GUIDE.md
 
 > Documento de referencia del proyecto. Se consulta antes de cada fase y se actualiza al terminarla.
-> Última actualización: 2026-11-06 — **Fases 1–9 completadas + integración con Claude (MCP, §7.7) + franja horaria, «Hoy», siguiente tarea y orden manual de proyectos (§3.2, §3.5).** Tasky instalada en Windows y publicada como PWA en https://tasky-2dd.pages.dev (iPhone), sincronizada con Supabase, privada y con funcionamiento sin conexión.
+> Última actualización: 2026-11-06 — **Fases 1–9 completadas + integración con Claude (MCP, §7.7) + franja horaria, «Hoy», siguiente tarea y orden manual de proyectos (§3.2, §3.5) + programación de tareas, vista de detalle y estado «Próximos» (2026-11-10).** Tasky instalada en Windows y publicada como PWA en https://tasky-2dd.pages.dev (iPhone), sincronizada con Supabase, privada y con funcionamiento sin conexión.
 
 ---
 
@@ -31,8 +31,10 @@ Multiusuario, registro público, etiquetas, prioridades, subtareas, búsqueda gl
 
 ```
 Pantalla principal (Inicio)                         Atajos: P nuevo proyecto · ? ayuda
+├── Hoy          (solo si hay algo programado o que vence hoy)
 ├── Activos      (tarjetas grandes, protagonistas)
 ├── En espera    (tarjetas compactas)
+├── Próximos     (tarjetas compactas)
 └── Finalizados  (tarjetas compactas / atenuadas)
         │
         ▼  clic en una tarjeta
@@ -52,9 +54,9 @@ Página de proyecto                                  Atajos: T nueva tarea · I 
 ### 3.1 Proyectos
 | Requisito | Detalle |
 |---|---|
-| Crear | Tecla **P** o botón → diálogo pequeño con el foco ya en el nombre. Nombre (obligatorio) y descripción (opcional). Enter crea. Estado inicial *Activo*. |
-| Editar | Nombre y descripción (mismo diálogo). |
-| Cambiar estado | `active` · `on_hold` · `done` (Activo · En espera · Finalizado), con un clic desde la cabecera del proyecto. |
+| Crear | Tecla **P** o botón → diálogo pequeño con el foco ya en el nombre. Nombre (obligatorio), descripción (opcional) y estado (por defecto *Activo*). Enter crea. |
+| Editar | Nombre, descripción y estado (mismo diálogo). |
+| Cambiar estado | `active` · `on_hold` · `upcoming` · `done` (Activo · En espera · Próximo · Finalizado), con un clic desde la cabecera del proyecto. «Próximo» = previsto para más adelante, aún sin empezar. |
 | Eliminar | Con diálogo de confirmación. Elimina en cascada sus tareas e ideas. |
 | Listar | Agrupados por estado en Inicio (más recientes primero). |
 | Página propia | Ruta `/project/:id`. |
@@ -62,9 +64,9 @@ Página de proyecto                                  Atajos: T nueva tarea · I 
 ### 3.2 Tareas
 | Requisito | Detalle |
 |---|---|
-| Campos | Título (obligatorio), descripción (opcional), estado, **fecha límite (opcional)**, **franja horaria** (Mañana · Tarde · Noche · Día completo; por defecto «Día completo»), orden, fecha de creación. |
+| Campos | Título (obligatorio), descripción (opcional), estado, **programación** («¿Cuándo lo harás?»: uno o varios días elegidos en el calendario, **franja horaria** —Mañana · Tarde · Noche · Día completo, por defecto «Día completo»— y **repetición semanal**), **fecha límite (opcional e independiente de la programación**: cuándo debe estar terminada; atajos Hoy · Mañana · Esta semana —domingo— o fecha del calendario nativo), orden, fecha de creación. Con repetición semanal la tarea aparece cada semana en los días de la semana elegidos, a partir del primero. |
 | Crear | Tecla **T** (dentro de un proyecto) o botón → diálogo con foco en el título; descripción y fecha límite opcionales. Enter crea. |
-| Editar / eliminar | Clic en la tarea → mismo diálogo; eliminar con confirmación ligera. En táctil, **deslizar la fila a la izquierda**: un poco deja ver una franja roja con papelera (pulsarla borra; tocar la fila la cierra); más de la mitad del ancho borra al soltar. No se activa con el ratón (allí se arrastra para ordenar) ni desde el asa. Componente común `ui/components/SwipeToDelete`. |
+| Ver / editar / eliminar | Tocar la tarea abre su **vista de detalle** (proyecto, estado, programación, franja, fecha límite, fechas; botón «Editar»). Editar y eliminar (con confirmación) están en el menú **«···»** de la fila. En táctil, **deslizar la fila a la izquierda**: un poco deja ver una franja roja con papelera (pulsarla borra; tocar la fila la cierra); más de la mitad del ancho borra al soltar. No se activa con el ratón (allí se arrastra para ordenar) ni desde el asa. Componente común `ui/components/SwipeToDelete`. |
 | Estados | `todo` (Pendiente) · `in_progress` (En curso) · `done` (Completada). |
 | Completar | Checkbox de un clic en la propia fila: el check se dibuja (~260 ms) y la tarea pasa a «Completadas». Botón ▶ en la fila para marcar/quitar «En curso» con un clic. |
 | Reordenar | Drag & drop: con el ratón desde cualquier punto de la fila; con teclado desde el asa (`Espacio` para coger, flechas para mover, `Espacio` para soltar); en táctil desde el asa. El orden define la secuencia de trabajo. |
@@ -92,8 +94,8 @@ Página de proyecto                                  Atajos: T nueva tarea · I 
 
 ### 3.5 Pantalla principal
 - Sin login en escritorio. Es la primera pantalla al abrir.
-- Sección **Hoy** antes de los proyectos: tareas pendientes y en curso con fecha de hoy, agrupadas por franja (Mañana, Tarde, Noche, Día completo; solo las franjas con tareas). Cada fila: punto con el color del proyecto, título, «En curso» si lo está y nombre del proyecto; al pulsarla se abre el proyecto. Las completadas no aparecen. En móvil, las franjas van en un solo bloque.
-- Tres secciones: Activos (mayor protagonismo), En espera, Finalizados. Cada una se pliega o despliega por separado pulsando su cabecera; lo plegado se recuerda en cada dispositivo (`localStorage`, no se sincroniza).
+- Sección **Hoy** antes de los proyectos, **solo si hay alguna tarea para hoy**: tareas pendientes y en curso programadas para hoy (también por repetición semanal) o que vencen hoy, agrupadas por franja (Mañana, Tarde, Noche, Día completo; solo las franjas con tareas). Cada fila: punto con el color del proyecto, título, «En curso» si lo está y nombre del proyecto; al pulsarla se abre el proyecto. Las completadas no aparecen. En móvil, las franjas van en un solo bloque.
+- Cuatro secciones, en este orden: Activos (mayor protagonismo), En espera, Próximos, Finalizados. Cada una se pliega o despliega por separado pulsando su cabecera; lo plegado se recuerda en cada dispositivo (`localStorage`, no se sincroniza).
 - **Orden manual de proyectos:** mantener pulsada una tarjeta (~250 ms, ratón o dedo) y arrastrarla; las demás se apartan en tiempo real. Se ordena dentro de cada sección. Un clic normal sigue abriendo el proyecto y soltar no lo abre. Los proyectos nuevos aparecen los primeros; los que nunca se han ordenado van detrás, del más reciente al más antiguo. El orden se guarda en `Project.rank` (índice fraccional, como las tareas) y se sincroniza.
 - Tarjeta de proyecto: punto de color, nombre, descripción breve, **siguiente tarea** (la primera no completada según el orden manual; sin tareas pendientes no se muestra), estado, nº tareas pendientes, nº completadas, barra de progreso, próxima fecha límite y nº de vencidas (si existen).
 - **Color de proyecto:** se deriva del id (paleta fija de 10 colores, `ui/projects/projectColor.ts`); no se guarda, así que es el mismo en todos los dispositivos.
@@ -264,7 +266,7 @@ src-tauri/              # configuración Tauri, iconos, plugin fs (sin código R
 ### 6.1 Entidades
 
 ```ts
-type ProjectStatus = 'active' | 'on_hold' | 'done';
+type ProjectStatus = 'active' | 'on_hold' | 'upcoming' | 'done';
 type TaskStatus    = 'todo' | 'in_progress' | 'done';
 type Timestamp     = string;  // ISO 8601 UTC con milisegundos: "2026-11-05T18:04:12.345Z"
 type LocalDate     = string;  // Día del calendario sin hora ni zona: "2026-11-13"
@@ -290,6 +292,8 @@ interface Task extends BaseRecord {
   status: TaskStatus;
   dueDate: LocalDate | null;  // fecha límite opcional
   timeSlot: 'morning' | 'afternoon' | 'evening' | 'all_day';  // franja; los datos anteriores se leen como 'all_day'
+  scheduledDays: LocalDate[]; // programación: días en que se hará (ordenados); los datos anteriores se leen como []
+  repeatWeekly: boolean;      // repetir cada semana en esos días de la semana; por defecto false
   rank: string;               // orden fraccional dentro del proyecto
   completedAt: Timestamp | null;
 }
@@ -409,7 +413,7 @@ Edge Function tasky-mcp (Supabase, plan gratuito) ──RLS──▶ projects / 
 - **Código:** `src/mcp/service.ts` (operaciones sobre las funciones de `core/`: `createTask`, `updateTask`, `deleteTask`, `createIdea`…, y `pendingChanges` para guardar solo lo que cambia), `src/mcp/server.ts` (16 herramientas MCP con anotaciones e instrucciones), `src/mcp/edge.ts` (repositorio sobre `adapters/supabaseRows.ts`, el mismo módulo de filas que usa la sincronización de la app). `supabase/functions/tasky-mcp/index.ts` envuelve todo con `@supabase/server`.
 - **Herramientas (16):**
   - Proyectos: `get_projects` (incluye `next_task`), `get_project`, `get_project_by_name` (sin mayúsculas ni acentos; `certain=false` → Claude debe preguntar), `create_project` (solo si el usuario lo pide; estado opcional), `update_project` (nombre, descripción, estado). No hay herramienta para borrar proyectos: se finalizan o se ponen en espera.
-  - Tareas: `get_tasks`, `create_task`, `create_tasks` (hasta 50 de una vez, en orden y en una sola escritura: para desglosar un proyecto), `update_task` (título, descripción, fecha, franja, estado), `move_task` (posición en el orden de trabajo; 1 = la siguiente), `complete_task`, `delete_task`.
+  - Tareas: `get_tasks`, `create_task`, `create_tasks` (hasta 50 de una vez, en orden y en una sola escritura: para desglosar un proyecto), `update_task` (título, descripción, fecha límite, programación —`scheduled_days`, `repeat_weekly`—, franja, estado), `move_task` (posición en el orden de trabajo; 1 = la siguiente), `complete_task`, `delete_task`.
   - Ideas: `get_ideas`, `create_idea`, `update_idea`, `delete_idea`.
   - Crear tareas o ideas exige el id real de un proyecto vivo.
 - **Sin duplicados al repetir:** `create_project` devuelve el proyecto existente si ya hay uno con ese nombre (sin mayúsculas ni acentos); `create_task(s)` no duplica una tarea **abierta** con el mismo título en el proyecto (sí permite repetir el título de una completada); `create_idea` no duplica una idea con el mismo título. Lo existente vuelve en `already_existed`. Así un reintento tras un corte es seguro. `update_project` impide renombrar a un nombre ya usado.
@@ -505,4 +509,5 @@ Cada fase termina con verificación real (app en ejecución + tests de `core/`),
 | Franja horaria, sección «Hoy» y siguiente tarea en las tarjetas — `timeSlot` en core (zod con valor por defecto, sin cambio de versión de esquema), columna `time_slot` en Supabase, `time_slot` en `create_task`/`update_task` y `next_task` en `get_projects` del MCP | ✅ 48 tests; navegador (escritorio y móvil): crear con franja, editar conservándola, reordenar actualiza la siguiente tarea, completadas excluidas de «Hoy» |
 | Orden manual de proyectos en Inicio — `rank` en `Project` (core + columna `rank` en Supabase), mantener pulsado y arrastrar con dnd-kit (ratón y táctil), el MCP devuelve los proyectos en el mismo orden | ✅ 50 tests; navegador: arrastre con ratón y con toque simulado, movimiento en tiempo real, el orden persiste, soltar no abre el proyecto y el clic normal sí |
 | Secciones de proyectos plegables por separado en Inicio (estado recordado por dispositivo) | ✅ Navegador: plegar y desplegar cada sección, se mantiene al recargar, sin recorte de tarjetas al desplegar |
+| Programación de tareas («¿Cuándo lo harás?»: días del calendario, franja, repetición semanal) separada de la fecha límite; «Hoy» solo si hay tareas; vista de detalle de tareas e ideas con menú «···»; estado de proyecto «Próximos»; hoja inferior que sigue al teclado en móvil (`visualViewport`) — columnas `scheduled_days`, `repeat_weekly` y estado `upcoming` en Supabase; MCP con `scheduled_days`/`repeat_weekly` y estado `upcoming` | ✅ 64 tests; navegador (vista móvil): crear con varios días + franja + repetición + fecha límite, editar sin cambios no modifica la tarea, detalle, menú «···» (editar, eliminar con confirmación) en tareas e ideas, deslizar sigue borrando, «Hoy» desaparece sin tareas, orden Activos · En espera · Próximos · Finalizados, campo enfocado visible con el área visible reducida a 420 px. Teclado real del iPhone pendiente de confirmar por el usuario |
 | Deslizar a la izquierda para borrar tareas e ideas (táctil) + icono del iPhone con fondo más claro | ✅ Vista móvil con toques simulados: abrir la papelera, cerrar tocando, borrar deslizando del todo (tarea e idea); el asa no inicia el gesto; con ratón se sigue reordenando |

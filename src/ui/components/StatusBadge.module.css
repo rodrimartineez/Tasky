@@ -27,6 +27,9 @@
 .on_hold .dot {
   background: var(--status-on-hold);
 }
+.upcoming .dot {
+  background: var(--status-upcoming);
+}
 .done .dot {
   background: var(--status-done);
 }

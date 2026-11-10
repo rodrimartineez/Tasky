@@ -1,4 +1,5 @@
 import type { Idea, LocalDate, Project, ProjectStatus, Task, TaskyData, TimeSlot } from './model';
+import { isScheduledOn } from './dueDates';
 import { compareProjects } from './projects';
 import { compareRank } from './rank';
 
@@ -49,13 +50,13 @@ export interface TodayGroup {
 }
 
 /**
- * Tareas no completadas con fecha de hoy, agrupadas por franja (solo las franjas con tareas).
- * Dentro de cada franja, por proyecto y en el orden manual de cada proyecto.
+ * Tareas no completadas para hoy: programadas para hoy (incluida la repetición semanal) o que vencen hoy.
+ * Agrupadas por franja (solo las franjas con tareas); dentro de cada una, por proyecto y en su orden manual.
  */
 export function todayTasks(data: TaskyData, today: LocalDate): TodayGroup[] {
   const projects = new Map(data.projects.filter((p) => !p.deletedAt).map((p) => [p.id, p]));
   const items = data.tasks
-    .filter((t) => !t.deletedAt && t.status !== 'done' && t.dueDate === today && projects.has(t.projectId))
+    .filter((t) => !t.deletedAt && t.status !== 'done' && projects.has(t.projectId) && (t.dueDate === today || isScheduledOn(t, today)))
     .map((task) => ({ task, project: projects.get(task.projectId)! }))
     .sort((a, b) => a.project.name.localeCompare(b.project.name, 'es') || a.project.id.localeCompare(b.project.id) || compareRank(a.task, b.task));
   return TIME_SLOTS.map((slot) => ({ slot, items: items.filter((i) => i.task.timeSlot === slot) })).filter((g) => g.items.length > 0);

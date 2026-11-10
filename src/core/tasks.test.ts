@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { emptyData, parseData } from './data';
-import { addDays, daysBetween, dueState } from './dueDates';
+import { addDays, daysBetween, dueState, endOfWeek, isScheduledOn, nextScheduledDay, weekday } from './dueDates';
 import type { TaskyData } from './model';
 import { createProject } from './projects';
 import { projectSummariesByStatus, projectTasks, todayTasks } from './selectors';
@@ -121,5 +121,52 @@ describe('franja horaria y vistas de la pantalla principal', () => {
       ['all_day', ['b']],
     ]);
     expect(groups[1].items[0].project.name).toBe('Otro');
+  });
+});
+
+describe('programación y repetición semanal', () => {
+  // 2026-11-05 es jueves.
+  it('días de la semana y fin de semana (domingo)', () => {
+    expect(weekday('2026-11-05')).toBe(4);
+    expect(endOfWeek('2026-11-05')).toBe('2026-11-08');
+    expect(endOfWeek('2026-11-08')).toBe('2026-11-08');
+    expect(endOfWeek('2026-11-09')).toBe('2026-11-15');
+  });
+
+  it('guarda los días ordenados y sin repetir; sin días no hay repetición', () => {
+    let d = createTask(emptyData(), 'p', { title: 'X', description: '', dueDate: null, scheduledDays: ['2026-11-07', '2026-11-05', '2026-11-07'], repeatWeekly: true }, 'x', T0);
+    expect(d.tasks[0]).toMatchObject({ scheduledDays: ['2026-11-05', '2026-11-07'], repeatWeekly: true, dueDate: null });
+    d = updateTask(d, 'x', { scheduledDays: [] }, T1);
+    expect(d.tasks[0]).toMatchObject({ scheduledDays: [], repeatWeekly: false, updatedAt: T1 });
+  });
+
+  it('cambiar solo los días cuenta como cambio; repetir los mismos no', () => {
+    const d = createTask(emptyData(), 'p', { title: 'X', description: '', dueDate: null, scheduledDays: ['2026-11-05'] }, 'x', T0);
+    expect(updateTask(d, 'x', { scheduledDays: ['2026-11-05'] }, T1).tasks[0].updatedAt).toBe(T0);
+    expect(updateTask(d, 'x', { scheduledDays: ['2026-11-06'] }, T1).tasks[0].updatedAt).toBe(T1);
+  });
+
+  it('isScheduledOn y nextScheduledDay, con y sin repetición', () => {
+    const once = { scheduledDays: ['2026-11-05', '2026-11-07'], repeatWeekly: false };
+    expect(isScheduledOn(once, '2026-11-07')).toBe(true);
+    expect(isScheduledOn(once, '2026-11-12')).toBe(false);
+    expect(nextScheduledDay(once, '2026-11-06')).toBe('2026-11-07');
+    expect(nextScheduledDay(once, '2026-11-08')).toBeNull();
+
+    const weekly = { ...once, repeatWeekly: true }; // jueves y sábado
+    expect(isScheduledOn(weekly, '2026-11-12')).toBe(true);
+    expect(isScheduledOn(weekly, '2026-11-14')).toBe(true);
+    expect(isScheduledOn(weekly, '2026-11-13')).toBe(false);
+    expect(isScheduledOn(weekly, '2026-10-29')).toBe(false); // antes del primer día
+    expect(nextScheduledDay(weekly, '2026-11-08')).toBe('2026-11-12');
+  });
+
+  it('«Hoy» incluye las programadas para hoy (también por repetición) y las que vencen hoy', () => {
+    let d = createProject(emptyData(), { name: 'P', description: '' }, 'p', T0);
+    d = createTask(d, 'p', { title: 'Programada', description: '', dueDate: null, scheduledDays: ['2026-10-29'], repeatWeekly: true }, 'w', T0);
+    d = createTask(d, 'p', { title: 'Vence', description: '', dueDate: TODAY }, 'v', T0);
+    d = createTask(d, 'p', { title: 'Otro día', description: '', dueDate: null, scheduledDays: ['2026-11-06'] }, 'o', T0);
+    expect(todayTasks(d, TODAY).flatMap((g) => g.items.map((i) => i.task.id)).sort()).toEqual(['v', 'w']);
+    expect(todayTasks(d, '2026-11-07')).toEqual([]);
   });
 });

@@ -85,6 +85,9 @@
 .sectionDot.on_hold {
   background: var(--status-on-hold);
 }
+.sectionDot.upcoming {
+  background: var(--status-upcoming);
+}
 .sectionDot.done {
   background: var(--status-done);
 }

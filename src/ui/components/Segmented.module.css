@@ -61,3 +61,24 @@
     height: 36px;
   }
 }
+
+/* Móvil: siempre en una línea y a todo el ancho disponible */
+@media (max-width: 480px) {
+  .group {
+    display: flex;
+    flex-wrap: nowrap;
+    width: 100%;
+    min-width: 0;
+  }
+  .option {
+    flex: 1 1 auto;
+    justify-content: center;
+    gap: 5px;
+    padding: 0 6px;
+  }
+}
+@media (max-width: 400px) {
+  .dot {
+    display: none;
+  }
+}
