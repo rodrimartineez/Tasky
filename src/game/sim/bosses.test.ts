@@ -2,15 +2,23 @@ import { describe, expect, it } from 'vitest';
 import { CYCLE_BOSSES, CYCLE_BOSS_AT, cycleBossFor, isBossLevel } from '../content/bosses';
 import { WITHERED_WOODS } from '../content/stages';
 import { SPRITES } from '../sprites/data';
-import { patternsOf } from './bosses';
-import { damageEnemy } from './core';
+import { EGG, EGG_HATCH, patternsOf, REAPER_STRIKE } from './bosses';
+import { damageEnemy, spawnEnemy } from './core';
 import { BASE_STATS, RUN_SECONDS, type RunConfig, type World } from './types';
-import { chooseUpgrade, createWorld, runResult, step } from './world';
+import { chooseUpgrade, createWorld, purgeItems, runResult, step } from './world';
 
 const DT = 1 / 60;
 const run = (w: World, seconds: number) => {
   for (let i = 0; i < seconds / DT && w.phase !== 'dead'; i++) {
-    if (w.phase === 'levelup') chooseUpgrade(w, 0);
+    if (w.phase === 'levelup')
+      chooseUpgrade(
+        w,
+        Math.max(
+          0,
+          w.choices.findIndex((c) => c.kind !== 'purge'),
+        ),
+      );
+    else if (w.phase === 'purge') purgeItems(w, [], []);
     else step(w, DT, Math.cos(i / 90), Math.sin(i / 90));
   }
 };
@@ -83,4 +91,51 @@ describe('jefes de ciclo', () => {
       expect([boss!.x, boss!.y, boss!.hp, w.player.x, w.player.y].every(Number.isFinite), `nivel ${level}`).toBe(true);
     }
   }, 120_000);
+});
+
+describe('ataques propios de los jefes', () => {
+  it('los 10 jefes usan sus ataques sin romper la partida y aparecen todas las mecánicas', () => {
+    const kinds = new Set<string>();
+    const spawned = new Set<string>();
+    for (let k = 1; k <= 20; k++) {
+      const w = createWorld(bossLevel(7 * k, { ...BASE_STATS, maxHp: 1e12 }));
+      w.time = CYCLE_BOSS_AT - 1;
+      for (let s = 0; s < 45 && w.phase !== 'dead'; s++) {
+        run(w, 1);
+        for (const h of w.hazards ?? []) kinds.add(h.kind ?? 'blast');
+        for (const e of w.enemies) spawned.add(e.def.id);
+      }
+      const p = w.player;
+      expect([p.x, p.y, p.hp, ...w.enemies.map((e) => e.hp)].every(Number.isFinite)).toBe(true);
+    }
+    expect([...kinds].sort()).toEqual(['beam', 'blast', 'ring', 'slow', 'zone']);
+    for (const id of ['egg', 'clone', 'head']) expect(spawned.has(id), id).toBe(true);
+  }, 120_000);
+
+  it('un huevo que no se rompe a tiempo eclosiona en esbirros', () => {
+    const w = createWorld(bossLevel(14));
+    const egg = spawnEnemy(w, EGG, w.player.x + 100, w.player.y);
+    egg.t1 = 0.05;
+    const before = w.enemies.length;
+    for (let i = 0; i < 6; i++) step(w, DT, 0, 0);
+    expect(w.enemies.includes(egg)).toBe(false);
+    expect(w.enemies.length).toBeGreaterThanOrEqual(before - 1 + EGG_HATCH.minions);
+  });
+});
+
+describe('La Muerte', () => {
+  it('golpea con la guadaña hasta matar: varios tajos visibles, sin revivir', () => {
+    const w = createWorld({ ...bossLevel(2), cycleBoss: undefined, stats: { ...BASE_STATS, maxHp: 500, revival: 2 } });
+    w.time = RUN_SECONDS - 0.5;
+    const hits: number[] = [];
+    let last = w.player.hp;
+    for (let i = 0; i < 60 / DT && w.phase !== 'dead'; i++) {
+      step(w, DT, 0, 0);
+      if (w.player.hp < last - 50) hits.push(w.time);
+      last = w.player.hp;
+    }
+    expect(w.phase).toBe('dead');
+    expect(hits.length).toBe(Math.ceil(1 / REAPER_STRIKE.share));
+    expect(runResult(w).won).toBe(true);
+  });
 });

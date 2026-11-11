@@ -547,3 +547,91 @@
   animation: pulse 0.8s steps(2) infinite;
   pointer-events: none;
 }
+
+/* Mejora de eliminar: inventario completo, armas y pasivas por separado. */
+.purgeGroup {
+  margin: 0;
+  padding: 8px;
+  border: 2px solid #2a2450;
+  border-radius: 6px;
+}
+.purgeGroup legend {
+  padding: 0 6px;
+  color: #b58cff;
+  font-weight: 700;
+}
+.purgeGrid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+.purgeItem {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-height: 72px;
+  padding: 6px 2px;
+  border: 0;
+  border-radius: 6px;
+  background: #1d1938;
+  color: #eae6ff;
+  font: inherit;
+  font-size: 10px;
+  line-height: 1.1;
+  text-align: center;
+  cursor: pointer;
+}
+.purgeItem img {
+  width: 28px;
+  height: 28px;
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+.purgeItem span {
+  overflow: hidden;
+  max-width: 100%;
+  text-overflow: ellipsis;
+}
+.purgeItem i {
+  color: #8d89a6;
+  font-style: normal;
+}
+.purgeItem.empty {
+  background: transparent;
+  box-shadow: inset 0 0 0 2px #2a2450;
+  cursor: default;
+}
+.purgeOn {
+  background: #4a1d2e;
+  box-shadow: inset 0 0 0 2px #e5484d;
+}
+.purgeOn img {
+  opacity: 0.45;
+}
+.purgeWarn {
+  margin: 0;
+  color: #ff6b6b;
+  font-weight: 700;
+  text-align: center;
+}
+
+/* Aviso discreto durante cada oleada. */
+.wave {
+  position: absolute;
+  left: 50%;
+  top: 30%;
+  transform: translateX(-50%);
+  color: #ff9f3a;
+  font-size: 15px;
+  font-weight: 700;
+  text-shadow: 0 2px 0 #07060f;
+  animation: blink 0.8s steps(2) infinite;
+  pointer-events: none;
+}
+@keyframes blink {
+  50% {
+    opacity: 0.4;
+  }
+}

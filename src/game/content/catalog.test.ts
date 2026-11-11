@@ -18,18 +18,18 @@ describe('catálogo', () => {
 
   it('muestra los valores reales del arma en el nivel 1 y en el máximo', () => {
     const spark = weaponEntries().find((w) => w.def.id === 'spark')!;
-    expect(spark.maxLevel).toBe(8);
+    expect(spark.maxLevel).toBe(7);
     expect(spark.first.damage).toBe('10');
-    // 10 + 5 + 5 + 5 de los niveles 3, 6 y 8.
-    expect(spark.last.damage).toBe('25');
-    expect(spark.levels).toHaveLength(7);
+    // 10 + 11 + 8 + 8 de los niveles 3, 5 y 7.
+    expect(spark.last.damage).toBe('37');
+    expect(spark.levels).toHaveLength(6);
     expect(weaponEntries().find((w) => w.def.id === 'lance')!.first.pierce).toBe('Todos');
   });
 
   it('calcula los efectos de las pasivas aplicándolas de verdad', () => {
-    expect(passiveChanges(PASSIVE_BY_ID.get('whetstone')!)).toEqual([{ stat: 'might', label: 'Daño', perLevel: '+10 %', atMax: '+50 %' }]);
+    expect(passiveChanges(PASSIVE_BY_ID.get('whetstone')!)).toEqual([{ stat: 'might', label: 'Daño', perLevel: '+10 %', atMax: '+85 %' }]);
     const hourglass = passiveChanges(PASSIVE_BY_ID.get('hourglass')!)[0];
-    expect([hourglass.perLevel, hourglass.atMax]).toEqual(['−6 %', '−30 %']);
+    expect([hourglass.perLevel, hourglass.atMax]).toEqual(['−6 %', '−48 %']);
     expect(passiveChanges(PASSIVE_BY_ID.get('oakheart')!).map((c) => c.stat)).toEqual(['maxHp', 'regen']);
     for (const p of PASSIVES) expect(passiveChanges(p).length, p.name).toBeGreaterThan(0);
   });

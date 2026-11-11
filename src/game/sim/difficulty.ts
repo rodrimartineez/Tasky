@@ -14,14 +14,14 @@ import type { RunConfig } from './types';
  */
 export const DIFFICULTY = {
   /** Dureza del nivel L: base·(1 + L/scale)^exp. */
-  base: 0.77,
-  scale: 63,
-  exp: 0.75,
+  base: 0.48,
+  scale: 18,
+  exp: 0.67,
   /** Densidad de aparición: crece con la dureza hasta un techo (el límite real es el rendimiento). */
   densityA: 0.004,
   densityMax: 1.6,
   /** Oro: los niveles altos pagan más, para que avanzar siempre compense. */
-  goldA: 0.017,
+  goldA: 0.023,
   goldExp: 0.8,
 };
 

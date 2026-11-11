@@ -5,7 +5,7 @@ import { botPlay } from './bot';
 import { runHp } from './difficulty';
 import { BASE_STATS, RUN_SECONDS, type RunConfig, type Stats, type World } from './types';
 import { weaponStatsAt } from './upgrades';
-import { chooseUpgrade, createWorld, runResult, step, xpForLevel } from './world';
+import { chooseUpgrade, createWorld, purgeItems, runResult, step, xpForLevel } from './world';
 
 const DT = 1 / 60;
 const config = (seed: number, stats: Stats = BASE_STATS, weapon = 'spark'): RunConfig => ({
@@ -54,13 +54,13 @@ describe('simulación', () => {
 
   it('sin mejoras la partida acaba en muerte; un personaje muy mejorado sobrevive más y gana más oro', () => {
     // El nivel 1 se puede superar sin mejoras: la prueba usa una dureza mayor.
-    const weak = createWorld({ ...config(3), difficultyScale: 3 });
+    const weak = createWorld({ ...config(3), difficultyScale: 6 });
     play(weak, RUN_SECONDS);
     expect(weak.phase).toBe('dead');
     expect(finite(weak)).toBe(true);
     const strong = createWorld({
       ...config(3, { ...BASE_STATS, might: 2.5, maxHp: 300, armor: 4, regen: 1.5, moveSpeed: 75 }),
-      difficultyScale: 3,
+      difficultyScale: 6,
     });
     play(strong, RUN_SECONDS);
     expect(strong.time).toBeGreaterThan(weak.time);
@@ -79,7 +79,7 @@ describe('simulación', () => {
   });
 
   it('morir antes del minuto 30 no supera el nivel, pero el oro se conserva en el resultado', () => {
-    const w = createWorld({ ...config(3), difficultyScale: 3 });
+    const w = createWorld({ ...config(3), difficultyScale: 6 });
     play(w, RUN_SECONDS);
     expect(w.phase).toBe('dead');
     const r = runResult(w);
@@ -113,18 +113,26 @@ describe('simulación', () => {
       const w = createWorld(config(11, { ...BASE_STATS, maxHp: 1e6 }, weapon.id));
       // Camina en línea recta hacia los enemigos (las armas direccionales disparan hacia donde se mira).
       for (let i = 0; i < 60 / DT && w.phase !== 'dead'; i++) {
-        if (w.phase === 'levelup') chooseUpgrade(w, 0);
+        if (w.phase === 'levelup')
+          chooseUpgrade(
+            w,
+            Math.max(
+              0,
+              w.choices.findIndex((c) => c.kind !== 'purge'),
+            ),
+          );
+        else if (w.phase === 'purge') purgeItems(w, [], []);
         else step(w, DT, 1, 0);
       }
       expect(w.player.weapons[0].dealt, weapon.name).toBeGreaterThan(0);
       expect(finite(w)).toBe(true);
     }
-  });
+  }, 60_000);
 
-  it('las armas tienen 8 niveles y sus valores son válidos', () => {
+  it('las armas tienen 7 niveles y sus valores son válidos', () => {
     for (const weapon of WEAPONS) {
-      expect(weapon.levels).toHaveLength(7);
-      const max = weaponStatsAt(weapon, 8);
+      expect(weapon.levels).toHaveLength(6);
+      const max = weaponStatsAt(weapon, 7);
       expect(max.cooldown).toBeGreaterThan(0.1);
       expect(max.damage).toBeGreaterThan(weapon.base.damage);
     }

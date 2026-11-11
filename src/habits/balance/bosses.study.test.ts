@@ -22,7 +22,7 @@ const ROUND = Number(env.BOSS_ROUND ?? 0);
 const DAYS = (env.BOSS_DAYS ?? '14,30,60,90,180,365,730').split(',').map(Number);
 const SEEDS = Number(env.BOSS_SEEDS ?? 2);
 /** Frontera ajustada: dureza con ~50 % de llegar al minuto 30 según los puntos gastados (ANALISIS §11). */
-const FRONTIER = (points: number) => 0.797 * Math.pow(1 + points / 1484, 0.588) * Math.exp(0.06);
+const FRONTIER = (points: number) => 0.557 * Math.pow(1 + points / 385, 0.535) * Math.exp(0.02);
 
 describe.skipIf(!OUT)('jefes de ciclo', () => {
   it(

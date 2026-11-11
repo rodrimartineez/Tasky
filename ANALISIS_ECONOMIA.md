@@ -350,3 +350,55 @@ es la que hace que cumplir casi todo marque la diferencia.
   curva (`DIFFICULTY.base`).
 - Frontera medida con un personaje y un escenario; los legendarios y escenarios difíciles la mueven.
 - Todo cambio en el poder del jugador o de los enemigos obliga a repetir frontera → progresión → jefes.
+
+## 12. Fase 5e: combate más intenso (noviembre de 2026)
+
+Los cambios de la Fase 5e (HABITS_GUIDE §12) mueven el poder del jugador (armas y pasivas de 7 niveles, más fuertes
+al 7 que el antiguo nivel 8; armas hasta el 999) y el de los enemigos (más apariciones, oleadas, jefes nuevos), así
+que se repitieron los tres estudios del §11. **Estos valores sustituyen a los del §11** (el método es el mismo).
+
+### 12.1 Ritmo de partida (`pace.study.test.ts`)
+
+Partidas «bien jugadas»: mejoras del Constante en los días 30, 90 y 365 y dureza 0,8 × su frontera.
+
+| Ajuste | Nivel del personaje al minuto 30 (partidas que llegan) | Enemigos en pantalla (media / pico) | ms por paso |
+|---|---|---|---|
+| Más apariciones y oleadas, experiencia sin tocar | 60–71 (media 67) | 40–73 / 110–200 | 0,11–0,12 |
+| Experiencia ÷ densidad del nivel, curva ×1,05 (**elegido**) | 51–70 (**mediana 59**) | 40–144 / 110–344 | 0,1–0,4 |
+
+- Dividir la experiencia de cada enemigo por la densidad del nivel evita que en niveles altos (más enemigos) se suba
+  mucho más deprisa. Así el ritmo es parecido en cualquier nivel.
+- Se eliminan 17.000–28.000 enemigos por partida (10–15 por segundo).
+- Coste de la simulación: 0,1–0,4 ms por paso en escritorio con el ordenador cargado por otros estudios. En móvil
+  hay margen, pero hay que medirlo (Fase 6).
+
+### 12.2 Frontera, curva y oro
+
+- Frontera nueva: `F*(P) = 0,557 · (1 + P/385)^0,535`; logística `σ((0,02 − x) / 0,26)`. Al principio es más baja
+  que antes (las oleadas castigan a un personaje sin mejoras), pero crece antes.
+- Curva de niveles nueva: `levelHp(L) = 0,48 · (1 + L/18)^0,67`.
+- Oro: `goldA` 0,017 → 0,023 para mantener el calendario de desbloqueos.
+
+| Perfil (2 intentos al día) | Nivel día 30 / 90 / 365 / 1.095 | Niveles al día | Días con 2+ / 3+ | Oro año 1 / 2 / 3 |
+|---|---|---|---|---|
+| **Constante (95 %)** | 30 / 82 / 348 / 1.045 | **0,95** | 24 % / 0 % | 2,14 M / 4,21 M / 5,83 M |
+| Normal (80 %) | 29 / 79 / 330 / 944 | 0,86 | 20 % / 0 % | 1,99 M / 3,62 M / 4,77 M |
+| Irregular (50 %) | 22 / 45 / 126 / 301 | 0,26 | 2 % / 0 % | — |
+
+Comprarlo todo le lleva ~3,8 años al Constante. Jugando 3 intentos al día: 1,12 niveles al día (6 % de días con 3+).
+
+### 12.3 Jefes con ataques propios
+
+Mismo estudio que en el §11.5, con los ataques nuevos y la frontera nueva. Sin cambiar `BOSS_TUNING`:
+**llegan al minuto 30 61 de 150 partidas y superan el nivel 44 (29 %)**, dentro del objetivo (~1 de cada 3).
+
+| Jefe | Superados de 15 |
+|---|---|
+| Mago de las Sombras, Caballero Espectral, Tejedora del Tiempo | 6 |
+| Guardián, Madre de la Nidada, Señor de la Plaga | 5 |
+| Fauces del Abismo | 4 |
+| Hidra | 3 |
+| Coloso, Dragón del Eclipse | 2 |
+
+Los dos últimos (los más pesados y con ondas o rayos) salen más duros; con 15 partidas por jefe aún es ruido, pero se
+vigilarán con datos reales.

@@ -1,8 +1,9 @@
 import { Input } from './input/input';
 import { Renderer } from './render/renderer';
 import type { RunConfig, RunResult, UpgradeChoice, World } from './sim/types';
+import { inWave } from './sim/core';
 import { banishChoice, evolutionReady, rerollChoices } from './sim/upgrades';
-import { chooseUpgrade, createWorld, runResult, step } from './sim/world';
+import { chooseUpgrade, createWorld, purgeItems, runResult, step } from './sim/world';
 
 /**
  * Partida en pantalla: une la simulación, el render y los controles con un bucle de paso fijo.
@@ -27,6 +28,8 @@ export interface Hud {
   cycleBoss: { name: string; hp: number } | null;
   /** Ha llegado el minuto 30: La Muerte está en camino. */
   reaper: boolean;
+  /** Oleada en curso. */
+  wave: boolean;
   /** Multiplicador de velocidad de la partida. */
   speed: number;
   /** Repeticiones y descartes que quedan en la partida. */
@@ -45,6 +48,8 @@ function cycleBossHud(w: World): Hud['cycleBoss'] {
 export interface GameCallbacks {
   onHud(hud: Hud): void;
   onLevelUp(choices: UpgradeChoice[]): void;
+  /** Se eligió la mejora de eliminar: hay que mostrar el inventario para elegir qué quitar. */
+  onPurge(): void;
   onChest(rewards: UpgradeChoice[]): void;
   onPause(paused: boolean): void;
   onEnd(result: RunResult): void;
@@ -56,6 +61,8 @@ const MAX_STEPS = 5;
 /** Velocidades de partida (las rápidas se desbloquean al superar el nivel 20). La simulación no cambia: solo se dan más pasos por fotograma. */
 export const SPEEDS = [1, 1.5, 2];
 const HUD_INTERVAL = 0.1;
+/** Duración de la animación de muerte: más larga y solemne si La Muerte cierra un nivel completado. */
+const deathDuration = (w: World) => (w.completed ? 2.4 : 1.6);
 
 export class Game {
   private world: World;
@@ -68,6 +75,8 @@ export class Game {
   private fps = 60;
   private paused = false;
   private announced: World['phase'] = 'playing';
+  /** Segundos de la animación de muerte ya mostrados (null mientras se juega). */
+  private dying: number | null = null;
   private destroyed = false;
   private ended = false;
 
@@ -130,8 +139,20 @@ export class Game {
       if (w.phase === 'levelup') {
         this.input.release();
         this.callbacks.onLevelUp(w.choices);
+      } else if (w.phase === 'purge') {
+        this.input.release();
+        this.callbacks.onPurge();
       } else if (w.phase === 'dead') {
+        // Breve pausa con la animación de muerte antes de la pantalla de resultado.
+        this.input.release();
         this.sendHud();
+        this.dying = 0;
+      }
+    }
+    if (this.dying !== null && !this.ended) {
+      this.dying += dt;
+      if (this.dying >= deathDuration(w)) {
+        this.ended = true;
         this.callbacks.onEnd(runResult(w));
       }
     }
@@ -142,7 +163,11 @@ export class Game {
       this.sendHud();
     }
     // En pausa los efectos se congelan con el resto de la escena.
-    this.renderer.draw(w, this.paused || w.phase === 'levelup' ? 0 : dt);
+    this.renderer.draw(
+      w,
+      this.paused || w.phase === 'levelup' || w.phase === 'purge' ? 0 : dt,
+      this.dying === null ? null : Math.min(1, this.dying / deathDuration(w)),
+    );
   };
 
   private sendHud() {
@@ -162,6 +187,7 @@ export class Game {
       bossAlive: w.bossAlive,
       cycleBoss: cycleBossHud(w),
       reaper: !!w.completed,
+      wave: inWave(w) && !w.completed,
       speed: this.speed,
       rerolls: p.rerolls ?? 0,
       banishes: p.banishes ?? 0,
@@ -174,8 +200,20 @@ export class Game {
   choose(index: number) {
     const w = this.world;
     chooseUpgrade(w, index);
+    this.afterChoice();
+  }
+
+  /** Mejora de eliminar: quita las armas y pasivas de esas posiciones del inventario. */
+  purge(weapons: number[], passives: number[]) {
+    purgeItems(this.world, weapons, passives);
+    this.afterChoice();
+  }
+
+  private afterChoice() {
+    const w = this.world;
     if (w.phase === 'levelup') this.callbacks.onLevelUp(w.choices);
-    else this.announced = w.phase;
+    else if (w.phase === 'purge') this.callbacks.onPurge();
+    this.announced = w.phase;
     this.sendHud();
   }
 

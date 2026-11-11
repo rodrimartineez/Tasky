@@ -120,6 +120,7 @@ export class Renderer {
   private bolts: Bolt[] = [];
   private shake = 0;
   private clock = 0;
+  private deathBurst = false;
 
   private constructor(private app: Application) {
     const layer = () => new Pool(this.world.addChild(new Container()));
@@ -127,9 +128,10 @@ export class Renderer {
     this.under = layer();
     this.pickups = layer();
     this.enemies = layer();
-    this.actors = layer();
     this.shots = layer();
     this.effects = layer();
+    // El personaje y su barra de vida van siempre encima: las armas salen desde detrás de él y nada lo tapa.
+    this.actors = layer();
   }
 
   /**
@@ -262,8 +264,17 @@ export class Renderer {
   }
 
   /** Dibuja un fotograma. `dt` = segundos reales desde el anterior (anima los efectos). */
-  draw(w: World, dt: number) {
+  /**
+   * `dying`: avance de la animación de muerte (0–1), o null mientras se juega. Hay dos: derrota (cae, se tiñe de
+   * rojo y se desvanece) y nivel completado por La Muerte (el alma asciende con un destello dorado).
+   */
+  draw(w: World, dt: number, dying: number | null = null) {
     this.clock += dt;
+    if (dying === null) this.deathBurst = false;
+    else if (!this.deathBurst) {
+      this.deathBurst = true;
+      this.burstDeath(w);
+    }
     this.consume(w.fx);
     const { width, height } = this.app.screen;
     const dpr = this.app.renderer.resolution;
@@ -322,18 +333,52 @@ export class Renderer {
     }
     // Zonas marcadas por los jefes de ciclo: se intensifican hasta estallar (sim/bosses.ts).
     for (const h of w.hazards ?? []) {
-      if (!visible(h.x, h.y)) continue;
+      const kind = h.kind ?? 'blast';
+      if (kind !== 'beam' && !visible(h.x, h.y)) continue;
       const left = Math.max(0, Math.min(1, h.at - w.time));
+      const armed = w.time >= h.at;
+      if (kind === 'beam') {
+        // Rayo: línea fina de aviso y, al dispararse, ancho y brillante.
+        const dx = (h.x2 ?? h.x) - h.x;
+        const dy = (h.y2 ?? h.y) - h.y;
+        const line = this.under.next(this.tex('px'));
+        line.position.set(h.x + dx / 2, h.y + dy / 2);
+        line.rotation = Math.atan2(dy, dx);
+        line.scale.set(Math.hypot(dx, dy) / 2, armed ? h.radius : 0.75);
+        line.tint = armed ? 0xffffff : (h.color ?? 0xff3c2e);
+        line.alpha = armed ? 0.85 : 0.25 + (1 - left) * 0.4;
+        if (armed) {
+          const glow = this.under.next(this.tex('px'));
+          glow.position.copyFrom(line.position);
+          glow.rotation = line.rotation;
+          glow.scale.set(line.scale.x, h.radius * 1.8);
+          glow.tint = h.color ?? 0xff3c2e;
+          glow.alpha = 0.45;
+        }
+        continue;
+      }
+      if (kind === 'ring') {
+        // Onda sísmica: la corona que va a golpear.
+        for (const r of [h.inner ?? 0, h.radius]) {
+          const edge = this.under.next(this.tex('ring'));
+          edge.position.set(h.x, h.y);
+          edge.scale.set(r / CIRCLE_RADIUS);
+          edge.tint = 0xffa04a;
+          edge.alpha = 0.3 + (1 - left) * 0.5;
+        }
+        continue;
+      }
+      const lasting = kind === 'zone' || kind === 'slow';
       const zone = this.under.next(this.tex('disc'));
       zone.position.set(h.x, h.y);
       zone.scale.set(h.radius / CIRCLE_RADIUS);
-      zone.tint = 0xff3c2e;
-      zone.alpha = 0.12 + (1 - left) * 0.3;
+      zone.tint = kind === 'zone' ? 0x7fd94a : kind === 'slow' ? (h.color ?? 0x6bf2e0) : 0xff3c2e;
+      zone.alpha = lasting ? (armed ? 0.3 : 0.12) : 0.12 + (1 - left) * 0.3;
       const rim = this.under.next(this.tex('ring'));
       rim.position.set(h.x, h.y);
       rim.scale.set(h.radius / CIRCLE_RADIUS);
-      rim.tint = 0xff6b4a;
-      rim.alpha = 0.5 + Math.sin(this.clock * 20) * 0.2;
+      rim.tint = kind === 'zone' ? 0x9fd94a : kind === 'slow' ? 0xd8fffb : 0xff6b4a;
+      rim.alpha = lasting ? 0.55 : 0.5 + Math.sin(this.clock * 20) * 0.2;
     }
     this.under.end();
 
@@ -359,12 +404,18 @@ export class Renderer {
     for (const e of w.enemies) {
       if (!visible(e.x, e.y)) continue;
       const s = this.enemies.next(this.tex(e.def.sprite, e.flash > 0));
-      const size = e.elite ? 1.5 : 1;
+      // Sombras y cabezas son copias pequeñas y oscuras de su jefe.
+      const copy = e.def.id === 'clone' || e.def.id === 'head';
+      const size = e.def.ai === 'reaper' ? 1.6 : e.elite ? 1.5 : copy ? 0.6 : 1;
       // Rebote al andar (aplastar y estirar) y orientación hacia el jugador.
       const bounce = 1 + Math.sin(this.clock * 9 + e.uid) * 0.07;
       s.scale.set((p.x < e.x ? -size : size) * (2 - bounce), size * bounce);
       s.position.set(e.x, e.y);
       if (e.elite && e.flash <= 0) s.tint = 0xffe08a;
+      if (copy && e.flash <= 0) {
+        s.tint = e.def.id === 'clone' ? 0x6a5a9a : 0x9adf9a;
+        s.alpha = 0.85;
+      }
     }
     this.enemies.end();
 
@@ -374,7 +425,25 @@ export class Renderer {
     const hero = this.actors.next(this.tex(`${sprite}_${p.moving && Math.floor(this.clock * 8) % 2 === 1 ? 1 : 0}`));
     hero.position.set(p.x, p.y - 2);
     hero.scale.x = p.dirX < 0 ? -1 : 1;
-    if (p.hurtTimer > 0) hero.alpha = Math.floor(this.clock * 20) % 2 === 0 ? 0.35 : 1;
+    // Al recibir daño destella en rojo, sin volverse transparente: el personaje se ve siempre.
+    if (p.hurtTimer > 0 && dying === null && Math.floor(this.clock * 20) % 2 === 0) hero.tint = 0xff7a7a;
+    if (dying !== null) {
+      const fade = Math.max(0, 1 - dying * 1.15);
+      if (w.completed) {
+        // El alma sube, pálida, y se disuelve.
+        hero.position.y -= dying * 26;
+        hero.scale.y = 1 + dying * 0.3;
+        hero.tint = 0xcfe9ff;
+        hero.alpha = fade * (0.75 + 0.25 * Math.sin(this.clock * 30));
+      } else {
+        // Se desploma, se tiñe de rojo y se apaga.
+        const fall = Math.min(1, dying * 2.5);
+        hero.rotation = ((fall * Math.PI) / 2) * (p.dirX < 0 ? -1 : 1);
+        hero.position.y += fall * 4;
+        hero.tint = dying < 0.4 ? 0xff6b6b : 0x6a5a6a;
+        hero.alpha = fade;
+      }
+    }
     // Barra de vida bajo el personaje.
     const barBack = this.actors.next(this.tex('px'));
     barBack.position.set(p.x, p.y + 9);
@@ -385,6 +454,7 @@ export class Renderer {
     bar.position.set(p.x - 7 + 7 * ratio, p.y + 9);
     bar.scale.set(7 * ratio, 0.75);
     bar.tint = ratio > 0.35 ? 0x5ee08a : 0xe5484d;
+    if (dying !== null) barBack.alpha = bar.alpha = Math.max(0, 1 - dying * 2);
     this.actors.end();
 
     this.shots.begin();
@@ -540,6 +610,26 @@ export class Renderer {
         if (shot.kind === 'lance') s.scale.set(1, Math.max(1, shot.radius / 6));
       }
     }
+  }
+
+  /** Estallido al morir: sangre y humo en la derrota; luz dorada y blanca al completar el nivel. */
+  private burstDeath(w: World) {
+    const p = w.player;
+    const colors = w.completed ? [0xffffff, 0xf6c945, 0xcfe9ff] : [0xe5484d, 0x9b2335, 0x5a5670];
+    for (let i = 0; i < 40 && this.particles.length < MAX_PARTICLES; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 25 + Math.random() * 70;
+      this.particles.push({
+        x: p.x,
+        y: p.y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed - (w.completed ? 40 : 0),
+        life: 0.5 + Math.random() * 0.7,
+        color: colors[i % colors.length],
+      });
+    }
+    for (let i = 0; i < 3; i++) this.rings.push({ x: p.x, y: p.y, radius: 14 + i * 14, life: RING_LIFE * (1 + i * 0.6), color: colors[i] });
+    this.shake = Math.max(this.shake, w.completed ? 6 : 10);
   }
 
   private drawEffects(dt: number) {

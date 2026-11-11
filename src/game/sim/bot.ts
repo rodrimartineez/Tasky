@@ -1,5 +1,5 @@
-import { chooseUpgrade, step } from './world';
-import type { World } from './types';
+import { chooseUpgrade, purgeItems, step } from './world';
+import type { Phase, World } from './types';
 
 /**
  * Jugador automático para probar y equilibrar sin pantalla (tests y simulador de economía).
@@ -60,7 +60,15 @@ export function botPlay(w: World, seconds: number, dt = 1 / 60) {
   const until = w.time + seconds;
   while (w.time < until && (w.phase === 'playing' || w.phase === 'levelup')) {
     if (w.phase === 'levelup') {
-      chooseUpgrade(w, 0);
+      // El bot nunca usa la mejora de eliminar: si es lo único que hay, la cierra sin quitar nada.
+      chooseUpgrade(
+        w,
+        Math.max(
+          0,
+          w.choices.findIndex((c) => c.kind !== 'purge'),
+        ),
+      );
+      if ((w.phase as Phase) === 'purge') purgeItems(w, [], []);
       continue;
     }
     const move = botMove(w);

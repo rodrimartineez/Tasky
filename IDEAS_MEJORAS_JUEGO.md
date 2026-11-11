@@ -66,7 +66,8 @@ conviene dibujar una sola vez sobre un contenido ya cerrado.
 | **5b — Motivación** ✔️ | Que se note cada día el vínculo hábito → juego; protección y ayudas sin regalar puntos | M1, D2, D3, D4, C4 | Fase 4 | **Máxima** (es el principio de diseño) |
 | **5c — Builds** ✔️ | Evoluciones, resto de armas y pasivas, revivir/repetir/descartar | B1, B2 (resto), C1 | 5 | Alta |
 | **5d — Progresión por niveles** ✔️ | Intentos ganados con hábitos, nivel solo al superar 30 min, La Muerte, 10 jefes de ciclo cada 7 niveles, hitos (×1,5/×2, infinito, reflejo) | E1 (adelantada) | 5c | **Máxima** (pedida por el usuario) |
-| **6 — PWA y rendimiento** | Precarga sin conexión, rendimiento en móvil | — | 5, 5c, 5d | Alta |
+| **5e — Combate más intenso** ✔️ | Personaje siempre visible, armas y pasivas de 7 niveles (armas hasta el 999), Purga, jefes con ataques propios, oleadas y ~nivel 60 al minuto 30, dos muertes distintas | — | 5d | **Máxima** (pedida por el usuario) |
+| **6 — PWA y rendimiento** | Precarga sin conexión, rendimiento en móvil | — | 5, 5c, 5d, 5e | Alta |
 | **7 — Rediseño visual y artístico** | Efectos de armas, iconos y proyectiles, evoluciones, mapas con capas y ambiente, recogidas, enemigos, tienda | A1, A2, A3, C3 (ampliadas) | 6 | Alta |
 | **8 — Validación global** | Estudio de equilibrio completo, prueba en iPhone, regresión de Proyectos | — | 5–7 | Hito: juego completo |
 | **9 — Sonido** | Efectos y música originales | A4 | 7 | Media |
@@ -181,6 +182,22 @@ mucho más fácil para los perfiles constante y normal (`ANALISIS_ECONOMIA.md` �
   10 jefes en rotación que escalan por vueltas, hitos de los niveles 20, 30 y 60, y modo de pruebas adaptado.
 - Curva de dificultad y oro reajustados con dos estudios nuevos (frontera y progresión) y uno de jefes.
 - **E1** (velocidad ×1,5 y ×2) queda hecha aquí, como hito del nivel 20.
+
+### Fase 5e — Combate más intenso ✔️ (pendiente de tu validación)
+Pedida por el usuario el 11/11/2026; detalle en `HABITS_GUIDE.md` §12:
+- **Capas:** el personaje y su barra de vida se dibujan por encima de todo; las armas salen desde detrás de él.
+- **Niveles de armas y pasivas:** 7 niveles, con el 7 como gran salto. Al 7 se bloquean hasta que todo lo que se
+  lleva está al 7; entonces las armas siguen hasta el 999 con mejoras porcentuales (las pasivas se quedan en el 7).
+- **Purga:** mejora especial (≈1 de cada 5 partidas) para eliminar armas y pasivas y liberar sus huecos, sin red de
+  seguridad.
+- **Jefes:** cada uno con ataques propios (ondas sísmicas, huevos, telarañas y burbujas de tiempo, sombras,
+  cabezas, charcos de plaga, rayos, barridos y gravedad).
+- **Ritmo:** más enemigos, oleadas cada minuto con respiro y nivel del personaje ≈60 al minuto 30.
+- **Muertes:** derrota (cae y se apaga) frente a cierre del nivel por La Muerte, que golpea con la guadaña hasta
+  matar (el alma asciende) y lleva a la pantalla de nivel superado.
+- Cambia el poder del jugador y de los enemigos, así que se repitieron los estudios de frontera, progresión y jefes
+  (`ANALISIS_ECONOMIA.md` §11–§12).
+- Pendiente para la Fase 7: arte propio de los ataques de los jefes, del huevo y de La Muerte.
 
 ### Fase 6 — PWA y rendimiento
 - Lo ya previsto: precarga del juego para jugar sin conexión, rendimiento en móviles de gama media (objetivo:

@@ -1,7 +1,7 @@
 import { CYCLE_BOSS_BY_ID, REAPER } from '../content/bosses';
 import { ENEMY_BY_ID } from '../content/enemies';
 import { emit, hurtPlayer, maxEnemies, rand, ringPoint, spawnEnemy } from './core';
-import type { BossPattern, Enemy, World } from './types';
+import type { BossPattern, Enemy, EnemyDef, Hazard, World } from './types';
 import { enemyShot } from './weapons';
 
 /**
@@ -41,7 +41,66 @@ const DURATION: Record<BossPattern, number> = {
   summon: 0.5,
   rain: 0.5,
   wall: 0.4,
+  quake: 1.8,
+  eggs: 0.6,
+  slow: 0.5,
+  clones: 0.6,
+  heads: 0.6,
+  pools: 0.6,
+  sweep: 3,
+  laser: 1.5,
+  gravity: 3,
 };
+
+/** Huevo de la Madre de la Nidada: si no se rompe a tiempo, eclosiona en esbirros. */
+export const EGG: EnemyDef = {
+  id: 'egg',
+  name: 'Huevo',
+  sprite: 'e_egg',
+  hp: 90,
+  speed: 0,
+  damage: 0,
+  radius: 7,
+  xp: 2,
+  ai: 'egg',
+  knockResist: 1,
+};
+/** Segundos hasta que eclosiona un huevo y esbirros que salen. */
+export const EGG_HATCH = { after: 4, minions: 4 };
+
+/** Copias del jefe (sombras y cabezas): disparan ráfagas y caen pronto. */
+const copyOf = (e: Enemy, id: 'clone' | 'head'): EnemyDef => ({
+  id,
+  name: id === 'clone' ? 'Sombra' : 'Cabeza',
+  sprite: e.def.sprite,
+  hp: id === 'clone' ? 220 : 380,
+  speed: id === 'clone' ? 34 : 0,
+  damage: e.def.damage * 0.5,
+  radius: id === 'clone' ? 12 : 10,
+  xp: 5,
+  ai: 'volley',
+  knockResist: id === 'clone' ? 0.5 : 1,
+});
+
+function hazard(w: World, h: Hazard) {
+  (w.hazards ??= []).push(h);
+}
+
+/** Rayo desde el jefe en la dirección `angle`. */
+function beam(w: World, e: Enemy, angle: number, at: number, until: number, width = 8, length = 300) {
+  hazard(w, {
+    kind: 'beam',
+    x: e.x,
+    y: e.y,
+    x2: e.x + Math.cos(angle) * length,
+    y2: e.y + Math.sin(angle) * length,
+    at,
+    until,
+    radius: width,
+    damage: e.damage * BOSS_TUNING.shot * 1.5,
+    color: e.def.color,
+  });
+}
 
 /** Saca al jefe de ciclo de la partida. */
 export function spawnCycleBoss(w: World) {
@@ -68,14 +127,30 @@ export function spawnReaper(w: World) {
   const at = ringPoint(w, undefined, 220);
   const e = spawnEnemy(w, REAPER, at.x, at.y);
   e.speed = Math.max(140, w.player.stats.moveSpeed * 2.2);
+  e.t1 = 0;
+  // Nada salva de La Muerte: sin revivir.
+  w.player.stats.revival = 0;
   w.completed = true;
   emit(w, { type: 'shake', power: 10 });
 }
 
-/** La Muerte no se puede esquivar: al tocar al jugador acaba la partida, sin revivir ni invulnerabilidad. */
-export function reaperTouch(w: World) {
-  w.player.stats.revival = 0;
-  w.player.hp = 0;
+/** Segundos entre tajos de La Muerte y vida máxima que quita cada uno (unos 4 tajos para acabar la partida). */
+export const REAPER_STRIKE = { every: 0.8, share: 0.26 };
+
+/** Tajo de guadaña: ignora armadura e invulnerabilidad. Devuelve si ha golpeado. */
+export function reaperStrike(w: World, e: Enemy): boolean {
+  if (e.t1 > 0) return false;
+  const p = w.player;
+  e.t1 = REAPER_STRIKE.every;
+  const dmg = Math.ceil(p.stats.maxHp * REAPER_STRIKE.share);
+  p.stats.revival = 0;
+  p.hp -= dmg;
+  p.hurtTimer = 0.3;
+  emit(w, { type: 'number', x: p.x, y: p.y - 10, value: dmg, crit: true, player: true });
+  emit(w, { type: 'ring', x: p.x, y: p.y, radius: 18, color: 0xe5484d });
+  emit(w, { type: 'puff', x: p.x, y: p.y, count: 12, color: 0x9b2335 });
+  emit(w, { type: 'shake', power: 7 });
+  return true;
 }
 
 function ring(w: World, e: Enemy, count: number, speed: number, offset: number) {
@@ -139,6 +214,103 @@ function begin(w: World, e: Enemy, pattern: BossPattern, round: number, toPlayer
       }
       break;
     }
+    case 'quake': {
+      // Ondas que se abren desde el jefe: hay que cruzarlas por el hueco entre una y otra o alejarse.
+      const waves = 3 + Math.min(2, round);
+      for (let i = 0; i < waves; i++) {
+        const inner = 26 + i * 62;
+        hazard(w, {
+          kind: 'ring',
+          x: e.x,
+          y: e.y,
+          inner,
+          radius: inner + 26,
+          at: w.time + 0.7 + i * 0.35,
+          damage: e.damage * BOSS_TUNING.shot * 2,
+        });
+      }
+      emit(w, { type: 'shake', power: 5 });
+      break;
+    }
+    case 'eggs': {
+      const count = 3 + round;
+      for (let i = 0; i < count; i++) {
+        const a = rand(w) * Math.PI * 2;
+        const d = 60 + rand(w) * 70;
+        const egg = spawnEnemy(w, EGG, p.x + Math.cos(a) * d, p.y + Math.sin(a) * d);
+        egg.t1 = EGG_HATCH.after;
+      }
+      break;
+    }
+    case 'slow': {
+      // Telarañas o burbujas de tiempo: ralentizan mientras se pisan.
+      const count = 3 + round;
+      for (let i = 0; i < count; i++) {
+        const a = rand(w) * Math.PI * 2;
+        const d = i === 0 ? 0 : 40 + rand(w) * 80;
+        hazard(w, {
+          kind: 'slow',
+          x: p.x + Math.cos(a) * d,
+          y: p.y + Math.sin(a) * d,
+          radius: 40,
+          at: w.time + 0.6,
+          until: w.time + 7,
+          damage: 0,
+          color,
+        });
+      }
+      break;
+    }
+    case 'clones':
+    case 'heads': {
+      const count = 2 + Math.min(2, round);
+      const def = copyOf(e, pattern === 'clones' ? 'clone' : 'head');
+      for (let i = 0; i < count; i++) {
+        const a = (i / count) * Math.PI * 2 + rand(w);
+        const c = spawnEnemy(w, def, e.x + Math.cos(a) * 70, e.y + Math.sin(a) * 70);
+        c.t1 = 1 + i * 0.4;
+      }
+      emit(w, { type: 'ring', x: e.x, y: e.y, radius: 40, color });
+      break;
+    }
+    case 'pools': {
+      const count = 3 + 2 * round;
+      for (let i = 0; i < count; i++) {
+        const a = rand(w) * Math.PI * 2;
+        const d = i === 0 ? 0 : 30 + rand(w) * 90;
+        hazard(w, {
+          kind: 'zone',
+          x: p.x + Math.cos(a) * d,
+          y: p.y + Math.sin(a) * d,
+          radius: 28,
+          at: w.time + 0.9,
+          until: w.time + 6,
+          damage: e.damage * BOSS_TUNING.shot,
+          color,
+        });
+      }
+      break;
+    }
+    case 'sweep': {
+      // Un rayo gira media vuelta alrededor del jefe; se avisa la dirección de salida.
+      const steps = 16;
+      const dir = rand(w) < 0.5 ? -1 : 1;
+      const start = toPlayer - dir * (Math.PI / 2);
+      for (let i = 0; i < steps; i++) {
+        const angle = start + dir * i * (Math.PI / steps) * (1 + 0.15 * round);
+        beam(w, e, angle, w.time + 0.8 + i * 0.12, w.time + 1.0 + i * 0.12);
+      }
+      break;
+    }
+    case 'laser': {
+      // Rayos avisados hacia el jugador y a sus lados; se disparan todos a la vez.
+      const count = 3 + round;
+      for (let i = 0; i < count; i++) beam(w, e, toPlayer + (i - (count - 1) / 2) * 0.45, w.time + 0.9, w.time + 1.4, 10, 340);
+      break;
+    }
+    case 'gravity':
+      emit(w, { type: 'ring', x: e.x, y: e.y, radius: 120, color });
+      break;
     case 'wall': {
       // Un anillo alrededor del jugador que se cierra, con un hueco por el que escapar.
       const count = 20;
@@ -177,7 +349,20 @@ export function updateCycleBoss(w: World, e: Enemy, dt: number, toPlayer: number
 
   e.sub = (e.sub ?? 0) - dt;
   let velocity: [number, number] | null = null;
-  if (current === 'spiral') {
+  if (current === 'gravity') {
+    // Atrae al jugador hacia sus fauces mientras suelta anillos lentos.
+    const p = w.player;
+    const dx = e.x - p.x;
+    const dy = e.y - p.y;
+    const d = Math.hypot(dx, dy) || 1;
+    const pull = (40 + 10 * round) * dt;
+    p.x += (dx / d) * pull;
+    p.y += (dy / d) * pull;
+    if (Math.floor(e.sub * 2) !== Math.floor((e.sub + dt) * 2)) ring(w, e, 10 + 2 * round, 55, rand(w) * Math.PI);
+    velocity = [0, 0];
+  } else if (current === 'sweep' || current === 'laser' || current === 'quake') {
+    velocity = [0, 0];
+  } else if (current === 'spiral') {
     // Brazos de disparos que giran (más brazos en cada vuelta), una tanda cada 0,1 s.
     if (Math.floor(e.sub * 10) !== Math.floor((e.sub + dt) * 10)) {
       const arms = 2 + Math.min(3, round);
@@ -199,8 +384,17 @@ export function updateCycleBoss(w: World, e: Enemy, dt: number, toPlayer: number
   return velocity;
 }
 
-/** Zonas de los ataques en área: estallan al llegar su momento. */
+/** Distancia de un punto a un segmento. */
+function segmentDistance(px: number, py: number, h: Hazard) {
+  const dx = (h.x2 ?? h.x) - h.x;
+  const dy = (h.y2 ?? h.y) - h.y;
+  const t = Math.max(0, Math.min(1, ((px - h.x) * dx + (py - h.y) * dy) / (dx * dx + dy * dy || 1)));
+  return Math.hypot(px - (h.x + dx * t), py - (h.y + dy * t));
+}
+
+/** Zonas de los ataques de los jefes: estallan al llegar su momento o actúan mientras duran. */
 export function updateHazards(w: World) {
+  w.slowed = false;
   if (!w.hazards?.length) return;
   const p = w.player;
   let kept = 0;
@@ -209,10 +403,21 @@ export function updateHazards(w: World) {
       w.hazards[kept++] = h;
       continue;
     }
-    const dx = p.x - h.x;
-    const dy = p.y - h.y;
-    if (dx * dx + dy * dy < (h.radius + 5) ** 2) hurtPlayer(w, h.damage);
-    emit(w, { type: 'ring', x: h.x, y: h.y, radius: h.radius, color: 0xff5a3c });
+    const d = Math.hypot(p.x - h.x, p.y - h.y);
+    const kind = h.kind ?? 'blast';
+    if (kind === 'blast' || kind === 'ring') {
+      const hit = kind === 'blast' ? d < h.radius + 5 : d > (h.inner ?? 0) - 5 && d < h.radius + 5;
+      if (hit) hurtPlayer(w, h.damage);
+      emit(w, { type: 'ring', x: h.x, y: h.y, radius: h.radius, color: 0xff5a3c });
+      continue;
+    }
+    if (w.time >= (h.until ?? h.at)) continue;
+    w.hazards[kept++] = h;
+    if (kind === 'slow') {
+      if (d < h.radius) w.slowed = true;
+    } else if (kind === 'zone') {
+      if (d < h.radius) hurtPlayer(w, h.damage);
+    } else if (segmentDistance(p.x, p.y, h) < h.radius + 4) hurtPlayer(w, h.damage);
   }
   w.hazards.length = kept;
 }

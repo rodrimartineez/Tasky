@@ -8,12 +8,60 @@ import { MAX_PASSIVES, MAX_WEAPONS, type UpgradeChoice, type WeaponDef, type Wea
 /** Subidas de nivel, evoluciones, cofres y cálculo de estadísticas. */
 
 export { weaponStatsAt };
-const MAX_WEAPON_LEVEL = 8;
+
+/**
+ * Niveles: armas y pasivas tienen 7 niveles de contenido. Al 7 dejan de mejorar hasta que todo lo que se lleva
+ * (armas y pasivas) está al 7; entonces las armas siguen subiendo con mejoras porcentuales hasta el 999. Las pasivas
+ * se quedan en el 7.
+ */
+export const MAX_WEAPON_LEVEL = 7;
+export const WEAPON_LEVEL_CAP = 999;
+
+/** Mejora porcentual de cada nivel por encima del 7. Proyectiles y perforación extra cada cierto número de niveles. */
+export const OVERLEVEL = {
+  damage: 0.05,
+  area: 0.004,
+  areaMax: 1.6,
+  haste: 0.004,
+  speed: 0.003,
+  duration: 0.003,
+  amountEvery: 50,
+  amountMax: 5,
+  pierceEvery: 30,
+};
+
+/** Estadísticas de un arma en cualquier nivel (1–999). */
+export function statsAt(def: WeaponDef, level: number) {
+  const stats = weaponStatsAt(def, Math.min(level, MAX_WEAPON_LEVEL));
+  const extra = Math.max(0, Math.min(level, WEAPON_LEVEL_CAP) - MAX_WEAPON_LEVEL);
+  if (extra === 0) return stats;
+  stats.damage *= 1 + OVERLEVEL.damage * extra;
+  stats.area *= Math.min(OVERLEVEL.areaMax, 1 + OVERLEVEL.area * extra);
+  stats.cooldown = Math.max(Math.min(stats.cooldown, 0.15), stats.cooldown / (1 + OVERLEVEL.haste * extra));
+  stats.speed *= 1 + OVERLEVEL.speed * extra;
+  stats.duration *= 1 + OVERLEVEL.duration * extra;
+  stats.amount += Math.min(OVERLEVEL.amountMax, Math.floor(extra / OVERLEVEL.amountEvery));
+  if (stats.pierce < 999) stats.pierce += Math.floor(extra / OVERLEVEL.pierceEvery);
+  return stats;
+}
+
+/** Todo lo que se lleva está al nivel 7: se desbloquean los niveles superiores de las armas. */
+export const buildComplete = (w: World) =>
+  w.player.weapons.every((x) => x.level >= MAX_WEAPON_LEVEL) &&
+  w.player.passives.every((x) => x.level >= (PASSIVE_BY_ID.get(x.id)?.maxLevel ?? MAX_WEAPON_LEVEL));
+
+function overlevelText(level: number): string {
+  const extra = level - MAX_WEAPON_LEVEL;
+  const parts = [`+${Math.round(OVERLEVEL.damage * 100)} % de daño`];
+  if (extra % OVERLEVEL.amountEvery === 0 && extra / OVERLEVEL.amountEvery <= OVERLEVEL.amountMax) parts.push('un proyectil más');
+  if (extra % OVERLEVEL.pierceEvery === 0) parts.push('atraviesa uno más');
+  return `${parts.join(', ')} y algo más de área, cadencia y alcance`;
+}
 
 export function newWeapon(id: string): WeaponState {
   const def = WEAPON_BY_ID.get(id);
   if (!def) throw new Error(`Arma desconocida: ${id}`);
-  return { id, level: 1, stats: weaponStatsAt(def, 1), timer: 0.5, dealt: 0 };
+  return { id, level: 1, stats: statsAt(def, 1), timer: 0.5, dealt: 0 };
 }
 
 /** Recalcula las estadísticas del jugador: las iniciales de la partida más las pasivas. */
@@ -39,7 +87,8 @@ export function evolutionReady(w: World, ws: WeaponState): EvolutionDef | null {
 function evolve(w: World, ws: WeaponState, evo: EvolutionDef): UpgradeChoice {
   const p = w.player;
   const next = newWeapon(evo.def.id);
-  next.level = MAX_WEAPON_LEVEL;
+  next.level = ws.level;
+  next.stats = statsAt(evo.def, ws.level);
   next.dealt = ws.dealt;
   next.timer = ws.timer;
   p.weapons[p.weapons.indexOf(ws)] = next;
@@ -51,7 +100,7 @@ function evolve(w: World, ws: WeaponState, evo: EvolutionDef): UpgradeChoice {
     id: evo.def.id,
     name: evo.def.name,
     icon: evo.def.icon,
-    level: MAX_WEAPON_LEVEL,
+    level: ws.level,
     text: `${WEAPON_BY_ID.get(ws.id)?.name ?? ws.id} → ${evo.def.name}`,
   };
 }
@@ -65,7 +114,7 @@ function weaponChoice(w: World, def: WeaponDef, level: number): UpgradeChoice {
     name: def.name,
     icon: def.icon,
     level,
-    text: level === 1 ? def.description : def.levels[level - 2].text,
+    text: level === 1 ? def.description : level > MAX_WEAPON_LEVEL ? overlevelText(level) : def.levels[level - 2].text,
     ...(completes ? { evolves: evo.def.name } : {}),
   };
 }
@@ -75,11 +124,19 @@ function pool(w: World): { choice: UpgradeChoice; weight: number }[] {
   const p = w.player;
   const out: { choice: UpgradeChoice; weight: number }[] = [];
   const banished = p.banished ?? [];
+  // Las armas evolucionadas no están en WEAPONS, pero también suben por encima del 7.
+  const complete = buildComplete(w);
+  if (complete)
+    for (const owned of p.weapons) {
+      const def = WEAPON_BY_ID.get(owned.id);
+      if (def?.evolvedFrom && owned.level < WEAPON_LEVEL_CAP) out.push({ choice: weaponChoice(w, def, owned.level + 1), weight: 2 });
+    }
   for (const def of WEAPONS) {
     if (banished.includes(def.id)) continue;
     const owned = p.weapons.find((x) => x.id === def.id);
     if (owned) {
       if (owned.level < MAX_WEAPON_LEVEL) out.push({ choice: weaponChoice(w, def, owned.level + 1), weight: 3 });
+      else if (complete && owned.level < WEAPON_LEVEL_CAP) out.push({ choice: weaponChoice(w, def, owned.level + 1), weight: 2 });
     } else if (p.weapons.length < MAX_WEAPONS) {
       // Una evolución ocupa el lugar de su arma base, que no vuelve a ofrecerse como nueva.
       const evolvedId = EVOLUTION_BY_WEAPON.get(def.id)?.def.id;
@@ -122,6 +179,15 @@ function pickWeighted(w: World, options: { choice: UpgradeChoice; weight: number
   return options.pop()!.choice;
 }
 
+const PURGE_CHOICE: UpgradeChoice = {
+  kind: 'purge',
+  id: 'purge',
+  name: 'Purga',
+  icon: 'i_purge',
+  level: 1,
+  text: 'Elige armas y pasivas para eliminarlas y liberar sus huecos. ¡Cuidado con quedarte indefenso!',
+};
+
 const FALLBACKS: UpgradeChoice[] = [
   { kind: 'gold', id: 'gold', name: 'Bolsa de oro', icon: 'i_coin', level: 1, text: '+30 de oro' },
   { kind: 'heal', id: 'heal', name: 'Poción', icon: 'i_heart', level: 1, text: 'Recupera 40 de vida' },
@@ -130,10 +196,14 @@ const FALLBACKS: UpgradeChoice[] = [
 /** Opciones de una subida de nivel: 3, o 4 con suerte. Con todo al máximo, oro o curación. */
 export function rollChoices(w: World): UpgradeChoice[] {
   const options = pool(w);
-  if (options.length === 0) return FALLBACKS;
-  const count = rand(w) < Math.min(0.5, 0.1 * w.player.stats.luck) ? 4 : 3;
   const choices: UpgradeChoice[] = [];
-  while (choices.length < count && options.length > 0) choices.push(pickWeighted(w, options));
+  if (options.length === 0) choices.push(...FALLBACKS);
+  else {
+    const count = rand(w) < Math.min(0.5, 0.1 * w.player.stats.luck) ? 4 : 3;
+    while (choices.length < count && options.length > 0) choices.push(pickWeighted(w, options));
+  }
+  // Mejora especial de eliminar: sustituye a la última opción (también con el inventario lleno o todo al máximo).
+  if (w.purgeAt !== undefined && w.player.level >= w.purgeAt) choices[choices.length - 1] = PURGE_CHOICE;
   return choices;
 }
 
@@ -166,7 +236,7 @@ export function applyChoice(w: World, choice: UpgradeChoice) {
     if (!owned) p.weapons.push(newWeapon(choice.id));
     else {
       owned.level = choice.level;
-      owned.stats = weaponStatsAt(WEAPON_BY_ID.get(owned.id)!, owned.level);
+      owned.stats = statsAt(WEAPON_BY_ID.get(owned.id)!, owned.level);
     }
   } else if (choice.kind === 'passive') {
     const owned = p.passives.find((x) => x.id === choice.id);

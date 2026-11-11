@@ -103,6 +103,63 @@ function resultNote(r: RunResult, level: number, test: boolean): string {
   return `El oro ya está guardado. Sigues en el nivel ${level}: cada intento empieza desde el minuto 0.`;
 }
 
+/** Mejora de eliminar: inventario completo para marcar qué armas y pasivas quitar. */
+function PurgePanel({ hud, onConfirm }: { hud: Hud; onConfirm: (weapons: number[], passives: number[]) => void }) {
+  const [weapons, setWeapons] = useState<number[]>([]);
+  const [passives, setPassives] = useState<number[]>([]);
+  const toggle = (list: number[], i: number) => (list.includes(i) ? list.filter((x) => x !== i) : [...list, i]);
+  const group = (
+    title: string,
+    items: { id: string; level: number }[],
+    total: number,
+    defs: Map<string, { name: string; icon: string }>,
+    selected: number[],
+    onToggle: (i: number) => void,
+  ) => (
+    <fieldset className={styles.purgeGroup}>
+      <legend>{title}</legend>
+      <div className={styles.purgeGrid}>
+        {Array.from({ length: total }, (_, i) => {
+          const item = items[i];
+          const def = item && defs.get(item.id);
+          if (!def) return <span key={`empty-${i}`} className={`${styles.purgeItem} ${styles.empty}`} aria-hidden />;
+          const on = selected.includes(i);
+          return (
+            <button
+              key={item.id}
+              type="button"
+              className={`${styles.purgeItem} ${on ? styles.purgeOn : ''}`}
+              aria-pressed={on}
+              aria-label={`${on ? 'No eliminar' : 'Eliminar'} ${def.name} (nivel ${item.level})`}
+              onClick={() => onToggle(i)}
+            >
+              <img src={spriteDataUrl(def.icon)} alt="" draggable={false} />
+              <span>{def.name}</span>
+              <i>Nv {item.level}</i>
+            </button>
+          );
+        })}
+      </div>
+    </fieldset>
+  );
+  const count = weapons.length + passives.length;
+  const unarmed = hud.weapons.length > 0 && weapons.length === hud.weapons.length;
+  return (
+    <div className={styles.overlay}>
+      <div className={styles.panel} role="dialog" aria-label="Purga">
+        <h2 className={styles.title}>Purga</h2>
+        <p className={styles.note}>Marca lo que quieras eliminar. Sus huecos quedarán libres para conseguir otras armas y pasivas.</p>
+        {group('Armas', hud.weapons, MAX_WEAPONS, WEAPON_BY_ID, weapons, (i) => setWeapons((l) => toggle(l, i)))}
+        {group('Pasivas', hud.passives, MAX_PASSIVES, PASSIVE_BY_ID, passives, (i) => setPassives((l) => toggle(l, i)))}
+        {unarmed && <p className={styles.purgeWarn}>¡Te quedarás sin armas! Nadie te protegerá.</p>}
+        <button type="button" className={styles.primary} onClick={() => onConfirm(weapons, passives)}>
+          {count > 0 ? `Eliminar ${count} ${count === 1 ? 'objeto' : 'objetos'}` : 'No eliminar nada'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function GameScreen({ level, attempt, config, resume, onFinish, onExit, test, speeds }: GameScreenProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const gameRef = useRef<Game | null>(null);
@@ -112,6 +169,7 @@ export default function GameScreen({ level, attempt, config, resume, onFinish, o
   const [hud, setHud] = useState<Hud | null>(null);
   const [choices, setChoices] = useState<UpgradeChoice[] | null>(null);
   const [chest, setChest] = useState<UpgradeChoice[] | null>(null);
+  const [purging, setPurging] = useState(false);
   const [paused, setPaused] = useState(false);
   // Modo «Descartar»: el siguiente clic en una opción la quita para siempre.
   const [banishing, setBanishing] = useState(false);
@@ -163,6 +221,7 @@ export default function GameScreen({ level, attempt, config, resume, onFinish, o
           setHud(h);
         },
         onLevelUp: (c) => setChoices([...c]),
+        onPurge: () => setPurging(true),
         onChest: (rewards) => {
           setChest([...rewards]);
           clearTimeout(chestTimer);
@@ -311,6 +370,7 @@ export default function GameScreen({ level, attempt, config, resume, onFinish, o
               ¡Ha llegado La Muerte!
             </div>
           )}
+          {hud.wave && !hud.cycleBoss && !hud.bossAlive && <div className={styles.wave}>¡Oleada!</div>}
           {chest && (
             <div className={styles.chest} role="status">
               <Icon name="i_chest" size={28} />
@@ -382,7 +442,17 @@ export default function GameScreen({ level, attempt, config, resume, onFinish, o
         </div>
       )}
 
-      {paused && !choices && !result && (
+      {purging && hud && !result && (
+        <PurgePanel
+          hud={hud}
+          onConfirm={(weapons, passives) => {
+            setPurging(false);
+            gameRef.current?.purge(weapons, passives);
+          }}
+        />
+      )}
+
+      {paused && !choices && !purging && !result && (
         <div className={styles.overlay}>
           <div className={styles.panel} role="dialog" aria-label="Pausa">
             <h2 className={styles.title}>Pausa</h2>

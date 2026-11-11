@@ -156,7 +156,7 @@ Movimiento (joystick virtual flotante: aparece donde se apoya el pulgar, no tapa
 escritorio) · ataque automático · gemas de experiencia con imán · subida de nivel → elegir 1 de 3–4 (armas nuevas,
 niveles de arma, pasivas) · cofres de élites y jefes (mejoras, evoluciones, oro) · oleadas guionizadas por minuto
 por escenario · jefes en minutos fijos · **minuto 30: llega La Muerte**, imparable, que cierra la partida (llegar a
-ella supera el nivel; §11). Máximo 5 armas y 5 pasivas.
+ella supera el nivel; §11). Máximo 5 armas y 5 pasivas, de 7 niveles (§12).
 
 ### 5.2 Contenido inicial (objetivo, por fases)
 - **Armas (~16 base + evoluciones):** proyectil que busca, lanza que atraviesa, orbe que orbita, aura de daño
@@ -348,3 +348,57 @@ mejoras crecen más despacio. Los intentos sobran (≈5 al día para un jugador 
 obligación de jugarlos todos.
 
 **Modo de pruebas** (§10): cualquier nivel, jefe y modalidad sin gastar intentos ni guardar nada.
+
+## 12. Combate: niveles de armas, Purga, oleadas, jefes y muertes (Fase 5e)
+
+Pedido por el usuario el 11/11/2026.
+
+**Capas.** El personaje y su barra de vida se dibujan encima de todo (`render/renderer.ts`, capa `actors` la
+última): proyectiles, efectos y enemigos quedan detrás, así que las armas salen desde su espalda y nunca lo tapan.
+Vale para cualquier arma futura sin hacer nada más.
+
+**Niveles de armas y pasivas** (`sim/upgrades.ts`, tablas en `content/weapons.ts` y `content/passives.ts`).
+- 7 niveles; cada uno se nota y el 7 es un gran salto (un arma al 7 rinde de 4 a 12 veces su nivel 1, algo más que el antiguo nivel 8).
+- Al llegar al 7, un objeto deja de ofrecerse. Mientras haya **algo** de lo que se lleva (armas o pasivas) por debajo
+  del 7, ninguna arma pasa del 7.
+- Con todo al 7 (`buildComplete`), las armas siguen subiendo hasta el **999** (`OVERLEVEL`): cada nivel +5 % de
+  daño y algo más de área (hasta ×1,6), cadencia, velocidad y duración; +1 proyectil cada 50 niveles (5 como mucho)
+  y +1 de perforación cada 30. Las pasivas se quedan en el 7. Vale en todas las modalidades, pensado sobre todo para
+  el infinito.
+- Las evoluciones siguen igual: arma al 7 + su pasiva + cofre. La evolucionada conserva el nivel del arma.
+
+**Purga** (mejora especial). En ~1 de cada 5 partidas (decidido por la semilla, `PURGE` en `sim/world.ts`) se
+ofrece una vez, entre los niveles 8 y 37 del personaje, en lugar de una de las opciones, aunque el inventario esté
+lleno. Abre el inventario completo (5 armas y 5 pasivas por separado): se marcan las que se quieren eliminar y se
+confirma. Sus huecos quedan libres. No hay red de seguridad: se pueden quitar todas las armas.
+
+**Ritmo y oleadas** (`sim/core.ts` `WAVES`, `sim/world.ts` `SPAWN_RATE`, `XP_SCALE`).
+- Apariciones ×1,5 sobre las tablas de cada escenario y más enemigos a la vez (hasta 450).
+- Cada minuto: tramo normal; **oleada** del segundo 34 al 50 (×2,6 de apariciones, anillo de enemigos alrededor y
+  aviso «¡Oleada!»); y un respiro hasta el minuto siguiente (×0,45).
+- La experiencia de cada enemigo se divide por la densidad del nivel y la curva de experiencia está escalada para
+  que una partida bien jugada llegue a **~nivel 60** en el minuto 30 (`ANALISIS_ECONOMIA.md` §12).
+
+**Jefes de ciclo** (`content/bosses.ts`, `sim/bosses.ts`). Además de ráfagas, abanicos, espirales, embestidas,
+saltos, invocaciones, lluvias y anillos, cada jefe tiene ataques propios avisados con antelación:
+
+| Jefe | Firma | Desde la 2.ª vuelta |
+|---|---|---|
+| Guardián del Umbral | Ondas sísmicas que hay que cruzar, embestida | Anillo que se cierra, invocación |
+| Madre de la Nidada | Huevos que eclosionan si no se rompen, telarañas que ralentizan | Invocación, lluvia |
+| Coloso de Piedra | Ondas sísmicas, embestida, rocas | Anillo, torretas |
+| Mago de las Sombras | Sombras que disparan, saltos, rayos | Espiral, lluvia |
+| Hidra del Pantano | Cabezas que disparan desde el suelo, charcos venenosos | Espiral, invocación |
+| Señor de la Plaga | Charcos de plaga, ratas | Lluvia, gravedad |
+| Caballero Espectral | Barrido de espada (rayo que gira), embestida, saltos | Sombras, abanico |
+| Fauces del Abismo | Gravedad que arrastra hacia su boca, espiral | Charcos, anillo |
+| Tejedora del Tiempo | Burbujas de tiempo que ralentizan, rayos, saltos | Espiral, sombras |
+| Dragón del Eclipse | Aliento (rayos), barrido, lluvia de fuego, embestida | Huevos, ondas |
+
+**Dos muertes distintas** (`Game.ts`, `render/renderer.ts`).
+- **Derrota:** al llegar a 0 de vida se detiene la partida 1,6 s: el personaje se desploma, se tiñe de rojo y se
+  apaga entre sangre y humo. Después, la pantalla de derrota.
+- **Nivel completado:** en el minuto 30 llega La Muerte (encapuchada, manto rojo y guadaña). Es un enemigo más: se
+  acerca y golpea cada 0,8 s quitando el 26 % de la vida máxima (unos 4 tajos visibles), sin que la armadura, la
+  invulnerabilidad ni revivir lo eviten. Las armas no le hacen nada; el jugador puede moverse. Al morir, el alma
+  asciende con un destello dorado durante 2,4 s y aparece la pantalla de nivel superado.

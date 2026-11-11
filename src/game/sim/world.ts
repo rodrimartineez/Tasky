@@ -1,15 +1,24 @@
 import { CYCLE_BOSS_AT } from '../content/bosses';
 import { ENEMY_BY_ID } from '../content/enemies';
-import { reaperTouch, spawnCycleBoss, spawnReaper, updateCycleBoss, updateHazards } from './bosses';
-import { emit, hurtPlayer, maxEnemies, near, queryNear, rand, rebuildGrid, ringPoint, spawnEnemy } from './core';
+import { EGG_HATCH, reaperStrike, spawnCycleBoss, spawnReaper, updateCycleBoss, updateHazards } from './bosses';
+import { emit, hurtPlayer, maxEnemies, near, queryNear, rand, rebuildGrid, ringPoint, spawnEnemy, WAVES, waveFactor } from './core';
 import { runDensity, survivalBonus } from './difficulty';
 import { MAX_WEAPONS, RUN_SECONDS, type Enemy, type RunConfig, type RunResult, type World } from './types';
-import { applyChoice, newWeapon, openChest, rollChoices } from './upgrades';
+import { applyChoice, newWeapon, openChest, recomputeStats, rollChoices } from './upgrades';
 import { enemyShot, updateProjectiles, updateWeapons } from './weapons';
 
 /** Estado inicial de una partida. */
+/** Azar fijo por semilla que no consume el azar de la partida. */
+const seedRoll = (seed: number, salt: number) => (Math.imul((seed ^ salt) | 0, 2654435761) >>> 0) / 4294967296;
+
+/** Una de cada cinco partidas ofrece la mejora de eliminar, una sola vez, entre los niveles 8 y 37. */
+export const PURGE = { chance: 0.2, from: 8, span: 30 };
+const purgeLevel = (seed: number) =>
+  seedRoll(seed, 0x5bd1e995) < PURGE.chance ? PURGE.from + Math.floor(seedRoll(seed, 0x27d4eb2f) * PURGE.span) : undefined;
+
 export function createWorld(config: RunConfig): World {
   return {
+    purgeAt: purgeLevel(config.seed),
     config,
     rngState: config.seed | 0,
     phase: 'playing',
@@ -48,13 +57,19 @@ export function createWorld(config: RunConfig): World {
   };
 }
 
+/** Escala de la experiencia por nivel: ajustada para llegar a ~nivel 60 en el minuto 30 (ANALISIS_ECONOMIA.md §12). */
+export const XP_SCALE = 1.05;
+
 /** Experiencia necesaria para pasar del nivel `level` al siguiente. */
-export const xpForLevel = (level: number) => 5 + (level - 1) * 5 + Math.floor(Math.pow(level - 1, 1.9) * 0.6);
+export const xpForLevel = (level: number) => Math.round((5 + (level - 1) * 5 + Math.floor(Math.pow(level - 1, 1.9) * 0.6)) * XP_SCALE);
 
 // ── Aparición de enemigos ───────────────────────────────────────────────────────────────────────
 
 /** Fin de la última fase de aparición de los escenarios: en el modo infinito se repite desde aquí. */
 const LOOP_FROM = 20;
+
+/** Ritmo base de aparición sobre el de las tablas de cada escenario (partidas más frenéticas). */
+export const SPAWN_RATE = 1.5;
 
 function updateSpawns(w: World, dt: number) {
   const { stage } = w.config;
@@ -62,7 +77,20 @@ function updateSpawns(w: World, dt: number) {
   const real = w.time / 60;
   const minute = real < 30 ? real : LOOP_FROM + ((real - LOOP_FROM) % 10);
   const cap = maxEnemies(w);
-  const density = runDensity(w.config);
+  const density = runDensity(w.config) * SPAWN_RATE * waveFactor(w);
+  // Comienzo de cada oleada: anillo del último enemigo en aparecer del escenario.
+  const wave = Math.floor((w.time - WAVES.from) / 60);
+  if (wave >= (w.waves ?? 0) && w.time >= WAVES.from) {
+    w.waves = wave + 1;
+    const rule = stage.spawns.filter((r) => minute >= r.from && minute < r.to).pop();
+    const def = rule && ENEMY_BY_ID.get(rule.enemy);
+    const count = Math.round((WAVES.ring + minute * WAVES.ringPerMinute) * runDensity(w.config));
+    for (let i = 0; i < count && def && w.enemies.length < cap; i++) {
+      const at = ringPoint(w, (i / count) * Math.PI * 2, 300);
+      spawnEnemy(w, def, at.x, at.y);
+    }
+    emit(w, { type: 'shake', power: 2 });
+  }
   for (let i = 0; i < stage.spawns.length; i++) {
     const rule = stage.spawns[i];
     if (minute < rule.from || minute >= rule.to) continue;
@@ -194,8 +222,21 @@ function updateEnemy(w: World, e: Enemy, dt: number) {
         for (let i = -1; i <= 1; i++) enemyShot(w, e.x, e.y, aim + i * 0.22, 90, e.damage * 0.8, 'x_arrow');
       }
       break;
+    case 'egg':
+      // Si no se rompe a tiempo, eclosiona en esbirros del jefe (sin recompensa).
+      vx = 0;
+      vy = 0;
+      e.t1 -= dt;
+      if (e.t1 <= 0) {
+        e.dead = true;
+        const minion = ENEMY_BY_ID.get(w.enemies.find((x) => !x.dead && x.def.patterns)?.def.minion ?? 'bat');
+        for (let i = 0; i < EGG_HATCH.minions && minion; i++) spawnEnemy(w, minion, e.x + (i % 2) * 8 - 4, e.y + (i < 2 ? -4 : 4));
+        emit(w, { type: 'puff', x: e.x, y: e.y, color: 0xe8e0c8, count: 10 });
+      }
+      break;
     case 'reaper':
-      if (dist < e.radius + PLAYER_RADIUS + 2) reaperTouch(w);
+      e.t1 -= dt;
+      if (dist < e.radius + PLAYER_RADIUS + 6) reaperStrike(w, e);
       break;
     case 'boss': {
       if (e.def.patterns) {
@@ -314,8 +355,10 @@ export function step(w: World, dt: number, moveX: number, moveY: number) {
   p.moving = length > 0.05;
   if (p.moving) {
     const scale = length > 1 ? 1 / length : 1;
-    p.x += moveX * scale * p.stats.moveSpeed * dt;
-    p.y += moveY * scale * p.stats.moveSpeed * dt;
+    // Telarañas y burbujas de tiempo de los jefes: mitad de velocidad.
+    const slow = w.slowed ? 0.5 : 1;
+    p.x += moveX * scale * p.stats.moveSpeed * slow * dt;
+    p.y += moveY * scale * p.stats.moveSpeed * slow * dt;
     p.dirX = moveX / length;
     p.dirY = moveY / length;
   }
@@ -374,13 +417,43 @@ export function chooseUpgrade(w: World, index: number) {
   if (w.phase !== 'levelup') return;
   const choice = w.choices[index];
   if (!choice) return;
-  applyChoice(w, choice);
+  if (w.choices.some((c) => c.kind === 'purge')) w.purgeAt = undefined;
   w.pendingLevels -= 1;
-  if (w.pendingLevels > 0) w.choices = rollChoices(w);
-  else {
+  if (choice.kind === 'purge') {
+    w.choices = [];
+    w.phase = 'purge';
+    return;
+  }
+  applyChoice(w, choice);
+  continueLevelUps(w);
+}
+
+/** Tras elegir: más subidas pendientes o vuelta a la partida. */
+function continueLevelUps(w: World) {
+  if (w.pendingLevels > 0) {
+    w.phase = 'levelup';
+    w.choices = rollChoices(w);
+  } else {
     w.choices = [];
     w.phase = 'playing';
   }
+}
+
+/**
+ * Mejora de eliminar: quita las armas y pasivas elegidas (por su posición) y deja libres sus huecos. Sin red de
+ * seguridad: se pueden quitar todas.
+ */
+export function purgeItems(w: World, weapons: number[], passives: number[]) {
+  if (w.phase !== 'purge') return;
+  const p = w.player;
+  p.weapons = p.weapons.filter((_, i) => !weapons.includes(i));
+  p.passives = p.passives.filter((_, i) => !passives.includes(i));
+  recomputeStats(w);
+  if (weapons.length + passives.length > 0) {
+    emit(w, { type: 'ring', x: p.x, y: p.y, radius: 60, color: 0xb58cff });
+    emit(w, { type: 'shake', power: 4 });
+  }
+  continueLevelUps(w);
 }
 
 /**

@@ -91,7 +91,23 @@ export const damageScale = (w: World) => (1 + minutes(w) * 0.055) * runDamage(w.
 /** Los enemigos aceleran poco a poco: al final ya no basta con huir. */
 export const speedScale = (w: World) => 1 + minutes(w) * 0.01;
 /** Máximo de enemigos vivos generados por aparición continua e invocaciones. */
-export const maxEnemies = (w: World) => Math.min(400, (50 + minutes(w) * 14) * runDensity(w.config));
+/** Tope de enemigos en pantalla (más alto durante las oleadas; 450 como mucho por el rendimiento en móvil). */
+export const maxEnemies = (w: World) => Math.min(450, (70 + minutes(w) * 16) * runDensity(w.config) * (inWave(w) ? WAVES.cap : 1));
+
+/**
+ * Oleadas: cada minuto tiene un tramo normal, una oleada (más apariciones y un anillo de enemigos alrededor) y un
+ * respiro corto. Segundos dentro de cada minuto.
+ */
+export const WAVES = { from: 34, to: 50, surge: 2.6, lull: 0.45, cap: 1.3, ring: 14, ringPerMinute: 1.2 };
+export const inWave = (w: World) => {
+  const s = w.time % 60;
+  return s >= WAVES.from && s < WAVES.to;
+};
+/** Ritmo de aparición según el momento del minuto. */
+export const waveFactor = (w: World) => {
+  const s = w.time % 60;
+  return s < WAVES.from ? 1 : s < WAVES.to ? WAVES.surge : WAVES.lull;
+};
 
 // ── Enemigos ────────────────────────────────────────────────────────────────────────────────────
 const SPAWN_RADIUS = 310;
@@ -152,7 +168,8 @@ function killEnemy(w: World, e: Enemy) {
   w.kills += 1;
   const luck = w.player.stats.luck;
   const boss = e.def.ai === 'boss';
-  dropPickup(w, 'xp', e.x, e.y, e.def.xp * (e.elite ? 10 : 1));
+  // En niveles con más densidad salen más enemigos: cada uno da menos experiencia para que el ritmo de subida sea parecido.
+  dropPickup(w, 'xp', e.x, e.y, (e.def.xp * (e.elite ? 10 : 1)) / runDensity(w.config));
   if (boss) {
     w.bossAlive = w.enemies.some((o) => !o.dead && o.def.ai === 'boss');
     if (e.def.patterns) w.cycleBoss = 2;

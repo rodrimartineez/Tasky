@@ -9,13 +9,33 @@ import { SPRITES, resolveSprite } from '../sprites/data';
 import { botPlay } from './bot';
 import { spawnEnemy } from './core';
 import { BASE_STATS, MAX_WEAPONS, type Stats, type World } from './types';
-import { applyChoice, banishChoice, evolutionReady, newWeapon, openChest, recomputeStats, rerollChoices, rollChoices } from './upgrades';
-import { createWorld, step } from './world';
+import {
+  applyChoice,
+  banishChoice,
+  buildComplete,
+  evolutionReady,
+  newWeapon,
+  openChest,
+  OVERLEVEL,
+  recomputeStats,
+  rerollChoices,
+  rollChoices,
+  statsAt,
+  WEAPON_LEVEL_CAP,
+} from './upgrades';
+import { chooseUpgrade, createWorld, purgeItems, step } from './world';
 
-const config = (weapon = 'spark', stats: Stats = BASE_STATS, seed = 1) => ({ seed, level: 1, stage: WITHERED_WOODS, stats, startingWeapon: weapon, sprite: 'hero' });
+const config = (weapon = 'spark', stats: Stats = BASE_STATS, seed = 1) => ({
+  seed,
+  level: 1,
+  stage: WITHERED_WOODS,
+  stats,
+  startingWeapon: weapon,
+  sprite: 'hero',
+});
 
 /** Partida con el arma indicada al nivel máximo (y, si se pide, con la pasiva). */
-function maxed(weapon: string, passive?: string, level = 8, slot = 1): World {
+function maxed(weapon: string, passive?: string, level = 7, slot = 1): World {
   const w = createWorld(config(weapon === 'spark' ? 'lance' : 'spark'));
   const ws = newWeapon(weapon);
   ws.level = level;
@@ -37,14 +57,25 @@ describe('contenido de las builds', () => {
     expect(WEAPONS).toHaveLength(16);
     expect(PASSIVES).toHaveLength(14);
     expect(EVOLUTIONS).toHaveLength(WEAPONS.length);
-    for (const weapon of WEAPONS) expect(EVOLUTIONS.filter((e) => e.weapon === weapon.id), weapon.name).toHaveLength(1);
+    for (const weapon of WEAPONS)
+      expect(
+        EVOLUTIONS.filter((e) => e.weapon === weapon.id),
+        weapon.name,
+      ).toHaveLength(1);
   });
 
   it('cada pasiva sirve para al menos una evolución y las evoluciones no están entre las armas que se ofrecen', () => {
-    for (const passive of PASSIVES) expect(EVOLUTIONS.some((e) => e.passive === passive.id), passive.name).toBe(true);
+    for (const passive of PASSIVES)
+      expect(
+        EVOLUTIONS.some((e) => e.passive === passive.id),
+        passive.name,
+      ).toBe(true);
     for (const e of EVOLUTIONS) {
       expect(PASSIVE_BY_ID.has(e.passive), e.def.name).toBe(true);
-      expect(WEAPONS.some((x) => x.id === e.def.id), e.def.name).toBe(false);
+      expect(
+        WEAPONS.some((x) => x.id === e.def.id),
+        e.def.name,
+      ).toBe(false);
       expect(WEAPON_BY_ID.get(e.def.id)).toBe(e.def);
       expect(e.def.evolvedFrom).toBe(e.weapon);
       expect(e.def.levels).toHaveLength(0);
@@ -71,7 +102,7 @@ describe('evoluciones (B1)', () => {
     const base = WEAPON_BY_ID.get(evo.weapon)!;
     it(`${base.name} + ${PASSIVE_BY_ID.get(evo.passive)!.name} → ${evo.def.name}, solo con nivel máximo y la pasiva`, () => {
       // Sin la pasiva o sin el nivel máximo, el cofre no evoluciona.
-      for (const w of [maxed(evo.weapon), maxed(evo.weapon, evo.passive, 7)]) {
+      for (const w of [maxed(evo.weapon), maxed(evo.weapon, evo.passive, 6)]) {
         expect(evolutionReady(w, w.player.weapons[1])).toBeNull();
         openChest(w);
         expect(w.player.weapons.map((x) => x.id)).toContain(evo.weapon);
@@ -101,7 +132,10 @@ describe('evoluciones (B1)', () => {
       for (let i = 0; i < 40; i++) {
         w.player.passives.length = 1; // siempre hay hueco para opciones nuevas
         const ids = rollChoices(w).map((c) => c.id);
-        expect(ids.some((id) => evolvedIds.has(id)), evo.def.name).toBe(false);
+        expect(
+          ids.some((id) => evolvedIds.has(id)),
+          evo.def.name,
+        ).toBe(false);
         expect(ids, evo.def.name).not.toContain(evo.weapon);
       }
       expect(w.player.weapons.length).toBeLessThan(MAX_WEAPONS);
@@ -110,13 +144,15 @@ describe('evoluciones (B1)', () => {
 
   it('avisa en la opción que completa una evolución', () => {
     const evo = EVOLUTIONS.find((e) => e.weapon === 'spark')!;
-    // Arma al nivel 7 con la pasiva: subirla al 8 completa la evolución.
-    const w = maxed('spark', evo.passive, 7, 0);
+    // Arma al nivel 6 con la pasiva: subirla al 7 completa la evolución.
+    const w = maxed('spark', evo.passive, 6, 0);
     const choices = Array.from({ length: 30 }, () => rollChoices(w)).flat();
-    expect(choices.find((c) => c.id === 'spark')).toMatchObject({ level: 8, evolves: evo.def.name });
+    expect(choices.find((c) => c.id === 'spark')).toMatchObject({ level: 7, evolves: evo.def.name });
     // Arma al máximo sin la pasiva: la pasiva nueva la completa.
-    const v = maxed('spark', undefined, 8, 0);
-    const passive = Array.from({ length: 30 }, () => rollChoices(v)).flat().find((c) => c.id === evo.passive);
+    const v = maxed('spark', undefined, 7, 0);
+    const passive = Array.from({ length: 30 }, () => rollChoices(v))
+      .flat()
+      .find((c) => c.id === evo.passive);
     expect(passive).toMatchObject({ level: 1, evolves: evo.def.name });
     // Una opción que no completa nada no lleva el aviso.
     expect(choices.filter((c) => c.id !== 'spark' && c.id !== evo.passive).every((c) => !c.evolves)).toBe(true);
@@ -281,8 +317,8 @@ describe('equilibrio de builds (daño)', () => {
     const def = WEAPON_BY_ID.get(id)!;
     const ws = w.player.weapons[0];
     if (!def.evolvedFrom) {
-      ws.level = 8;
-      ws.stats = weaponStatsAt(def, 8);
+      ws.level = 7;
+      ws.stats = weaponStatsAt(def, 7);
     }
     w.time = 600;
     w.nextEvent = WITHERED_WOODS.events.length;
@@ -300,13 +336,13 @@ describe('equilibrio de builds (daño)', () => {
   it('cada evolución hace entre 1,6 y 2,7 veces el daño de su arma base al nivel máximo, y ninguna pasa de 2,5 veces la mejor base', () => {
     const base = new Map(WEAPONS.map((x) => [x.id, swarmDamage(x.id)]));
     const best = Math.max(...base.values());
+    const wrong: string[] = [];
     for (const evo of EVOLUTIONS) {
       const evolved = swarmDamage(evo.def.id);
       const ratio = evolved / base.get(evo.weapon)!;
-      expect(ratio, `${evo.def.name}: ×${ratio.toFixed(2)}`).toBeGreaterThanOrEqual(1.6);
-      expect(ratio, `${evo.def.name}: ×${ratio.toFixed(2)}`).toBeLessThanOrEqual(2.7);
-      expect(evolved, evo.def.name).toBeLessThanOrEqual(best * 2.5);
+      if (ratio < 1.6 || ratio > 2.7 || evolved > best * 2.5) wrong.push(`${evo.def.name} (${evo.weapon}): ×${ratio.toFixed(2)}`);
     }
+    expect(wrong).toEqual([]);
     for (const id of ['ricochet', 'drone', 'trail']) expect(base.get(id)!, id).toBeLessThanOrEqual(best * 2.5);
   }, 240_000);
 
@@ -316,8 +352,8 @@ describe('equilibrio de builds (daño)', () => {
       const w = createWorld(config(id, { ...BASE_STATS, maxHp: 1e6 }, 21));
       const def = WEAPON_BY_ID.get(id)!;
       if (!def.evolvedFrom) {
-        w.player.weapons[0].level = 8;
-        w.player.weapons[0].stats = weaponStatsAt(def, 8);
+        w.player.weapons[0].level = 7;
+        w.player.weapons[0].stats = weaponStatsAt(def, 7);
       }
       botPlay(w, 300);
       return w.player.weapons.find((x) => x.id === id)?.dealt ?? 0;
@@ -329,4 +365,68 @@ describe('equilibrio de builds (daño)', () => {
       expect(d, evo.def.name).toBeLessThanOrEqual(best * 2.5);
     }
   }, 240_000);
+});
+
+describe('niveles de armas y pasivas (7 + hasta 999)', () => {
+  const offered = (w: World, id: string) => {
+    levelUp(w);
+    for (let i = 0; i < 40; i++) {
+      if (rollChoices(w).some((c) => c.id === id)) return true;
+    }
+    return false;
+  };
+
+  it('un arma al 7 no sube más hasta que todo lo que se lleva está al 7; después sube por encima', () => {
+    const w = createWorld(config('spark'));
+    w.purgeAt = undefined;
+    const ws = w.player.weapons[0];
+    ws.level = 7;
+    ws.stats = statsAt(WEAPON_BY_ID.get('spark')!, 7);
+    w.player.passives = [{ id: 'whetstone', level: 3 }];
+    expect(buildComplete(w)).toBe(false);
+    expect(offered(w, 'spark')).toBe(false);
+    w.player.passives[0].level = 7;
+    expect(buildComplete(w)).toBe(true);
+    expect(offered(w, 'spark')).toBe(true);
+    // Las pasivas se quedan en el 7.
+    expect(offered(w, 'whetstone')).toBe(false);
+  });
+
+  it('por encima del 7 cada nivel mejora el arma en porcentaje y el máximo es el 999', () => {
+    const def = WEAPON_BY_ID.get('spark')!;
+    const at7 = statsAt(def, 7);
+    expect(statsAt(def, 8).damage).toBeGreaterThan(at7.damage);
+    expect(statsAt(def, 107).damage).toBeCloseTo(at7.damage * (1 + 100 * OVERLEVEL.damage), 5);
+    expect(statsAt(def, 107).amount).toBe(at7.amount + 2);
+    expect(statsAt(def, 5000)).toEqual(statsAt(def, WEAPON_LEVEL_CAP));
+    expect(statsAt(def, WEAPON_LEVEL_CAP).cooldown).toBeGreaterThan(0.1);
+  });
+});
+
+describe('purga', () => {
+  it('sale en ~1 de cada 5 partidas y se ofrece una sola vez', () => {
+    const runs = Array.from({ length: 2000 }, (_, seed) => createWorld(config('spark', BASE_STATS, seed + 1)));
+    const share = runs.filter((w) => w.purgeAt !== undefined).length / runs.length;
+    expect(share).toBeGreaterThan(0.16);
+    expect(share).toBeLessThan(0.24);
+  });
+
+  it('quita las armas y pasivas elegidas, deja sus huecos libres y no protege de quedarse sin armas', () => {
+    const w = createWorld(config('spark'));
+    w.player.weapons.push(newWeapon('lance'));
+    w.player.passives = [{ id: 'oakheart', level: 7 }];
+    recomputeStats(w);
+    w.purgeAt = 1;
+    levelUp(w);
+    const index = w.choices.findIndex((c) => c.kind === 'purge');
+    expect(index).toBeGreaterThanOrEqual(0);
+    chooseUpgrade(w, index);
+    expect(w.phase).toBe('purge');
+    expect(w.purgeAt).toBeUndefined();
+    purgeItems(w, [0, 1], [0]);
+    expect(w.player.weapons).toHaveLength(0);
+    expect(w.player.passives).toHaveLength(0);
+    expect(w.player.stats.maxHp).toBe(BASE_STATS.maxHp);
+    expect(w.phase).toBe('playing');
+  });
 });

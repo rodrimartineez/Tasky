@@ -119,7 +119,7 @@ export interface PassiveDef {
   apply(stats: Stats, level: number): void;
 }
 
-export type EnemyAi = 'chase' | 'charger' | 'waver' | 'shooter' | 'volley' | 'boss' | 'reaper';
+export type EnemyAi = 'chase' | 'charger' | 'waver' | 'shooter' | 'volley' | 'boss' | 'reaper' | 'egg';
 
 export interface EnemyDef {
   id: string;
@@ -146,7 +146,24 @@ export interface EnemyDef {
 }
 
 /** Ataques de los jefes de ciclo (sim/bosses.ts). */
-export type BossPattern = 'radial' | 'fan' | 'spiral' | 'charge' | 'blink' | 'summon' | 'rain' | 'wall';
+export type BossPattern =
+  | 'radial'
+  | 'fan'
+  | 'spiral'
+  | 'charge'
+  | 'blink'
+  | 'summon'
+  | 'rain'
+  | 'wall'
+  | 'quake'
+  | 'eggs'
+  | 'slow'
+  | 'clones'
+  | 'heads'
+  | 'pools'
+  | 'sweep'
+  | 'laser'
+  | 'gravity';
 
 /**
  * Modalidad de la partida (HABITS_GUIDE §11):
@@ -341,8 +358,28 @@ export type Fx =
   | { type: 'line'; x: number; y: number; x2: number; y2: number; color: number }
   | { type: 'shake'; power: number };
 
+/**
+ * Zona de peligro de los jefes. Se avisa hasta `at`; entonces:
+ * - `blast` (por defecto): estalla una vez en su círculo. `ring`: estalla en la corona entre `inner` y `radius`.
+ * - `zone`: hace daño mientras dura (hasta `until`). `slow`: ralentiza mientras dura.
+ * - `beam`: rayo de (x, y) a (x2, y2) con grosor `radius`, activo hasta `until`.
+ */
+export interface Hazard {
+  x: number;
+  y: number;
+  at: number;
+  radius: number;
+  damage: number;
+  kind?: 'blast' | 'ring' | 'zone' | 'slow' | 'beam';
+  until?: number;
+  inner?: number;
+  x2?: number;
+  y2?: number;
+  color?: number;
+}
+
 export interface UpgradeChoice {
-  kind: 'weapon' | 'passive' | 'gold' | 'heal' | 'evolution';
+  kind: 'weapon' | 'passive' | 'gold' | 'heal' | 'evolution' | 'purge';
   id: string;
   name: string;
   icon: string;
@@ -353,7 +390,8 @@ export interface UpgradeChoice {
   evolves?: string;
 }
 
-export type Phase = 'playing' | 'levelup' | 'dead';
+/** `purge`: eligiendo qué armas y pasivas eliminar (mejora especial). */
+export type Phase = 'playing' | 'levelup' | 'purge' | 'dead';
 
 export interface World {
   config: RunConfig;
@@ -374,6 +412,10 @@ export interface World {
   choices: UpgradeChoice[];
   /** Últimas mejoras concedidas por un cofre (la interfaz las muestra y las vacía). */
   chestRewards: UpgradeChoice[];
+  /** Oleadas ya empezadas (cada minuto, sim/core.ts WAVES). */
+  waves?: number;
+  /** Nivel del personaje desde el que se ofrece una vez la mejora de eliminar (solo en ~1 de cada 5 partidas). */
+  purgeAt?: number;
   /** Acumuladores de aparición por regla y siguiente evento del escenario. */
   spawnAcc: number[];
   nextEvent: number;
@@ -385,7 +427,9 @@ export interface World {
   /** Modo infinito: vueltas completas a los eventos del escenario. */
   eventLoops?: number;
   /** Ataques de jefe retardados (zonas que estallan tras un aviso). */
-  hazards?: { x: number; y: number; at: number; radius: number; damage: number }[];
+  hazards?: Hazard[];
+  /** El jugador pisa una zona que ralentiza (se recalcula en cada paso). */
+  slowed?: boolean;
 }
 
 export interface RunResult {
