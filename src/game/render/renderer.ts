@@ -1,3 +1,5 @@
+// La CSP de producción (public/_headers) prohíbe eval; este módulo hace que PixiJS genere sus shaders sin él.
+import 'pixi.js/unsafe-eval';
 import { Application, Container, Rectangle, Sprite, Texture, TilingSprite, type ApplicationOptions } from 'pixi.js';
 import { behaviourOf, WEAPON_BY_ID } from '../content/weapons';
 import { emberRadius, MINE_ARM } from '../sim/weapons';
