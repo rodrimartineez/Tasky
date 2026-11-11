@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { ArrowLeft, Ellipsis, Lightbulb, ListTodo, Pencil, Plus, Trash2 } from 'lucide-react';
-import type { Idea, Task } from '../../core/model';
-import { countProjectItems, findProject } from '../../core/selectors';
+import { ArrowLeft, Ellipsis, Layers, Lightbulb, ListTodo, Pencil, Plus, Trash2 } from 'lucide-react';
+import type { Idea, Phase, Task } from '../../core/model';
+import { countProjectItems, findPhase, findProject } from '../../core/selectors';
 import { useTasky } from '../../state/store';
 import { Button } from '../components/Button';
 import { ConfirmDialog } from '../components/ConfirmDialog';
@@ -19,6 +19,7 @@ import { useShortcut } from '../shortcuts/useShortcut';
 import { IdeaDetailDialog } from '../ideas/IdeaDetailDialog';
 import { IdeaFormDialog } from '../ideas/IdeaFormDialog';
 import { IdeaGrid } from '../ideas/IdeaGrid';
+import { PhaseFormDialog } from '../phases/PhaseFormDialog';
 import { TaskDetailDialog } from '../tasks/TaskDetailDialog';
 import { TaskFormDialog } from '../tasks/TaskFormDialog';
 import { TaskList } from '../tasks/TaskList';
@@ -28,13 +29,15 @@ import styles from './ProjectPage.module.css';
 type Tab = 'tasks' | 'ideas';
 
 export function ProjectPage() {
-  const { projectId = '' } = useParams();
+  /** Con `phaseId` se muestra la vista de esa fase: sus tareas, sin pestañas. */
+  const { projectId = '', phaseId } = useParams();
   const navigate = useNavigate();
   const data = useTasky((s) => s.data);
   const updateProject = useTasky((s) => s.updateProject);
   const deleteProject = useTasky((s) => s.deleteProject);
   const deleteTask = useTasky((s) => s.deleteTask);
   const deleteIdea = useTasky((s) => s.deleteIdea);
+  const deletePhase = useTasky((s) => s.deletePhase);
   const isMobile = useMediaQuery(MOBILE_QUERY);
   const [tab, setTab] = useState<Tab>('tasks');
   const [editing, setEditing] = useState(false);
@@ -45,7 +48,13 @@ export function ProjectPage() {
     setTab('tasks');
     setTaskDialog({});
   };
-  useShortcut('Escape', () => navigate('/'));
+  useShortcut('Escape', () => navigate(phaseId ? `/project/${projectId}` : '/'));
+  /** Diálogo de fase: null = cerrado; { phase: undefined } = nueva fase. */
+  const [phaseDialog, setPhaseDialog] = useState<{ phase?: Phase } | null>(null);
+  const newPhase = () => {
+    setTab('tasks');
+    setPhaseDialog({});
+  };
   /** Diálogo de idea: null = cerrado; { idea: undefined } = nueva idea. */
   const [ideaDialog, setIdeaDialog] = useState<{ idea?: Idea } | null>(null);
   const newIdea = () => {
@@ -53,7 +62,8 @@ export function ProjectPage() {
     setIdeaDialog({});
   };
   useShortcut('t', newTask);
-  useShortcut('i', newIdea);
+  useShortcut('i', newIdea, !phaseId);
+  useShortcut('f', newPhase, !phaseId);
   // Detalle: se guarda el id para mostrar siempre la versión actual (también si cambia en otro dispositivo).
   const [taskDetailId, setTaskDetailId] = useState<string | null>(null);
   const [ideaDetailId, setIdeaDetailId] = useState<string | null>(null);
@@ -64,6 +74,8 @@ export function ProjectPage() {
 
   const project = findProject(data, projectId);
   if (!project) return <Navigate to="/" replace />;
+  const phase = phaseId ? findPhase(data, phaseId) : undefined;
+  if (phaseId && phase?.projectId !== project.id) return <Navigate to={`/project/${project.id}`} replace />;
   const counts = countProjectItems(data, project.id);
   const detailTask = data.tasks.find((t) => t.id === taskDetailId && !t.deletedAt);
   const detailIdea = data.ideas.find((i) => i.id === ideaDetailId && !i.deletedAt);
@@ -84,6 +96,17 @@ export function ProjectPage() {
       run: () => {
         deleteTask(task.id);
         toast('Tarea eliminada.');
+      },
+    });
+  const confirmDeletePhase = (target: Phase) =>
+    setPendingDelete({
+      title: '¿Eliminar esta fase?',
+      description: `Se eliminará «${target.name}». Sus tareas no se borran: quedan en el proyecto, sin fase.`,
+      confirmLabel: 'Eliminar fase',
+      run: () => {
+        deletePhase(target.id);
+        if (phase?.id === target.id) navigate(`/project/${project.id}`);
+        toast('Fase eliminada.');
       },
     });
   const confirmDeleteIdea = (idea: Idea) =>
@@ -128,35 +151,69 @@ export function ProjectPage() {
   ));
 
   return (
-    <div className={`${styles.page} ${isMobile ? styles.withBottomBar : ''}`}>
-      <Link to="/" className={styles.back}>
-        <ArrowLeft /> Proyectos <Kbd>Esc</Kbd>
-      </Link>
+    <div className={`${styles.page} ${isMobile && !phase ? styles.withBottomBar : ''}`}>
+      {phase ? (
+        <Link to={`/project/${project.id}`} className={styles.back}>
+          <ArrowLeft /> {project.name} <Kbd>Esc</Kbd>
+        </Link>
+      ) : (
+        <Link to="/" className={styles.back}>
+          <ArrowLeft /> Proyectos <Kbd>Esc</Kbd>
+        </Link>
+      )}
 
-      <header className={styles.header}>
-        <div className={styles.heading}>
-          <h1 className={styles.title}>{project.name}</h1>
-          {project.description && <p className={styles.description}>{project.description}</p>}
-        </div>
-        <div className={styles.actions}>
-          <Segmented
-            label="Estado del proyecto"
-            value={project.status}
-            options={PROJECT_STATUS_OPTIONS}
-            onChange={(status) => updateProject(project.id, { status })}
-          />
-          <Menu
-            label="Acciones del proyecto"
-            trigger={<Ellipsis />}
-            items={[
-              { label: 'Editar', icon: <Pencil />, onSelect: () => setEditing(true) },
-              { label: 'Eliminar', icon: <Trash2 />, danger: true, onSelect: () => setConfirmingDelete(true) },
-            ]}
-          />
-        </div>
-      </header>
+      {phase ? (
+        <header className={styles.header}>
+          <div className={styles.heading}>
+            <p className={styles.eyebrow}>
+              <Layers /> Fase
+            </p>
+            <h1 className={styles.title}>{phase.name}</h1>
+            {phase.description && <p className={styles.description}>{phase.description}</p>}
+          </div>
+          <div className={styles.actions}>
+            {!isMobile && (
+              <Button variant="primary" icon={<Plus />} shortcut="T" onClick={newTask}>
+                Nueva tarea
+              </Button>
+            )}
+            <Menu
+              label="Acciones de la fase"
+              trigger={<Ellipsis />}
+              items={[
+                { label: 'Editar', icon: <Pencil />, onSelect: () => setPhaseDialog({ phase }) },
+                { label: 'Eliminar', icon: <Trash2 />, danger: true, onSelect: () => confirmDeletePhase(phase) },
+              ]}
+            />
+          </div>
+        </header>
+      ) : (
+        <header className={styles.header}>
+          <div className={styles.heading}>
+            <h1 className={styles.title}>{project.name}</h1>
+            {project.description && <p className={styles.description}>{project.description}</p>}
+          </div>
+          <div className={styles.actions}>
+            <Segmented
+              label="Estado del proyecto"
+              value={project.status}
+              options={PROJECT_STATUS_OPTIONS}
+              onChange={(status) => updateProject(project.id, { status })}
+            />
+            <Menu
+              label="Acciones del proyecto"
+              trigger={<Ellipsis />}
+              items={[
+                { label: 'Nueva fase', icon: <Layers />, onSelect: newPhase },
+                { label: 'Editar', icon: <Pencil />, onSelect: () => setEditing(true) },
+                { label: 'Eliminar', icon: <Trash2 />, danger: true, onSelect: () => setConfirmingDelete(true) },
+              ]}
+            />
+          </div>
+        </header>
+      )}
 
-      {isMobile ? (
+      {phase ? null : isMobile ? (
         // Móvil: las pestañas pasan a una barra inferior (montada en body para que quede fija a la pantalla)
         // y «Nueva tarea/idea» al botón «+».
         createPortal(
@@ -170,9 +227,14 @@ export function ProjectPage() {
           {tabButtons}
           <span className={styles.tabsSpacer} />
           {tab === 'tasks' ? (
-            <Button variant="primary" icon={<Plus />} shortcut="T" className={styles.tabAction} onClick={newTask}>
-              Nueva tarea
-            </Button>
+            <>
+              <Button icon={<Layers />} shortcut="F" className={styles.tabAction} onClick={newPhase}>
+                Nueva fase
+              </Button>
+              <Button variant="primary" icon={<Plus />} shortcut="T" className={styles.tabAction} onClick={newTask}>
+                Nueva tarea
+              </Button>
+            </>
           ) : (
             <Button icon={<Plus />} shortcut="I" className={styles.tabAction} onClick={newIdea}>
               Nueva idea
@@ -181,14 +243,18 @@ export function ProjectPage() {
         </nav>
       )}
 
-      <div role="tabpanel">
-        {tab === 'tasks' ? (
+      <div role={phase ? undefined : 'tabpanel'}>
+        {tab === 'tasks' || phase ? (
           <TaskList
+            key={phase?.id ?? 'project'}
             projectId={project.id}
+            phaseId={phase?.id}
             onCreate={newTask}
             onOpen={(task) => setTaskDetailId(task.id)}
             onEdit={editTask}
             onDelete={confirmDeleteTask}
+            onEditPhase={(target) => setPhaseDialog({ phase: target })}
+            onDeletePhase={confirmDeletePhase}
           />
         ) : (
           <IdeaGrid
@@ -201,7 +267,13 @@ export function ProjectPage() {
         )}
       </div>
 
-      {isMobile && <Fab aboveBar label={tab === 'tasks' ? 'Nueva tarea' : 'Nueva idea'} onClick={tab === 'tasks' ? newTask : newIdea} />}
+      {isMobile && (
+        <Fab
+          aboveBar={!phase}
+          label={tab === 'tasks' || phase ? 'Nueva tarea' : 'Nueva idea'}
+          onClick={tab === 'tasks' || phase ? newTask : newIdea}
+        />
+      )}
 
       <TaskDetailDialog task={detailTask} project={project} onClose={() => setTaskDetailId(null)} onEdit={editTask} />
       <IdeaDetailDialog idea={detailIdea} project={project} onClose={() => setIdeaDetailId(null)} onEdit={editIdea} />
@@ -221,13 +293,10 @@ export function ProjectPage() {
         onClose={() => setTaskDialog(null)}
         projectId={project.id}
         task={taskDialog?.task}
+        phaseId={phase?.id}
       />
-      <IdeaFormDialog
-        open={ideaDialog !== null}
-        onClose={() => setIdeaDialog(null)}
-        projectId={project.id}
-        idea={ideaDialog?.idea}
-      />
+      <PhaseFormDialog open={phaseDialog !== null} onClose={() => setPhaseDialog(null)} projectId={project.id} phase={phaseDialog?.phase} />
+      <IdeaFormDialog open={ideaDialog !== null} onClose={() => setIdeaDialog(null)} projectId={project.id} idea={ideaDialog?.idea} />
       <ProjectFormDialog open={editing} onClose={() => setEditing(false)} project={project} />
       <ConfirmDialog
         open={confirmingDelete}

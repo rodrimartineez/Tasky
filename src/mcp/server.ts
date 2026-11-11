@@ -11,6 +11,7 @@ Reglas:
 - Tarea = algo concreto que hacer. Idea = algo a explorar o recordar más adelante. Si no está claro qué es, pregunta antes de crearlo.
 - Títulos breves y accionables en el idioma del usuario (las tareas empiezan por un verbo); la descripción añade el contexto útil (criterios de terminado, notas). No inventes detalles.
 - Para desglosar un proyecto usa create_tasks con todas las tareas en orden de trabajo; el orden de la lista es el orden en Tasky (la primera abierta es «la siguiente»). Usa move_task para reordenar.
+- Un proyecto puede organizar sus tareas en fases (get_project las lista; cada tarea indica su phase). Las tareas que crees quedan sin fase; el usuario las asigna desde la app.
 - Repetir una creación no duplica: si ya hay una tarea abierta, una idea o un proyecto con el mismo título, se devuelve en already_existed. Ante un error de conexión puedes reintentar con seguridad.
 - Estados: todo = pendiente, in_progress = en curso, done = completada. Marca in_progress al empezar una tarea y done (complete_task) SOLO cuando el trabajo esté terminado y verificado (pruebas pasadas, comprobado en la app…). Si no se ha podido verificar, déjala en curso y explica qué falta en su descripción.
 - Para localizar una tarea o idea por su texto, consulta primero get_tasks, get_project o get_ideas y usa su id. Si hay varias candidatas, pregunta.
@@ -51,7 +52,10 @@ async function run(fn: () => Promise<unknown>) {
     if (e instanceof ToolError) return { isError: true, content: [{ type: 'text' as const, text: e.message }] };
     // Fallos de red o de Supabase (supabaseRows.fail): nada a medias que deshacer, se puede reintentar.
     if (e instanceof Error && /^(Sin conexión|Error del servidor)/.test(e.message)) {
-      return { isError: true, content: [{ type: 'text' as const, text: `${e.message} Reintenta la operación: repetirla no duplica nada.` }] };
+      return {
+        isError: true,
+        content: [{ type: 'text' as const, text: `${e.message} Reintenta la operación: repetirla no duplica nada.` }],
+      };
     }
     console.error(e);
     return { isError: true, content: [{ type: 'text' as const, text: 'Error interno de Tasky. Inténtalo de nuevo.' }] };
@@ -66,7 +70,8 @@ export function createTaskyMcpServer(service: TaskyService): McpServer {
     'get_projects',
     {
       title: 'Listar proyectos',
-      description: 'Todos los proyectos (activos, en espera y finalizados) con tareas pendientes, ideas, próxima fecha límite y tareas vencidas.',
+      description:
+        'Todos los proyectos (activos, en espera y finalizados) con tareas pendientes, ideas, próxima fecha límite y tareas vencidas.',
       inputSchema: z.object({}),
       annotations: READ,
     },
@@ -113,7 +118,8 @@ export function createTaskyMcpServer(service: TaskyService): McpServer {
     'update_project',
     {
       title: 'Modificar proyecto',
-      description: 'Cambia el nombre, la descripción o el estado (activo, en espera, próximo, finalizado) de un proyecto. Lo que no se indique se conserva.',
+      description:
+        'Cambia el nombre, la descripción o el estado (activo, en espera, próximo, finalizado) de un proyecto. Lo que no se indique se conserva.',
       inputSchema: z.object({
         project_id: id,
         name: z.string().min(1).max(120).optional(),
@@ -157,7 +163,13 @@ export function createTaskyMcpServer(service: TaskyService): McpServer {
     },
     ({ project_id, due_date, time_slot, scheduled_days, repeat_weekly, ...rest }) =>
       run(() =>
-        service.createTask(project_id, { ...rest, dueDate: due_date, timeSlot: time_slot, scheduledDays: scheduled_days, repeatWeekly: repeat_weekly }),
+        service.createTask(project_id, {
+          ...rest,
+          dueDate: due_date,
+          timeSlot: time_slot,
+          scheduledDays: scheduled_days,
+          repeatWeekly: repeat_weekly,
+        }),
       ),
   );
   server.registerTool(
@@ -202,7 +214,8 @@ export function createTaskyMcpServer(service: TaskyService): McpServer {
     'move_task',
     {
       title: 'Reordenar tarea',
-      description: 'Mueve una tarea abierta a otra posición del orden de trabajo de su proyecto (1 = la primera, la «siguiente»).',
+      description:
+        'Mueve una tarea abierta a otra posición del orden de trabajo de su proyecto (1 = la primera, la «siguiente»). Si está en una fase, la posición es dentro de esa fase; si no, entre las tareas sin fase.',
       inputSchema: z.object({ task_id: id, position: z.number().int().min(1) }),
       annotations: WRITE,
     },
@@ -212,7 +225,8 @@ export function createTaskyMcpServer(service: TaskyService): McpServer {
     'update_task',
     {
       title: 'Modificar tarea',
-      description: 'Cambia el título, la descripción, la fecha límite (null para quitarla), la programación (días y repetición semanal), la franja horaria o el estado de una tarea.',
+      description:
+        'Cambia el título, la descripción, la fecha límite (null para quitarla), la programación (días y repetición semanal), la franja horaria o el estado de una tarea.',
       inputSchema: z.object({
         task_id: id,
         title: z.string().min(1).max(200).optional(),
@@ -226,14 +240,21 @@ export function createTaskyMcpServer(service: TaskyService): McpServer {
     },
     ({ task_id, due_date, time_slot, scheduled_days, repeat_weekly, ...rest }) =>
       run(() =>
-        service.updateTask(task_id, { ...rest, dueDate: due_date, timeSlot: time_slot, scheduledDays: scheduled_days, repeatWeekly: repeat_weekly }),
+        service.updateTask(task_id, {
+          ...rest,
+          dueDate: due_date,
+          timeSlot: time_slot,
+          scheduledDays: scheduled_days,
+          repeatWeekly: repeat_weekly,
+        }),
       ),
   );
   server.registerTool(
     'complete_task',
     {
       title: 'Completar tarea',
-      description: 'Marca una tarea como completada. Úsala solo cuando el trabajo esté terminado y verificado; si falta comprobar algo, déjala en curso (in_progress).',
+      description:
+        'Marca una tarea como completada. Úsala solo cuando el trabajo esté terminado y verificado; si falta comprobar algo, déjala en curso (in_progress).',
       inputSchema: z.object({ task_id: id }),
       annotations: { ...WRITE, idempotentHint: true },
     },

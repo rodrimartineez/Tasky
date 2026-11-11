@@ -2,7 +2,7 @@ import { emptyData } from '../core/data';
 import { createIdea, deleteIdea, updateIdea } from '../core/ideas';
 import type { Idea, LocalDate, Project, ProjectStatus, Task, TaskStatus, TaskyData, TimeSlot, Timestamp } from '../core/model';
 import { createProject, updateProject } from '../core/projects';
-import { projectIdeas, projectSummariesByStatus, projectTasks } from '../core/selectors';
+import { findPhase, projectIdeas, projectPhases, projectSummariesByStatus, projectTasks } from '../core/selectors';
 import { countRecords, pendingChanges, rememberVersions, type ServerVersions, type SyncRecords } from '../core/sync';
 import { createTask, deleteTask, moveTask, updateTask, type TaskPatch } from '../core/tasks';
 
@@ -122,11 +122,13 @@ export function createTaskyService(repo: TaskyRepository, env: ServiceEnv) {
   }
 
   const projectName = (data: TaskyData, id: string) => data.projects.find((p) => p.id === id)?.name ?? '';
+  const phaseName = (data: TaskyData, id: string | null) => (id ? (findPhase(data, id)?.name ?? null) : null);
 
   const taskView = (data: TaskyData, t: Task) => ({
     id: t.id,
     project_id: t.projectId,
     project: projectName(data, t.projectId),
+    phase: phaseName(data, t.phaseId),
     title: t.title,
     description: t.description,
     status: t.status,
@@ -181,6 +183,7 @@ export function createTaskyService(repo: TaskyRepository, env: ServiceEnv) {
       const project = requireProject(data, projectId);
       return {
         project: projectViews(data).find((p) => p.id === project.id),
+        phases: projectPhases(data, project.id).map((f) => ({ id: f.id, name: f.name, description: f.description })),
         open_tasks: tasksOf(data, project.id, 'open'),
         completed_tasks: tasksOf(data, project.id, 'done'),
         ideas: projectIdeas(data, project.id).map((i) => ideaView(data, i)),
@@ -268,12 +271,16 @@ export function createTaskyService(repo: TaskyRepository, env: ServiceEnv) {
         : { already_existed: already_existed[0], note: 'Ya había una tarea abierta con ese título en el proyecto; no se ha duplicado.' };
     },
 
-    /** Cambia el orden de trabajo: position 1 = la primera de las tareas abiertas del proyecto. */
+    /**
+     * Cambia el orden de trabajo: position 1 = la primera de las tareas abiertas de su mismo lugar
+     * (su fase o, si no tiene, las tareas sin fase del proyecto). No la cambia de fase.
+     */
     async moveTask(taskId: string, position: number) {
       const data = await mutate((d) => {
         const task = requireTask(d, taskId);
         if (task.status === 'done') throw new ToolError('Las tareas completadas no tienen orden; reábrela antes si quieres moverla.');
-        const open = projectTasks(d, task.projectId).open;
+        const place = (t: Task) => (phaseName(d, t.phaseId) === null ? null : t.phaseId);
+        const open = projectTasks(d, task.projectId).open.filter((t) => place(t) === place(task));
         const others = open.filter((t) => t.id !== taskId);
         const index = Math.min(Math.max(Math.round(position) - 1, 0), others.length);
         if (open.findIndex((t) => t.id === taskId) === index) return d;
@@ -283,10 +290,7 @@ export function createTaskyService(repo: TaskyRepository, env: ServiceEnv) {
       return { moved: taskView(data, task), open_tasks: tasksOf(data, task.projectId, 'open').map((t) => t.title) };
     },
 
-    async updateTask(
-      taskId: string,
-      patch: TaskPatch,
-    ) {
+    async updateTask(taskId: string, patch: TaskPatch) {
       const data = await mutate((d) => {
         requireTask(d, taskId);
         return updateTask(d, taskId, patch, env.now());

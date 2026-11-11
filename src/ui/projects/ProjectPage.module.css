@@ -176,3 +176,20 @@
   background: var(--surface-3);
   box-shadow: inset 0 0 0 1px var(--border-strong);
 }
+
+/* Vista de fase: «Fase» sobre el nombre */
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: var(--space-1);
+  color: var(--orange-300);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.eyebrow svg {
+  width: 14px;
+  height: 14px;
+}

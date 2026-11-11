@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { CalendarPlus, Trash2, X } from 'lucide-react';
 import { today as getToday } from '../../core/clock';
 import { addDays, endOfWeek, isScheduledOn, weekday } from '../../core/dueDates';
 import type { LocalDate, Task, TaskStatus, TimeSlot } from '../../core/model';
+import { projectPhases } from '../../core/selectors';
 import { useTasky } from '../../state/store';
 import { Button } from '../components/Button';
 import { ConfirmDialog } from '../components/ConfirmDialog';
@@ -43,19 +44,31 @@ interface TaskFormDialogProps {
   open: boolean;
   onClose: () => void;
   projectId: string;
-  /** Si se pasa, se edita esta tarea; si no, se crea una nueva al final de la lista. */
+  /** Si se pasa, se edita esta tarea; si no, se crea una nueva al final de la lista (o de su fase). */
   task?: Task;
+  /** Fase propuesta para una tarea nueva (p. ej. al crearla desde dentro de una fase). */
+  phaseId?: string | null;
 }
 
-export function TaskFormDialog({ open, onClose, projectId, task }: TaskFormDialogProps) {
+export function TaskFormDialog({ open, onClose, projectId, task, phaseId }: TaskFormDialogProps) {
   return (
     <Dialog open={open} onClose={onClose} title={task ? 'Editar tarea' : 'Nueva tarea'}>
-      {open && <TaskForm projectId={projectId} task={task} onDone={onClose} />}
+      {open && <TaskForm projectId={projectId} task={task} initialPhaseId={task ? task.phaseId : (phaseId ?? null)} onDone={onClose} />}
     </Dialog>
   );
 }
 
-function TaskForm({ projectId, task, onDone }: { projectId: string; task?: Task; onDone: () => void }) {
+function TaskForm({
+  projectId,
+  task,
+  initialPhaseId,
+  onDone,
+}: {
+  projectId: string;
+  task?: Task;
+  initialPhaseId: string | null;
+  onDone: () => void;
+}) {
   const [title, setTitle] = useState(task?.title ?? '');
   const [description, setDescription] = useState(task?.description ?? '');
   const [scheduledDays, setScheduledDays] = useState<LocalDate[]>(() => initialDays(task, getToday()));
@@ -64,6 +77,10 @@ function TaskForm({ projectId, task, onDone }: { projectId: string; task?: Task;
   const [dueDate, setDueDate] = useState<LocalDate | null>(task?.dueDate ?? null);
   const [status, setStatus] = useState<TaskStatus>(task?.status ?? 'todo');
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const data = useTasky((s) => s.data);
+  const phases = useMemo(() => projectPhases(data, projectId), [data, projectId]);
+  // Una fase que ya no existe (p. ej. borrada en otro dispositivo) cuenta como «Sin fase».
+  const [phaseId, setPhaseId] = useState<string | null>(() => (phases.some((f) => f.id === initialPhaseId) ? initialPhaseId : null));
   const createTask = useTasky((s) => s.createTask);
   const updateTask = useTasky((s) => s.updateTask);
   const deleteTask = useTasky((s) => s.deleteTask);
@@ -85,8 +102,16 @@ function TaskForm({ projectId, task, onDone }: { projectId: string; task?: Task;
     if (!canSubmit) return;
     // Misma repetición semanal que antes: se conservan las fechas originales (no cuenta como cambio).
     const keepDays = task?.repeatWeekly && repeats && weekdaysOf(task.scheduledDays) === weekdaysOf(scheduledDays);
-    const fields = { title, description, dueDate, timeSlot, scheduledDays: keepDays ? task.scheduledDays : scheduledDays, repeatWeekly: repeats };
-    if (task) updateTask(task.id, { ...fields, status });
+    const fields = {
+      title,
+      description,
+      dueDate,
+      timeSlot,
+      scheduledDays: keepDays ? task.scheduledDays : scheduledDays,
+      repeatWeekly: repeats,
+      phaseId,
+    };
+    if (task) updateTask(task.id, { ...fields, status, phaseId: phaseId === initialPhaseId ? undefined : phaseId });
     else createTask(projectId, fields);
     onDone();
   };
@@ -121,6 +146,28 @@ function TaskForm({ projectId, task, onDone }: { projectId: string; task?: Task;
           }
         }}
       />
+
+      {phases.length > 0 && (
+        <fieldset className={styles.group}>
+          <legend className={styles.legend}>
+            Fase
+            <span className={form.hint}>Opcional</span>
+          </legend>
+          <div className={styles.chips} role="group" aria-label="Fase">
+            {[{ id: null, name: 'Sin fase' }, ...phases].map((f) => (
+              <button
+                key={f.id ?? 'none'}
+                type="button"
+                aria-pressed={phaseId === f.id}
+                className={`${styles.chip} ${phaseId === f.id ? styles.chipSelected : ''}`}
+                onClick={() => setPhaseId(f.id)}
+              >
+                {f.name}
+              </button>
+            ))}
+          </div>
+        </fieldset>
+      )}
 
       {/* Programación: cuándo se va a hacer. */}
       <fieldset className={styles.group}>

@@ -39,6 +39,7 @@ export function App() {
             <Route element={<AppLayout />}>
               <Route index element={<HomePage />} />
               <Route path="project/:projectId" element={<ProjectPage />} />
+              <Route path="project/:projectId/phase/:phaseId" element={<ProjectPage />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Route>
             <Route

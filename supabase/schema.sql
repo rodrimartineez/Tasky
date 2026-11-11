@@ -77,6 +77,20 @@ create table if not exists public.ideas (
   server_seq  bigint not null default nextval('public.tasky_change_seq')
 );
 
+-- Fases de un proyecto: agrupan tareas. Su rank comparte el orden del proyecto con las tareas sin fase.
+create table if not exists public.phases (
+  id          uuid primary key,
+  user_id     uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  project_id  uuid not null,
+  name        text not null check (length(name) > 0),
+  description text not null default '',
+  rank        text not null,
+  created_at  timestamptz not null,
+  updated_at  timestamptz not null,
+  deleted_at  timestamptz,
+  server_seq  bigint not null default nextval('public.tasky_change_seq')
+);
+
 -- Columnas añadidas después de la Fase 9 (en bases ya creadas se añaden aquí):
 -- orden manual de proyectos y franja horaria de tareas.
 alter table public.projects add column if not exists rank text;
@@ -85,6 +99,8 @@ alter table public.tasks add column if not exists time_slot text not null defaul
 -- Programación de tareas (días y repetición semanal) y estado «Próximos» de proyectos.
 alter table public.tasks add column if not exists scheduled_days date[] not null default '{}';
 alter table public.tasks add column if not exists repeat_weekly boolean not null default false;
+-- Fase de la tarea (null = sin fase; las tareas existentes quedan así).
+alter table public.tasks add column if not exists phase_id uuid;
 alter table public.projects drop constraint if exists projects_status_check;
 alter table public.projects add constraint projects_status_check check (status in ('active', 'on_hold', 'upcoming', 'done'));
 
@@ -111,7 +127,7 @@ $$;
 do $$
 declare t text;
 begin
-  foreach t in array array['projects', 'tasks', 'ideas'] loop
+  foreach t in array array['projects', 'phases', 'tasks', 'ideas'] loop
     execute format('drop trigger if exists tasky_before_write on public.%I', t);
     execute format('create trigger tasky_before_write before insert or update on public.%I
                     for each row execute function public.tasky_before_write()', t);
@@ -150,7 +166,7 @@ revoke all on sequence public.tasky_change_seq from anon;
 do $$
 declare t text;
 begin
-  foreach t in array array['projects', 'tasks', 'ideas'] loop
+  foreach t in array array['projects', 'phases', 'tasks', 'ideas'] loop
     if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t) then
       execute format('alter publication supabase_realtime add table public.%I', t);
     end if;

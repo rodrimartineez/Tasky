@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { ideaSchema, projectSchema, taskSchema, type Idea, type Project, type Task } from '../core/model';
+import { ideaSchema, phaseSchema, projectSchema, taskSchema, type Idea, type Phase, type Project, type Task } from '../core/model';
 import { noRecords, type SyncRecords } from '../core/sync';
 
 /**
@@ -11,7 +11,7 @@ export type SupabaseLike = SupabaseClient<any, any, any>;
 
 /** Filas tal como están en Postgres (snake_case). Ver supabase/schema.sql. */
 export type Row = Record<string, unknown> & { id: string; server_seq: number };
-export type Table = 'projects' | 'tasks' | 'ideas';
+export type Table = 'projects' | 'phases' | 'tasks' | 'ideas';
 
 const PAGE = 1000;
 const BATCH = 500;
@@ -31,10 +31,22 @@ export const fromRow: { [K in Table]: (r: Row) => SyncRecords[K][number] } = {
       updatedAt: ts(r.updated_at),
       deletedAt: ts(r.deleted_at),
     }),
+  phases: (r) =>
+    phaseSchema.parse({
+      id: r.id,
+      projectId: r.project_id,
+      name: r.name,
+      description: r.description,
+      rank: r.rank,
+      createdAt: ts(r.created_at),
+      updatedAt: ts(r.updated_at),
+      deletedAt: ts(r.deleted_at),
+    }),
   tasks: (r) =>
     taskSchema.parse({
       id: r.id,
       projectId: r.project_id,
+      phaseId: r.phase_id ?? null,
       title: r.title,
       description: r.description,
       status: r.status,
@@ -60,7 +72,7 @@ export const fromRow: { [K in Table]: (r: Row) => SyncRecords[K][number] } = {
     }),
 };
 
-const base = (r: Project | Task | Idea) => ({
+const base = (r: Project | Phase | Task | Idea) => ({
   id: r.id,
   created_at: r.createdAt,
   updated_at: r.updatedAt,
@@ -69,9 +81,11 @@ const base = (r: Project | Task | Idea) => ({
 
 export const toRow = {
   projects: (p: Project) => ({ ...base(p), name: p.name, description: p.description, status: p.status, rank: p.rank }),
+  phases: (f: Phase) => ({ ...base(f), project_id: f.projectId, name: f.name, description: f.description, rank: f.rank }),
   tasks: (t: Task) => ({
     ...base(t),
     project_id: t.projectId,
+    phase_id: t.phaseId,
     title: t.title,
     description: t.description,
     status: t.status,
@@ -85,11 +99,12 @@ export const toRow = {
   ideas: (i: Idea) => ({ ...base(i), project_id: i.projectId, title: i.title, description: i.description }),
 };
 
-export const TABLES: Table[] = ['projects', 'tasks', 'ideas'];
+export const TABLES: Table[] = ['projects', 'phases', 'tasks', 'ideas'];
 
 /** Errores de red y de servidor con un mensaje comprensible. */
 export function fail(error: { message: string } | null): never {
-  const offline = (typeof navigator !== 'undefined' && navigator.onLine === false) || /fetch|network|load failed/i.test(error?.message ?? '');
+  const offline =
+    (typeof navigator !== 'undefined' && navigator.onLine === false) || /fetch|network|load failed/i.test(error?.message ?? '');
   throw new Error(offline ? 'Sin conexión.' : `Error del servidor: ${error?.message ?? 'desconocido'}`);
 }
 
@@ -128,7 +143,7 @@ export async function pullRecords(client: SupabaseLike, since: number): Promise<
 export async function pushRecords(client: SupabaseLike, records: SyncRecords): Promise<SyncRecords> {
   const newerOnServer = noRecords();
   for (const table of TABLES) {
-    const list = records[table] as (Project & Task & Idea)[];
+    const list = records[table] as (Project & Phase & Task & Idea)[];
     for (let i = 0; i < list.length; i += BATCH) {
       const rows = list.slice(i, i + BATCH).map((r) => toRow[table](r));
       // El trigger del servidor ignora (y no devuelve) las filas más antiguas que las suyas.

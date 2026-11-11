@@ -1,8 +1,9 @@
-import type { Idea, Project, Task, TaskyData, Timestamp } from './model';
+import type { Idea, Phase, Project, Task, TaskyData, Timestamp } from './model';
 
 /** Registros que se envían o se reciben del servidor (incluye lápidas). */
 export interface SyncRecords {
   projects: Project[];
+  phases: Phase[];
   tasks: Task[];
   ideas: Idea[];
 }
@@ -10,11 +11,11 @@ export interface SyncRecords {
 /** Versión (`updatedAt`) que el servidor tiene de cada registro, por id. Solo vive en memoria. */
 export type ServerVersions = Map<string, Timestamp>;
 
-type SyncRecord = Project | Task | Idea;
+type SyncRecord = Project | Phase | Task | Idea;
 
-export const noRecords = (): SyncRecords => ({ projects: [], tasks: [], ideas: [] });
+export const noRecords = (): SyncRecords => ({ projects: [], phases: [], tasks: [], ideas: [] });
 
-export const countRecords = (r: SyncRecords) => r.projects.length + r.tasks.length + r.ideas.length;
+export const countRecords = (r: SyncRecords) => r.projects.length + r.phases.length + r.tasks.length + r.ideas.length;
 
 const newer = (a: Timestamp, b: Timestamp) => Date.parse(a) > Date.parse(b);
 
@@ -33,16 +34,18 @@ function mergeList<T extends SyncRecord>(local: T[], remote: T[]): T[] {
 
 /**
  * Incorpora los cambios del servidor a los datos locales. Después reaplica la cascada de borrado:
- * una tarea o idea viva cuyo proyecto se borró en otro dispositivo queda borrada también.
+ * una fase, tarea o idea viva cuyo proyecto se borró en otro dispositivo queda borrada también.
+ * (Las tareas de una fase borrada no se borran: cuentan como sueltas.)
  */
 export function mergeRemote(local: TaskyData, remote: SyncRecords, now: Timestamp): TaskyData {
   const projects = mergeList(local.projects, remote.projects);
   const deleted = new Set(projects.filter((p) => p.deletedAt).map((p) => p.id));
-  const cascade = <T extends Task | Idea>(r: T): T =>
+  const cascade = <T extends Phase | Task | Idea>(r: T): T =>
     !r.deletedAt && deleted.has(r.projectId) ? { ...r, deletedAt: now, updatedAt: now } : r;
   return {
     ...local,
     projects,
+    phases: mergeList(local.phases, remote.phases).map(cascade),
     tasks: mergeList(local.tasks, remote.tasks).map(cascade),
     ideas: mergeList(local.ideas, remote.ideas).map(cascade),
   };
@@ -50,11 +53,11 @@ export function mergeRemote(local: TaskyData, remote: SyncRecords, now: Timestam
 
 /** Anota qué versión de cada registro tiene ya el servidor. */
 export function rememberVersions(versions: ServerVersions, records: SyncRecords) {
-  for (const r of [...records.projects, ...records.tasks, ...records.ideas]) versions.set(r.id, r.updatedAt);
+  for (const r of [...records.projects, ...records.phases, ...records.tasks, ...records.ideas]) versions.set(r.id, r.updatedAt);
 }
 
 /** Registros locales que el servidor aún no tiene en su versión actual (nuevos o modificados). */
 export function pendingChanges(data: TaskyData, versions: ServerVersions): SyncRecords {
   const pending = <T extends SyncRecord>(list: T[]) => list.filter((r) => versions.get(r.id) !== r.updatedAt);
-  return { projects: pending(data.projects), tasks: pending(data.tasks), ideas: pending(data.ideas) };
+  return { projects: pending(data.projects), phases: pending(data.phases), tasks: pending(data.tasks), ideas: pending(data.ideas) };
 }

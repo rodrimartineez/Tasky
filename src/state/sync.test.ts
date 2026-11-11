@@ -11,7 +11,12 @@ type Table = keyof SyncRecords;
 /** Servidor en memoria con las mismas reglas que supabase/schema.sql: última escritura gana y número de cambio. */
 function fakeServer() {
   let seq = 0;
-  const rows: Record<Table, Map<string, { rec: Rec; seq: number }>> = { projects: new Map(), tasks: new Map(), ideas: new Map() };
+  const rows: Record<Table, Map<string, { rec: Rec; seq: number }>> = {
+    projects: new Map(),
+    phases: new Map(),
+    tasks: new Map(),
+    ideas: new Map(),
+  };
   const tables = Object.keys(rows) as Table[];
   let listener: ((s: { email: string } | null) => void) | null = null;
   let remote: (() => void) | null = null;
@@ -50,8 +55,7 @@ function fakeServer() {
     },
     async push(records) {
       const newer = noRecords();
-      for (const t of tables)
-        for (const rec of records[t] as Rec[]) if (!write(t, rec)) (newer[t] as Rec[]).push(rows[t].get(rec.id)!.rec);
+      for (const t of tables) for (const rec of records[t] as Rec[]) if (!write(t, rec)) (newer[t] as Rec[]).push(rows[t].get(rec.id)!.rec);
       return newer;
     },
   };
@@ -96,7 +100,12 @@ describe('sincronización con el servidor', () => {
     await syncNow();
     expect(useSync.getState().status).toBe('synced');
     expect(server.get('projects', localId)).toMatchObject({ name: 'Local' });
-    expect(useTasky.getState().data.projects.map((p) => p.name).sort()).toEqual(['Local', 'Remoto']);
+    expect(
+      useTasky
+        .getState()
+        .data.projects.map((p) => p.name)
+        .sort(),
+    ).toEqual(['Local', 'Remoto']);
   });
 
   it('si el servidor tiene una versión más reciente, la local se sustituye', async () => {
@@ -125,7 +134,10 @@ describe('sincronización con el servidor', () => {
       deletedAt: null,
     });
     await new Promise((r) => setTimeout(r, 450)); // espera de agrupación de avisos + descarga
-    expect(useTasky.getState().data.tasks.find((t) => t.id === 'desde-claude')).toMatchObject({ title: 'Creada por Claude', timeSlot: 'evening' });
+    expect(useTasky.getState().data.tasks.find((t) => t.id === 'desde-claude')).toMatchObject({
+      title: 'Creada por Claude',
+      timeSlot: 'evening',
+    });
   });
 
   it('cerrar sesión en la web borra los datos del dispositivo', async () => {

@@ -13,8 +13,14 @@ describe('createProject', () => {
   it('crea un proyecto activo con texto recortado y marcas temporales', () => {
     const p = withProject().projects[0];
     expect(p).toEqual({
-      id: 'p1', name: 'Tasky', description: 'App', status: 'active', rank: 'a0',
-      createdAt: T0, updatedAt: T0, deletedAt: null,
+      id: 'p1',
+      name: 'Tasky',
+      description: 'App',
+      status: 'active',
+      rank: 'a0',
+      createdAt: T0,
+      updatedAt: T0,
+      deletedAt: null,
     });
   });
 
@@ -43,7 +49,25 @@ describe('deleteProject', () => {
     const base = withProject();
     const data: TaskyData = {
       ...base,
-      tasks: [{ id: 't1', projectId: 'p1', title: 'x', description: '', status: 'todo', dueDate: null, timeSlot: 'all_day', scheduledDays: [], repeatWeekly: false, rank: 'a0', completedAt: null, createdAt: T0, updatedAt: T0, deletedAt: null }],
+      tasks: [
+        {
+          id: 't1',
+          projectId: 'p1',
+          phaseId: null,
+          title: 'x',
+          description: '',
+          status: 'todo',
+          dueDate: null,
+          timeSlot: 'all_day',
+          scheduledDays: [],
+          repeatWeekly: false,
+          rank: 'a0',
+          completedAt: null,
+          createdAt: T0,
+          updatedAt: T0,
+          deletedAt: null,
+        },
+      ],
       ideas: [{ id: 'i1', projectId: 'p1', title: 'y', description: '', createdAt: T0, updatedAt: T0, deletedAt: null }],
     };
     const after = deleteProject(data, 'p1', T1);
@@ -61,8 +85,14 @@ describe('orden manual de proyectos', () => {
     let d: TaskyData = {
       ...emptyData(),
       projects: ['viejo1', 'viejo2'].map((id, i) => ({
-        id, name: id, description: '', status: 'active' as const, rank: null,
-        createdAt: T0, updatedAt: `2026-11-0${i + 1}T00:00:00.000Z`, deletedAt: null,
+        id,
+        name: id,
+        description: '',
+        status: 'active' as const,
+        rank: null,
+        createdAt: T0,
+        updatedAt: `2026-11-0${i + 1}T00:00:00.000Z`,
+        deletedAt: null,
       })),
     };
     d = createProject(d, { name: 'A', description: '' }, 'a', T0);

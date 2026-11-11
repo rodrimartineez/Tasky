@@ -7,6 +7,7 @@ import type { FileExport, Storage } from '../core/ports';
 import { countRecords, mergeRemote, type SyncRecords } from '../core/sync';
 import { createProject, deleteProject, reorderProject, updateProject, type ProjectInput, type ProjectPatch } from '../core/projects';
 import { createIdea, deleteIdea, updateIdea, type IdeaInput } from '../core/ideas';
+import { createPhase, deletePhase, movePhase, updatePhase, type PhaseInput } from '../core/phases';
 import { createTask, deleteTask, moveTask, updateTask, type TaskInput, type TaskPatch } from '../core/tasks';
 
 type Status = 'loading' | 'ready' | 'error';
@@ -34,6 +35,13 @@ interface TaskyState {
   deleteProject(id: string): void;
   /** `orderedIds`: orden de la sección de Inicio tras soltar el proyecto. */
   reorderProject(orderedIds: string[], movedId: string): void;
+  /** Crea una fase e incorpora a ella las tareas indicadas del proyecto. */
+  createPhase(projectId: string, input: PhaseInput, taskIds: string[]): string;
+  updatePhase(id: string, input: PhaseInput): void;
+  /** Coloca la fase entre dos elementos del primer nivel del proyecto (null = extremo). */
+  movePhase(id: string, beforeId: string | null, afterId: string | null): void;
+  /** Sus tareas no se borran: quedan sin fase. */
+  deletePhase(id: string): void;
   createTask(projectId: string, input: TaskInput): string;
   updateTask(id: string, patch: TaskPatch): void;
   /** Coloca la tarea entre dos vecinas (null = extremo de la lista). */
@@ -144,6 +152,15 @@ export const useTasky = create<TaskyState>()((set, get) => {
     updateProject: (id, patch) => commit((d) => updateProject(d, id, patch, now())),
     deleteProject: (id) => commit((d) => deleteProject(d, id, now())),
     reorderProject: (orderedIds, movedId) => commit((d) => reorderProject(d, orderedIds, movedId, now())),
+
+    createPhase(projectId, input, taskIds) {
+      const id = newId();
+      commit((d) => createPhase(d, projectId, input, id, now(), taskIds));
+      return id;
+    },
+    updatePhase: (id, input) => commit((d) => updatePhase(d, id, input, now())),
+    movePhase: (id, beforeId, afterId) => commit((d) => movePhase(d, id, beforeId, afterId, now())),
+    deletePhase: (id) => commit((d) => deletePhase(d, id, now())),
 
     createTask(projectId, input) {
       const id = newId();

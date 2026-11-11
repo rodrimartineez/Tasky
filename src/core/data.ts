@@ -2,7 +2,7 @@ import { SCHEMA_VERSION, taskyDataSchema, type TaskyData, type Timestamp } from 
 
 const TOMBSTONE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
-export const emptyData = (): TaskyData => ({ schemaVersion: SCHEMA_VERSION, projects: [], tasks: [], ideas: [] });
+export const emptyData = (): TaskyData => ({ schemaVersion: SCHEMA_VERSION, projects: [], phases: [], tasks: [], ideas: [] });
 
 export class DataError extends Error {}
 
@@ -30,5 +30,11 @@ export function parseData(raw: unknown, now: Timestamp): TaskyData {
 function purgeTombstones(data: TaskyData, now: Timestamp): TaskyData {
   const limit = Date.parse(now) - TOMBSTONE_TTL_MS;
   const keep = (r: { deletedAt: Timestamp | null }) => r.deletedAt === null || Date.parse(r.deletedAt) > limit;
-  return { ...data, projects: data.projects.filter(keep), tasks: data.tasks.filter(keep), ideas: data.ideas.filter(keep) };
+  return {
+    ...data,
+    projects: data.projects.filter(keep),
+    phases: data.phases.filter(keep),
+    tasks: data.tasks.filter(keep),
+    ideas: data.ideas.filter(keep),
+  };
 }

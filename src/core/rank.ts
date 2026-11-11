@@ -15,3 +15,8 @@ export const compareRank = (a: { rank: string; id: string }, b: { rank: string; 
 
 /** n claves consecutivas, para ordenar por primera vez una lista entera. */
 export const ranksFor = (n: number): string[] => generateNKeysBetween(null, null, n);
+
+/** n claves consecutivas entre dos vecinos (null = extremo), con la misma tolerancia al desorden que `rankBetween`. */
+export function ranksBetween(before: string | null, after: string | null, n: number): string[] {
+  return generateNKeysBetween(before, before !== null && after !== null && before >= after ? null : after, n);
+}

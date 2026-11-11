@@ -114,7 +114,8 @@ Flujos objetivo:
 | Tecla | Dónde | Acción |
 |---|---|---|
 | `P` | Inicio | Nuevo proyecto |
-| `T` | Página de proyecto | Nueva tarea (abre la pestaña Tareas si hace falta) |
+| `T` | Página de proyecto o de fase | Nueva tarea (abre la pestaña Tareas si hace falta; dentro de una fase, en esa fase) |
+| `F` | Página de proyecto | Nueva fase (puede incorporar tareas existentes) |
 | `I` | Página de proyecto | Nueva idea (abre la pestaña Ideas si hace falta) |
 | `Enter` | Diálogo de creación/edición (campo de una línea) | Confirmar |
 | `Ctrl` + `Enter` | Diálogo, dentro de la descripción | Confirmar (Enter solo hace salto de línea) |

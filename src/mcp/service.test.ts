@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createProject, deleteProject } from '../core/projects';
 import { emptyData } from '../core/data';
+import { createPhase } from '../core/phases';
 import { noRecords, type SyncRecords } from '../core/sync';
 import { createTaskyService, ToolError, type TaskyRepository } from './service';
 
@@ -13,7 +14,7 @@ function memoryRepo(initial: SyncRecords) {
     async save(records) {
       saves.push(records);
       const newer = noRecords();
-      for (const table of ['projects', 'tasks', 'ideas'] as const) {
+      for (const table of ['projects', 'phases', 'tasks', 'ideas'] as const) {
         const list = state[table] as { id: string; updatedAt: string }[];
         for (const rec of records[table] as { id: string; updatedAt: string }[]) {
           const i = list.findIndex((r) => r.id === rec.id);
@@ -42,11 +43,31 @@ function setup() {
   d = createProject(d, { name: 'Deep Lake', description: '' }, 'deep', T0);
   d = createProject(d, { name: 'Borrado', description: '' }, 'gone', T0);
   d = deleteProject(d, 'gone', T0);
-  const mem = memoryRepo({ projects: d.projects, tasks: d.tasks, ideas: d.ideas });
+  const mem = memoryRepo({ projects: d.projects, phases: d.phases, tasks: d.tasks, ideas: d.ideas });
   return { ...mem, service: createTaskyService(mem.repo, env) };
 }
 
 describe('servicio MCP', () => {
+  it('muestra las fases y mueve las tareas dentro de su fase', async () => {
+    const { service, state } = setup();
+    await service.createTasks('wynot', [{ title: 'Uno' }, { title: 'Dos' }, { title: 'Tres' }]);
+    const [uno, dos, tres] = state.tasks.map((t) => t.id);
+    const withPhase = createPhase({ ...emptyData(), ...state }, 'wynot', { name: 'Diseño', description: '' }, 'fase', T0, [dos, tres]);
+    state.phases = withPhase.phases;
+    state.tasks = withPhase.tasks;
+
+    const project = await service.getProject('wynot');
+    expect(project.phases).toEqual([{ id: 'fase', name: 'Diseño', description: '' }]);
+    expect(project.open_tasks.map((t) => [t.title, t.phase])).toEqual([
+      ['Uno', null],
+      ['Dos', 'Diseño'],
+      ['Tres', 'Diseño'],
+    ]);
+    const moved = await service.moveTask(tres, 1);
+    expect(moved.open_tasks).toEqual(['Uno', 'Tres', 'Dos']);
+    expect((await service.moveTask(uno, 3)).open_tasks).toEqual(['Uno', 'Tres', 'Dos']);
+  });
+
   it('lista proyectos vivos con sus contadores', async () => {
     const { service } = setup();
     const { projects } = await service.getProjects();
@@ -67,7 +88,13 @@ describe('servicio MCP', () => {
   it('crea tareas e ideas con la lógica de core y guarda solo lo nuevo', async () => {
     const { service, state, saves } = setup();
     const { created } = await service.createTask('wynot', { title: '  Implementar compresión de fotos ', description: 'Reducir peso' });
-    expect(created).toMatchObject({ project: 'Wynot', title: 'Implementar compresión de fotos', status: 'todo', due_date: null, time_slot: 'all_day' });
+    expect(created).toMatchObject({
+      project: 'Wynot',
+      title: 'Implementar compresión de fotos',
+      status: 'todo',
+      due_date: null,
+      time_slot: 'all_day',
+    });
     await service.createIdea('wynot', { title: 'Investigar formatos de imagen' });
     expect(state.tasks).toHaveLength(1);
     expect(state.ideas).toHaveLength(1);
@@ -88,7 +115,12 @@ describe('servicio MCP', () => {
     const b = (await service.createTask('wynot', { title: 'B', dueDate: '2026-11-10' })).created!.id;
     await service.updateTask(a, { title: 'A2', dueDate: '2026-11-01', timeSlot: 'afternoon' });
     expect((await service.getTasks('wynot', 'open')).tasks[0]).toMatchObject({ title: 'A2', time_slot: 'afternoon' });
-    expect((await service.getProjects()).projects.find((p) => p.id === 'wynot')).toMatchObject({ pending_tasks: 2, overdue_tasks: 1, next_due_date: '2026-11-01', next_task: 'A2' });
+    expect((await service.getProjects()).projects.find((p) => p.id === 'wynot')).toMatchObject({
+      pending_tasks: 2,
+      overdue_tasks: 1,
+      next_due_date: '2026-11-01',
+      next_task: 'A2',
+    });
 
     const done = await service.completeTask(a);
     expect(done.updated).toMatchObject({ status: 'done' });
@@ -161,8 +193,15 @@ describe('gestión de proyectos de principio a fin (Claude Code)', () => {
 
     const retry = await service.createTasks(pid, plan);
     expect(retry.created).toHaveLength(0);
-    expect((await service.getTasks(pid, 'open')).tasks.map((t) => t.title)).toEqual(['Preparar entorno', 'Diseñar datos', 'Implementar API']);
-    expect((await service.getProjects()).projects.find((p) => p.id === pid)).toMatchObject({ next_task: 'Preparar entorno', pending_tasks: 3 });
+    expect((await service.getTasks(pid, 'open')).tasks.map((t) => t.title)).toEqual([
+      'Preparar entorno',
+      'Diseñar datos',
+      'Implementar API',
+    ]);
+    expect((await service.getProjects()).projects.find((p) => p.id === pid)).toMatchObject({
+      next_task: 'Preparar entorno',
+      pending_tasks: 3,
+    });
   });
 
   it('una tarea completada no impide crear otra con el mismo título', async () => {
@@ -195,11 +234,18 @@ describe('gestión de proyectos de principio a fin (Claude Code)', () => {
 describe('programación y estado «próximo»', () => {
   it('crea y modifica la programación de una tarea, independiente de la fecha límite', async () => {
     const { service } = setup();
-    const { created } = await service.createTask('wynot', { title: 'Gimnasio', scheduledDays: ['2026-11-11', '2026-11-09'], repeatWeekly: true });
+    const { created } = await service.createTask('wynot', {
+      title: 'Gimnasio',
+      scheduledDays: ['2026-11-11', '2026-11-09'],
+      repeatWeekly: true,
+    });
     expect(created).toMatchObject({ scheduled_days: ['2026-11-09', '2026-11-11'], repeat_weekly: true, due_date: null });
     const { updated } = await service.updateTask(created!.id, { dueDate: '2026-11-30' });
     expect(updated).toMatchObject({ scheduled_days: ['2026-11-09', '2026-11-11'], repeat_weekly: true, due_date: '2026-11-30' });
-    expect((await service.updateTask(created!.id, { scheduledDays: [] })).updated).toMatchObject({ scheduled_days: [], repeat_weekly: false });
+    expect((await service.updateTask(created!.id, { scheduledDays: [] })).updated).toMatchObject({
+      scheduled_days: [],
+      repeat_weekly: false,
+    });
   });
 
   it('acepta el estado próximo en proyectos', async () => {

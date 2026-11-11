@@ -7,7 +7,7 @@ import { createTaskyService } from './service';
 
 function handler() {
   const d = createProject(emptyData(), { name: 'Wynot', description: '' }, 'wynot', '2026-11-01T10:00:00.000Z');
-  const state: SyncRecords = { projects: d.projects, tasks: [], ideas: [] };
+  const state: SyncRecords = { projects: d.projects, phases: [], tasks: [], ideas: [] };
   let n = 0;
   const service = createTaskyService(
     {
@@ -34,7 +34,12 @@ async function rpc(mcp: ReturnType<typeof createTaskyMcpHandler>, method: string
   );
   const text = await res.text();
   // La respuesta puede llegar como JSON o como evento SSE ("data: {...}").
-  const json = text.trim().startsWith('{') ? text : text.split('\n').find((l) => l.startsWith('data: '))!.slice(6);
+  const json = text.trim().startsWith('{')
+    ? text
+    : text
+        .split('\n')
+        .find((l) => l.startsWith('data: '))!
+        .slice(6);
   return { status: res.status, body: JSON.parse(json) };
 }
 

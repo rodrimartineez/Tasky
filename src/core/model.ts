@@ -29,9 +29,23 @@ export const projectSchema = z.object({
   rank: z.string().min(1).nullable().default(null),
 });
 
+/**
+ * Fase de un proyecto: agrupa tareas. Su `rank` comparte el orden del proyecto con las tareas sueltas,
+ * así fases y tareas sin fase se intercalan.
+ */
+export const phaseSchema = z.object({
+  ...baseRecord,
+  projectId: z.string().min(1),
+  name: z.string().min(1),
+  description: z.string(),
+  rank: z.string().min(1),
+});
+
 export const taskSchema = z.object({
   ...baseRecord,
   projectId: z.string().min(1),
+  /** Fase a la que pertenece. null = tarea suelta del proyecto (los datos anteriores a las fases quedan así). */
+  phaseId: z.string().min(1).nullable().default(null),
   title: z.string().min(1),
   description: z.string(),
   status: taskStatusSchema,
@@ -56,6 +70,8 @@ export const ideaSchema = z.object({
 export const taskyDataSchema = z.object({
   schemaVersion: z.literal(SCHEMA_VERSION),
   projects: z.array(projectSchema),
+  /** Los datos anteriores a las fases no tienen ninguna. */
+  phases: z.array(phaseSchema).default([]),
   tasks: z.array(taskSchema),
   ideas: z.array(ideaSchema),
 });
@@ -66,6 +82,7 @@ export type ProjectStatus = z.infer<typeof projectStatusSchema>;
 export type TaskStatus = z.infer<typeof taskStatusSchema>;
 export type TimeSlot = z.infer<typeof timeSlotSchema>;
 export type Project = z.infer<typeof projectSchema>;
+export type Phase = z.infer<typeof phaseSchema>;
 export type Task = z.infer<typeof taskSchema>;
 export type Idea = z.infer<typeof ideaSchema>;
 export type TaskyData = z.infer<typeof taskyDataSchema>;

@@ -68,7 +68,7 @@ describe('store + persistencia', () => {
       save: async () => void calls.push('save'),
       snapshot: async (label) => void calls.push(`snapshot:${label}`),
     });
-    await useTasky.getState().importData({ schemaVersion: 1, projects: [], tasks: [], ideas: [] });
+    await useTasky.getState().importData({ schemaVersion: 1, projects: [], phases: [], tasks: [], ideas: [] });
     await flush();
     expect(calls).toEqual(['snapshot:antes-de-importar', 'save']);
   });
