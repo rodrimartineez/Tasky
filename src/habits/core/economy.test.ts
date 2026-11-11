@@ -5,7 +5,7 @@ import { emptyHabitsData } from './data';
 import { buyUpgrade, economyOf, EconomyError, finishRun, isUnlocked, startRun, unlock } from './economy';
 import { ensureProfile } from './habits';
 import type { HabitsData, LedgerEntry } from './model';
-import type { GameRelease } from './release';
+import { GAME_BUILD, GAME_RELEASE, releaseFor, type GameRelease } from './release';
 import { mergeHabitsRemote, noHabitsRecords } from './sync';
 
 /** Las reglas de producción (el modo de pruebas tiene sus propios tests). */
@@ -145,6 +145,42 @@ describe('modo de pruebas y temporadas', () => {
     const eco = economyOf(d, '2026-12-03', next);
     expect([eco.runs.length, eco.gold, eco.nextLevel, eco.available, eco.points, eco.legacy]).toEqual([0, 0, 1, 3, 50, 3]);
     expect(isUnlocked(eco, 'character:warden')).toBe(false);
+  });
+
+  it('alternar entre pruebas y progresión normal no crea, duplica ni pierde nada', () => {
+    let d = grant(base(), 40);
+    d = buyUpgrade(d, 'might', START, T(1));
+    const run = startRun(d, 'wanderer', 'withered_woods', START, T(2), 0, PROD);
+    d = finishRun(run.data, 1, outcome(5_000), T(3), PROD);
+    d = unlock(d, 'character:warden', START, T(4), PROD);
+    const before = d.ledger.length;
+    const real = economyOf(d, '2026-11-12', PROD);
+
+    // En pruebas: todo disponible y nada de lo que se haga se guarda…
+    const test = economyOf(d, '2026-11-12', TEST);
+    expect(test.points).toBe(real.points);
+    expect(test.upgrades).toEqual(real.upgrades);
+    expect(unlock(d, 'character:mystic', START, T(5), TEST).ledger).toHaveLength(before);
+    expect(finishRun(d, 2, outcome(9_999), T(6), TEST).ledger).toHaveLength(before);
+
+    // …y al volver, la progresión real sigue exactamente donde estaba.
+    const back = economyOf(d, '2026-11-12', PROD);
+    expect([back.gold, back.runs.length, back.nextLevel, back.available, back.points]).toEqual([
+      real.gold,
+      real.runs.length,
+      real.nextLevel,
+      real.available,
+      real.points,
+    ]);
+    expect(isUnlocked(back, 'character:warden')).toBe(true);
+    expect(isUnlocked(back, 'character:mystic')).toBe(false);
+    expect([...back.unlocked]).toEqual([...real.unlocked]);
+  });
+
+  it('releaseFor: la progresión normal es la de la temporada de la versión y el núcleo usa la normal por defecto', () => {
+    expect(releaseFor(false)).toEqual({ ...GAME_RELEASE, testMode: false });
+    expect(releaseFor(true).testMode).toBe(GAME_BUILD.devTools);
+    expect(GAME_RELEASE.testMode).toBe(false);
   });
 
   it('los asientos anteriores a las temporadas (run:1, result:1) se ignoran', () => {

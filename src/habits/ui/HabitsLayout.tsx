@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { NavLink, useLocation, useOutlet } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { ListChecks, Sparkles, Swords, TriangleAlert, Trophy } from 'lucide-react';
+import { BookOpen, ListChecks, Sparkles, Swords, TriangleAlert, Trophy } from 'lucide-react';
 import { ModeSwitch } from '../../ui/app/ModeSwitch';
 import { toast, Toaster } from '../../ui/components/Toaster';
 import { UPGRADES } from '../../game/content/upgrades';
@@ -16,6 +16,7 @@ const TABS = [
   { to: '/habits/play', label: 'Jugar', icon: <Swords />, end: false },
   { to: '/habits/upgrades', label: 'Mejoras', icon: <Sparkles />, end: false },
   { to: '/habits/rewards', label: 'Recompensas', icon: <Trophy />, end: false },
+  { to: '/habits/catalog', label: 'Catálogo', icon: <BookOpen />, end: false },
 ];
 
 const SEEN_KEY = 'tasky-habits-seen-points';

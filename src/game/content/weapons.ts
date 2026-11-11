@@ -13,6 +13,7 @@ export const WEAPONS: WeaponDef[] = [
     id: 'spark',
     name: 'Chispa errante',
     description: 'Dispara al enemigo más cercano.',
+    attack: 'Proyectil teledirigido',
     icon: 'w_spark',
     base: { damage: 10, cooldown: 1.1, amount: 1, pierce: 1, area: 4, speed: 170, duration: 1.6, knockback: 30 },
     levels: [
@@ -29,6 +30,7 @@ export const WEAPONS: WeaponDef[] = [
     id: 'lance',
     name: 'Lanza solar',
     description: 'Vuela hacia donde miras y atraviesa a todos.',
+    attack: 'Proyectil en línea',
     icon: 'w_lance',
     base: { damage: 14, cooldown: 1.6, amount: 1, pierce: 999, area: 6, speed: 260, duration: 1, knockback: 60 },
     levels: [
@@ -45,6 +47,7 @@ export const WEAPONS: WeaponDef[] = [
     id: 'orbs',
     name: 'Lunas guardianas',
     description: 'Giran a tu alrededor y golpean lo que tocan.',
+    attack: 'Órbita',
     icon: 'w_orb',
     base: { damage: 8, cooldown: 4.5, amount: 2, pierce: 999, area: 34, speed: 3.4, duration: 3, knockback: 50 },
     levels: [
@@ -61,6 +64,7 @@ export const WEAPONS: WeaponDef[] = [
     id: 'ember',
     name: 'Aura de ascuas',
     description: 'Quema sin parar a los enemigos cercanos.',
+    attack: 'Aura',
     icon: 'w_ember',
     base: { damage: 4, cooldown: 0.6, amount: 1, pierce: 999, area: 38, speed: 0, duration: 0, knockback: 12 },
     levels: [
@@ -77,6 +81,7 @@ export const WEAPONS: WeaponDef[] = [
     id: 'storm',
     name: 'Tormenta en cadena',
     description: 'Un rayo cae sobre un enemigo y salta a los vecinos.',
+    attack: 'Rayo en cadena',
     icon: 'w_storm',
     base: { damage: 16, cooldown: 2.2, amount: 1, pierce: 2, area: 130, speed: 0, duration: 0, knockback: 0 },
     levels: [
@@ -93,6 +98,7 @@ export const WEAPONS: WeaponDef[] = [
     id: 'flask',
     name: 'Frasco volátil',
     description: 'Cae sobre un grupo de enemigos y explota.',
+    attack: 'Explosión de área',
     icon: 'w_flask',
     base: { damage: 22, cooldown: 2.8, amount: 1, pierce: 999, area: 30, speed: 0, duration: 0.7, knockback: 80 },
     levels: [
@@ -109,6 +115,7 @@ export const WEAPONS: WeaponDef[] = [
     id: 'whip',
     name: 'Látigo de sauce',
     description: 'Fustiga en abanico delante de ti.',
+    attack: 'Cuerpo a cuerpo',
     icon: 'w_whip',
     base: { damage: 18, cooldown: 1.1, amount: 1, pierce: 999, area: 52, speed: 0, duration: 0.18, knockback: 40 },
     levels: [
@@ -125,6 +132,7 @@ export const WEAPONS: WeaponDef[] = [
     id: 'boomerang',
     name: 'Búmeran de hueso',
     description: 'Sale disparado, atraviesa y vuelve a tu mano.',
+    attack: 'Proyectil de ida y vuelta',
     icon: 'w_boomerang',
     base: { damage: 12, cooldown: 1.7, amount: 1, pierce: 999, area: 7, speed: 150, duration: 0.65, knockback: 25 },
     levels: [
@@ -141,6 +149,7 @@ export const WEAPONS: WeaponDef[] = [
     id: 'mines',
     name: 'Minas de resina',
     description: 'Las sueltas a tu alrededor y estallan al pisarlas.',
+    attack: 'Trampa',
     icon: 'w_mine',
     base: { damage: 20, cooldown: 2.6, amount: 1, pierce: 999, area: 36, speed: 0, duration: 10, knockback: 60 },
     levels: [
@@ -157,6 +166,7 @@ export const WEAPONS: WeaponDef[] = [
     id: 'beam',
     name: 'Haz prismático',
     description: 'Un rayo giratorio que corta todo a su paso.',
+    attack: 'Rayo giratorio',
     icon: 'w_beam',
     base: { damage: 3, cooldown: 2, amount: 1, pierce: 999, area: 70, speed: 1.6, duration: 2, knockback: 6 },
     levels: [
@@ -173,6 +183,7 @@ export const WEAPONS: WeaponDef[] = [
     id: 'meteors',
     name: 'Lluvia de meteoritos',
     description: 'Rocas ardientes caen del cielo sobre tus enemigos.',
+    attack: 'Lluvia desde el cielo',
     icon: 'w_meteor',
     base: { damage: 24, cooldown: 4, amount: 2, pierce: 999, area: 38, speed: 0, duration: 0.7, knockback: 70 },
     levels: [
@@ -189,6 +200,7 @@ export const WEAPONS: WeaponDef[] = [
     id: 'cloud',
     name: 'Nube venenosa',
     description: 'Una nube tóxica que intoxica a quien la cruza.',
+    attack: 'Zona persistente',
     icon: 'w_cloud',
     base: { damage: 5, cooldown: 3.2, amount: 1, pierce: 999, area: 40, speed: 0, duration: 4, knockback: 0 },
     levels: [
@@ -205,6 +217,7 @@ export const WEAPONS: WeaponDef[] = [
     id: 'nova',
     name: 'Onda de choque',
     description: 'Un pulso que aparta a todos los que te rodean.',
+    attack: 'Onda expansiva',
     icon: 'w_nova',
     base: { damage: 20, cooldown: 3, amount: 1, pierce: 999, area: 80, speed: 0, duration: 0, knockback: 140 },
     levels: [
@@ -221,6 +234,7 @@ export const WEAPONS: WeaponDef[] = [
     id: 'ricochet',
     name: 'Cuchillas rebotantes',
     description: 'Rebotan de un enemigo a otro.',
+    attack: 'Proyectil rebotante',
     icon: 'x_ricochet',
     // `pierce` = rebotes; `duration` = segundos de vida; `speed` = velocidad de vuelo.
     base: { damage: 11, cooldown: 1.5, amount: 1, pierce: 3, area: 5, speed: 190, duration: 2.5, knockback: 20 },
@@ -238,6 +252,7 @@ export const WEAPONS: WeaponDef[] = [
     id: 'drone',
     name: 'Dron centinela',
     description: 'Orbita a tu alrededor y dispara al enemigo más cercano.',
+    attack: 'Invocación',
     icon: 'x_drone',
     // `speed` = disparos por segundo; `area` = distancia a la que orbita; `pierce` = enemigos que atraviesa cada disparo;
     // `cooldown` = descanso entre una tanda de drones y la siguiente.
@@ -256,6 +271,7 @@ export const WEAPONS: WeaponDef[] = [
     id: 'trail',
     name: 'Estela de fuego',
     description: 'Dejas llamas tras de ti que queman a quien las pisa.',
+    attack: 'Rastro de daño',
     icon: 'x_flame',
     // `cooldown` = segundos entre llamas; `area` = radio de cada llama; `duration` = lo que dura encendida.
     base: { damage: 4, cooldown: 0.3, amount: 1, pierce: 999, area: 15, speed: 0, duration: 2.2, knockback: 0 },

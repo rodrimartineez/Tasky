@@ -55,7 +55,8 @@ El estudio de equilibrio (`src/habits/balance/`) se vuelve a ejecutar y tiene qu
 
 ## 2. Plan por fases
 
-El orden sigue el que ya habíamos acordado (Fase 5 contenido → Fase 6 PWA y rendimiento → Fase 7 validación).
+El orden sigue el que ya habíamos acordado (Fase 5 contenido → Fase 6 PWA y rendimiento → validación), con la fase
+de rediseño visual (pedida el 11/11/2026) entre el rendimiento y la validación global.
 Las propuestas se reparten en ese orden: antes, lo que afecta a la motivación y a las builds; después, el arte, que
 conviene dibujar una sola vez sobre un contenido ya cerrado.
 
@@ -63,12 +64,12 @@ conviene dibujar una sola vez sobre un contenido ya cerrado.
 |---|---|---|---|---|
 | **5 — Contenido** ✔️ | 16 personajes, 5 escenarios, más armas, pasivas y enemigos, 5+5 huecos | A5, B2 (parte) | Fase 4 | En curso |
 | **5b — Motivación** ✔️ | Que se note cada día el vínculo hábito → juego; protección y ayudas sin regalar puntos | M1, D2, D3, D4, C4 | Fase 4 | **Máxima** (es el principio de diseño) |
-| **5c — Builds** | Evoluciones, resto de armas y pasivas, revivir/repetir/descartar | B1, B2 (resto), C1 | 5 | Alta |
+| **5c — Builds** ✔️ | Evoluciones, resto de armas y pasivas, revivir/repetir/descartar | B1, B2 (resto), C1 | 5 | Alta |
 | **6 — PWA y rendimiento** | Precarga sin conexión, rendimiento en móvil, velocidad ×2 | E1 | 5, 5c | Alta |
-| **7 — Validación global** | Estudio de equilibrio completo, prueba en iPhone, regresión de Proyectos | — | 5–6 | Hito: juego completo |
-| **8 — Arte y sensación** | Pixel art nuevo, efectos de armas, recogidas satisfactorias, tienda incremental | A1, A2, A3, C3 | 7 | Media |
-| **9 — Sonido** | Efectos y música originales | A4 | 8 | Media |
-| **10 — Largo plazo** | Logros, estadísticas, usos del oro, arcanos | C2, E2, D1, B3 | 7 (D1 antes de ~1 año de uso) | Media-baja |
+| **7 — Rediseño visual y artístico** | Efectos de armas, iconos y proyectiles, evoluciones, mapas con capas y ambiente, recogidas, enemigos, tienda | A1, A2, A3, C3 (ampliadas) | 6 | Alta |
+| **8 — Validación global** | Estudio de equilibrio completo, prueba en iPhone, regresión de Proyectos | — | 5–7 | Hito: juego completo |
+| **9 — Sonido** | Efectos y música originales | A4 | 7 | Media |
+| **10 — Largo plazo** | Logros, estadísticas, usos del oro, arcanos | C2, E2, D1, B3 | 8 (D1 antes de ~1 año de uso) | Media-baja |
 
 Por qué este orden:
 
@@ -76,8 +77,9 @@ Por qué este orden:
   cuanto antes esté, antes se obtienen datos reales de uso para ajustar C4 y D3.
 - **5c antes de 6:** las evoluciones y los efectos nuevos son la carga más pesada para el rendimiento. Optimizar
   antes sería trabajo repetido.
-- **8 después de 7:** el arte se dibuja una sola vez sobre el contenido definitivo. Tras la Fase 8 se repite la
-  medición de rendimiento de la Fase 6 (más partículas, texturas más grandes).
+- **El arte (7) después del rendimiento (6) y antes de la validación (8):** se dibuja una sola vez sobre el
+  contenido ya cerrado, cada cambio se mide con las herramientas de rendimiento de la Fase 6, y la validación final
+  con iPhone real se hace sobre el juego tal como quedará.
 - **D1 (usos del oro)** tiene fecha límite: debe estar antes de que un jugador constante lo tenga todo desbloqueado
   (~1 año, según `ANALISIS_ECONOMIA.md` §7).
 
@@ -153,25 +155,70 @@ mucho más fácil para los perfiles constante y normal (`ANALISIS_ECONOMIA.md` �
   Bonificación de oro por sobrevivir más de 10 minutos que crece con el nivel. El oro sigue sin comprar estadísticas.
   El campamento muestra el próximo objetivo y cuántas partidas faltan.
 
+**Cambios previos a la Fase 6 (pedidos el 11/11/2026)** ✔️:
+- **Selector del modo de pruebas** (herramienta de desarrollo): interruptor en el campamento que activa o desactiva
+  el modo de pruebas en el momento, en cada dispositivo. Detalle y paso a producción en `HABITS_GUIDE.md` §10.
+- **Apartado «Catálogo»**: quinta pestaña con todas las armas, pasivas y evoluciones, generada desde las
+  definiciones del juego (`game/content/catalog.ts`), así que lo nuevo aparece solo.
+- **Cabecera en móvil**: opaca y sin desenfoque (Safari ya no la sombrea bajo la barra de estado), con separación
+  propia bajo la zona segura y `theme-color` igual a la cabecera mientras Hábitos está abierto.
+
 ### Fase 6 — PWA y rendimiento
 - Lo ya previsto: precarga del juego para jugar sin conexión, rendimiento en móviles de gama media (objetivo:
   60 fps con 400 enemigos) y partidas largas sin fugas de memoria.
 - **E1:** velocidad ×2 opcional. La simulación es la misma, así que no cambia el equilibrio. Validación: el
   resultado con la misma semilla es idéntico a ×1 y ×2.
 
-### Fase 7 — Validación global (hito)
+### Fase 7 — Rediseño visual y artístico (amplía la antigua «Arte y sensación»)
+
+Pedida por el usuario el 11/11/2026. Integra A1, A2, A3 y C3, que ya estaban aprobadas, y las amplía. Se coloca
+**después de la Fase 6** porque esa fase deja la medición de rendimiento en móvil (fps, partículas, memoria) con la
+que se controla cada cambio de esta. Va **antes de la validación global** para que esa validación, con iPhone real,
+rendimiento y sincronización, se haga sobre el arte definitivo y no haya que repetirla. El contenido jugable ya está
+cerrado tras la 5c, así que el arte se dibuja una sola vez.
+
+**Análisis del estado actual** (medido en `game/sprites`):
+
+| Elemento | Hoy | Problema | Prioridad |
+|---|---|---|---|
+| Efectos de armas (impactos, explosiones, rayos, áreas, estelas) | Círculos y rectángulos teñidos de un solo color | Es lo que más se ve y lo que menos satisface; las armas se confunden entre sí | **1** |
+| Iconos de armas, evoluciones y mejoras | 8–10 px (más pequeños que los personajes, de 12×14) | Siluetas poco reconocibles en el HUD, al subir de nivel y en el catálogo; las evoluciones apenas se distinguen de su base | **1** |
+| Proyectiles | 3–9 px, casi sin animación | Poca personalidad; no se lee la dirección ni el elemento | **1** |
+| Mapas | Una baldosa de suelo por escenario y 4–5 adornos de 5–13 px | Suelo repetitivo, sin capas, sin luz ni ambiente; los mundos se parecen | **2** |
+| Recogidas (A3) | Gemas y monedas sin arco ni cadena | Falta la sensación incremental | **2** |
+| Enemigos | 10–12 px, 2 fotogramas; jefes de 24 | Correctos pero planos; algunos se confunden con el suelo | **3** (solo los que lo necesiten) |
+| Tienda de mejoras (C3) | Lista estática | Comprar no se celebra | **3** |
+
+**Dirección artística** (se fija antes de dibujar y se aplica a todo):
+- Referencia: los personajes actuales, con contorno oscuro de 1 px, luz desde arriba a la izquierda y 2 o 3 tonos
+  por material. No se cambian.
+- Rejilla: iconos a 16×16, proyectiles de 6 a 12 px, adornos de 8 a 24 px y jefes de 32 px o más. Más tamaño solo
+  donde mejora la silueta, no por añadir píxeles.
+- Paleta limitada por escenario y un color de elemento por familia de armas (fuego, rayo, arcano, veneno, acero),
+  para que cada arma se reconozca por la forma y por el color.
+- Efectos por fases (anticipación → impacto → disipación), con mezcla aditiva en brillos, a pocos fotogramas y en
+  pixel art: nada de degradados suaves que choquen con el estilo.
+
+| Orden | Id | Qué se hace | Cómo se valida |
+|---|---|---|---|
+| 7.1 | — | Guía de estilo: paleta, rejilla y una hoja de muestra con un arma completa (icono, proyectil, impacto y evolución) | Revisión visual con el usuario **antes de seguir** |
+| 7.2 | A2 | Efectos de todas las armas: impactos, explosiones por fases, rayos con ramificación animada, áreas con borde y pulso, estelas, golpes críticos | Medición de rendimiento de la Fase 6 en móvil (objetivo sin cambios); revisión en partida real |
+| 7.3 | A2 | Iconos y proyectiles nuevos de las 16 armas, y versiones de evolución claramente superiores (marco, brillo y forma ampliada); iconos de pasivas y mejoras | Catálogo y HUD en escritorio y móvil; test de que todo icono existe |
+| 7.4 | A1 | Mapas: suelo por capas con variaciones (baldosas mezcladas sin repetición visible), adornos grandes y pequeños, luz y sombra, partículas de ambiente propias de cada mundo (hojas, niebla, polvo de cristal, ceniza) | Primero un escenario completo como guía y revisión con el usuario; después el resto; rendimiento en móvil |
+| 7.5 | A3 | Recogidas: arco de vuelo, chispa, cadena de recogidas, cofre con lluvia de monedas | Revisión en partida real |
+| 7.6 | A1 | Enemigos que lo necesiten: mejor silueta y contraste con el suelo, 3–4 fotogramas, aviso visual antes de atacar | Comparación lado a lado con los personajes |
+| 7.7 | C3 | Tienda incremental: animación al comprar y efecto previsto en números reales | Navegador y móvil |
+
+- **Rendimiento:** todo sigue en un único atlas (las texturas no se multiplican); las partículas tienen tope y
+  bajan solas si el móvil no llega a los fps objetivo. Ningún efecto cambia la simulación: el equilibrio no varía.
+- **Riesgo:** el estilo es subjetivo. Por eso se valida en 7.1 y tras el primer escenario de 7.4, antes de rehacer
+  el resto.
+
+### Fase 8 — Validación global (hito)
 - Estudio completo de 3 años con todos los perfiles y la tabla del §1 actualizada.
 - Prueba en un iPhone real (PWA instalada), en el escritorio (Tauri) y en el navegador. Sincronización entre dos
   dispositivos (compras, partidas y escudos).
 - Regresión completa del modo Proyectos y del servidor MCP.
-
-### Fase 8 — Arte y sensación
-| Id | Qué se hace | Cómo se valida |
-|---|---|---|
-| A1 | Pixel art nuevo: personajes con más fotogramas, enemigos animados y escenarios por capas. Se empieza por un escenario completo, que sirve de guía de estilo para el resto | Revisión visual con el usuario tras el primer escenario, antes de seguir |
-| A2 | Armas y efectos elaborados: brillo, estelas, láseres animados, explosiones por fases, sin círculos simples | Medición de rendimiento de la Fase 6 repetida |
-| A3 | Recogida de monedas y experiencia satisfactoria: arco de vuelo, chispa, cadena de recogidas, cofre con lluvia de monedas | Revisión con el usuario en una partida real |
-| C3 | Tienda incremental: animación al comprar, efecto previsto en números reales y progreso de cada mejora | Navegador y móvil |
 
 ### Fase 9 — Sonido
 - **A4:** efectos y música originales por escenario, volumen y silencio. En el móvil, silencio por defecto.
@@ -189,11 +236,11 @@ mucho más fácil para los perfiles constante y normal (`ANALISIS_ECONOMIA.md` �
 ## 4. Catálogo de propuestas
 
 ### A. Gráficos y sensación de juego
-- **A1. Rediseño del pixel art** ✅ (Fase 8). Más fotogramas y sprites de 16–24 px, escenarios con suelo por capas.
+- **A1. Rediseño del pixel art** ✅ (Fase 7). Más fotogramas y sprites de 16–24 px, escenarios con suelo por capas.
   Aporta calidad visual. Equilibrio: ninguno.
-- **A2. Armas, proyectiles y efectos elaborados** ✅ (Fase 8). Rayos, láseres, explosiones y estelas, con mezcla
+- **A2. Armas, proyectiles y efectos elaborados** ✅ (Fase 7). Rayos, láseres, explosiones y estelas, con mezcla
   aditiva. Aporta que cada arma se distinga y que subirla de nivel se vea. Equilibrio: ninguno; vigilar el rendimiento.
-- **A3. Recogidas muy satisfactorias** ✅ (Fase 8). Gemas que saltan y vuelan en arco, cadenas de recogida y lluvia
+- **A3. Recogidas muy satisfactorias** ✅ (Fase 7). Gemas que saltan y vuelan en arco, cadenas de recogida y lluvia
   de monedas. Aporta la sensación incremental. Equilibrio: ninguno.
 - **A4. Sonido y música** ✅ (Fase 9). Originales, con control de volumen. Equilibrio: ninguno.
 - **A5. HUD de 5 armas + 5 pasivas** ✔️ (Fase 5). Huecos grandes arriba a la izquierda. Equilibrio: baja un poco
@@ -210,7 +257,7 @@ mucho más fácil para los perfiles constante y normal (`ANALISIS_ECONOMIA.md` �
 - **C1. Revivir, Repetir y Descartar** ✅ (Fase 5c). Mejoras permanentes con puntos de hábitos. Revivir con
   máximo pequeño.
 - **C2. Logros** ✅ (Fase 10). Objetivos a medio plazo. Recompensas sin poder permanente.
-- **C3. Tienda incremental** ✅ (Fase 8). Hace satisfactorio gastar puntos.
+- **C3. Tienda incremental** ✅ (Fase 7). Hace satisfactorio gastar puntos.
 - **C4. Ayuda de vuelta tras inactividad** ✔️ (Fase 5b). Se activa tras 14 días sin cumplir ningún hábito; es gradual y temporal, solo dentro de la partida y nunca en puntos.
 
 ### D. Economía

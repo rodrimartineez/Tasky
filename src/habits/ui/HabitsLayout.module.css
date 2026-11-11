@@ -8,9 +8,9 @@
   position: sticky;
   top: 0;
   z-index: 10;
-  background: rgba(13, 11, 26, 0.86);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  /* Opaca y sin desenfoque: Safari (iOS) reconoce así la cabecera y no la tapa con su propio sombreado bajo la
+     barra de estado. Su color es también el `theme-color` mientras Hábitos está abierto (HabitsApp.tsx). */
+  background: var(--hb-header-bg);
   border-bottom: 2px solid var(--hb-ink);
   box-shadow: 0 1px 0 var(--hb-border);
   padding-top: env(safe-area-inset-top);
@@ -99,6 +99,10 @@
 }
 
 @media (max-width: 640px) {
+  /* Separación propia bajo la barra de estado / zona segura. */
+  .header {
+    padding-top: calc(env(safe-area-inset-top) + var(--space-2));
+  }
   .inner,
   .tabsInner,
   .main {
@@ -107,7 +111,7 @@
   }
 }
 
-/* Móvil: las cuatro pestañas se reparten el ancho, con el icono encima del texto. */
+/* Móvil: las cinco pestañas se reparten el ancho, con el icono encima del texto. */
 @media (max-width: 520px) {
   .tabsInner {
     gap: 0;

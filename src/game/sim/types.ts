@@ -93,6 +93,8 @@ export interface WeaponDef {
   id: string;
   name: string;
   description: string;
+  /** Tipo de ataque para el catálogo (p. ej. «Órbita»). Obligatorio en las armas base; las evoluciones heredan el de su base. */
+  attack?: string;
   /** Sprite del icono (game/sprites). */
   icon: string;
   base: WeaponStats;

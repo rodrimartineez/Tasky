@@ -1,0 +1,188 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.intro {
+  margin: 0;
+  color: var(--text-faint);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+
+.tabs {
+  display: flex;
+  gap: var(--space-1);
+  padding: 4px;
+  background: var(--hb-surface-1);
+  border-radius: var(--radius);
+  box-shadow: var(--hb-pixel-edge);
+}
+.tab {
+  flex: 1;
+  min-height: 40px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--hb-pixel-font);
+  font-size: var(--fs-md);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.tabActive {
+  background: var(--hb-surface-3);
+  color: var(--hb-gold);
+}
+.count {
+  color: var(--text-faint);
+  font-size: var(--fs-xs);
+}
+
+.list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--hb-surface-1);
+  border-radius: var(--radius);
+  box-shadow: var(--hb-pixel-edge);
+}
+.evolution {
+  background: linear-gradient(180deg, #2a1f4d, var(--hb-surface-1));
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.icon {
+  flex-shrink: 0;
+  image-rendering: pixelated;
+}
+.titles {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+}
+.name {
+  margin: 0;
+  font-family: var(--hb-pixel-font);
+  font-size: var(--fs-lg);
+  font-weight: 700;
+}
+.tag {
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 210, 90, 0.12);
+  color: var(--hb-gold);
+  font-size: var(--fs-xs);
+}
+
+.text,
+.evolves {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+}
+.evolves {
+  color: #c9b6ff;
+}
+
+.figures {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+}
+.figures th,
+.figures td {
+  padding: 3px 4px;
+  text-align: right;
+  border-bottom: 1px solid var(--hb-border);
+}
+.figures thead th {
+  color: var(--text-faint);
+  font-weight: 500;
+  font-size: var(--fs-xs);
+}
+.figures tbody th {
+  text-align: left;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+.changed {
+  color: var(--hb-gold);
+}
+
+.details summary {
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+.levels {
+  margin: var(--space-2) 0 0;
+  padding-left: 0;
+  list-style: none;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+.levels li {
+  padding: 2px 0;
+}
+.levels b {
+  display: inline-block;
+  min-width: 3.2em;
+  color: var(--text);
+  font-family: var(--hb-pixel-font);
+  font-weight: 500;
+}
+
+.recipe {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-sm);
+}
+.ingredient {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px 2px 2px;
+  border-radius: var(--radius-sm);
+  background: var(--hb-surface-2);
+}
+.ingredient small {
+  color: var(--text-faint);
+}
+.op {
+  width: 14px;
+  height: 14px;
+  color: var(--text-faint);
+}
+
+@media (max-width: 520px) {
+  .tab {
+    font-size: var(--fs-sm);
+  }
+  .list {
+    grid-template-columns: 1fr;
+  }
+  .card {
+    padding: var(--space-3);
+  }
+}

@@ -16,7 +16,7 @@ import {
   type HabitPatch,
 } from '../core/habits';
 import { comebackFor, type Comeback } from '../core/comeback';
-import { GAME_RELEASE } from '../core/release';
+import { GAME_BUILD, releaseFor } from '../core/release';
 import { buyUpgrade, economyOf, finishRun, setLoadout, startRun, unlock, type Economy, type RunOutcome } from '../core/economy';
 import type { HabitsData } from '../core/model';
 import { dateInZone, deviceTimeZone } from '../core/periods';
@@ -32,12 +32,16 @@ interface HabitsState {
   data: HabitsData;
   /** Día actual en la zona horaria del perfil (cambia a las 00:00). */
   today: LocalDate;
+  /** Modo de pruebas del juego en este dispositivo (solo con GAME_BUILD.devTools; release.ts). */
+  testMode: boolean;
 
   load(storage: HabitsStorage): Promise<void>;
   /** Comprueba si ha cambiado el día y cierra los periodos pendientes. */
   tick(): void;
   applyRemote(records: HabitsRecords): void;
   clearLocalData(): void;
+  /** Herramienta de desarrollo: activa o desactiva el modo de pruebas en este dispositivo. No toca los datos. */
+  setTestMode(on: boolean): void;
   createHabit(input: HabitInput): string;
   updateHabit(id: string, patch: HabitPatch): void;
   archiveHabit(id: string, archived: boolean): void;
@@ -53,7 +57,22 @@ interface HabitsState {
    * En el modo de pruebas no consume nada ni se registra: siempre nivel 1 (`test: true`).
    */
   startRun(): { level: number; comeback: Comeback | null; test: boolean };
+  /** Registra el resultado de una partida real (las de prueba no se registran). */
   finishRun(level: number, outcome: RunOutcome): void;
+}
+
+/**
+ * El modo elegido se recuerda en este dispositivo (no es un dato de Hábitos: no se sincroniza ni entra en el ledger).
+ * Mientras no se elija, el juego en desarrollo empieza en modo de pruebas.
+ */
+const TEST_MODE_KEY = 'tasky-game-test-mode';
+function readTestMode(): boolean {
+  if (!GAME_BUILD.devTools) return false;
+  try {
+    return localStorage.getItem(TEST_MODE_KEY) !== 'off';
+  } catch {
+    return true;
+  }
 }
 
 const zoneOf = (data: HabitsData) => data.profile?.timeZone ?? deviceTimeZone();
@@ -107,6 +126,7 @@ export const useHabits = create<HabitsState>()((set, get) => {
     saveError: null,
     data: emptyHabitsData(),
     today: todayIn(emptyHabitsData()),
+    testMode: readTestMode(),
 
     async load(s) {
       storage = s;
@@ -127,6 +147,16 @@ export const useHabits = create<HabitsState>()((set, get) => {
       if (countHabitsRecords(records) > 0) commit((d) => mergeHabitsRemote(d, records));
     },
 
+    setTestMode(on) {
+      if (!GAME_BUILD.devTools) return;
+      try {
+        localStorage.setItem(TEST_MODE_KEY, on ? 'on' : 'off');
+      } catch {
+        // Sin almacenamiento el cambio dura hasta recargar.
+      }
+      set({ testMode: on });
+    },
+
     clearLocalData() {
       if (get().status !== 'ready') return;
       const data = ensureProfile(emptyHabitsData(), deviceTimeZone(), todayIn(emptyHabitsData()));
@@ -145,22 +175,31 @@ export const useHabits = create<HabitsState>()((set, get) => {
     log: (id, direction) => commit((d) => logHabit(d, id, direction, newId(), now(), todayIn(d))),
 
     buyUpgrade: (id) => commit((d) => buyUpgrade(d, id, todayIn(d), now())),
-    unlock: (key) => commit((d) => unlock(d, key, todayIn(d), now())),
+    unlock: (key) => commit((d) => unlock(d, key, todayIn(d), now(), releaseFor(get().testMode))),
     setLoadout: (character, stage) => commit((d) => setLoadout(d, character, stage, now())),
     startRun() {
-      if (GAME_RELEASE.testMode) return { level: 1, comeback: null, test: true };
+      const release = releaseFor(get().testMode);
+      if (release.testMode) return { level: 1, comeback: null, test: true };
       let level = 0;
       let comeback: Comeback | null = null;
       commit((d) => {
         const today = todayIn(d);
-        comeback = comebackFor(d, today, economyOf(d, today).runs);
-        const started = startRun(d, d.profile?.character ?? 'wanderer', d.profile?.stage ?? 'withered_woods', today, now(), comeback?.strength ?? 0);
+        comeback = comebackFor(d, today, economyOf(d, today, release).runs, release);
+        const started = startRun(
+          d,
+          d.profile?.character ?? 'wanderer',
+          d.profile?.stage ?? 'withered_woods',
+          today,
+          now(),
+          comeback?.strength ?? 0,
+          release,
+        );
         level = started.level;
         return started.data;
       });
       return { level, comeback, test: false };
     },
-    finishRun: (level, outcome) => commit((d) => finishRun(d, level, outcome, now())),
+    finishRun: (level, outcome) => commit((d) => finishRun(d, level, outcome, now(), releaseFor(false))),
   };
 });
 
@@ -168,7 +207,8 @@ export const useHabits = create<HabitsState>()((set, get) => {
 export function useEconomy(): Economy {
   const data = useHabits((s) => s.data);
   const today = useHabits((s) => s.today);
-  return useMemo(() => economyOf(data, today), [data, today]);
+  const testMode = useHabits((s) => s.testMode);
+  return useMemo(() => economyOf(data, today, releaseFor(testMode)), [data, today, testMode]);
 }
 
 /**
@@ -181,8 +221,11 @@ const queueRun = <T>(op: () => Promise<T>): Promise<T> => {
   runQueue = next.catch((e) => console.error(e));
   return next;
 };
-export const loadRunSnapshot = (): Promise<RunSnapshot | null> => queueRun(async () => (storage ? storage.loadRun() : null));
-export const saveRunSnapshot = (snapshot: RunSnapshot | null): Promise<void> => queueRun(async () => storage?.saveRun(snapshot)).catch(() => undefined);
+/** Cada modo tiene su propia copia: una partida de prueba nunca pisa la partida real en curso, ni al revés. */
+export const loadRunSnapshot = (test: boolean): Promise<RunSnapshot | null> =>
+  queueRun(async () => (storage ? storage.loadRun(test ? 'test' : 'run') : null));
+export const saveRunSnapshot = (snapshot: RunSnapshot | null, test: boolean): Promise<void> =>
+  queueRun(async () => storage?.saveRun(snapshot, test ? 'test' : 'run')).catch(() => undefined);
 
 /** Cambio de día con la app abierta (00:00) y al volver a ella. */
 const TICK_MS = 30_000;

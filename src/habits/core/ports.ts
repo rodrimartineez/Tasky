@@ -15,14 +15,17 @@ export interface RunSnapshot {
 }
 import type { HabitsRecords } from './sync';
 
+export type RunSlot = 'run' | 'test';
+
 /** Almacenamiento local del documento de Hábitos (independiente del de Proyectos). */
 export interface HabitsStorage {
   /** Contenido guardado sin validar, o null si todavía no existe. */
   load(): Promise<unknown | null>;
   save(data: HabitsData): Promise<void>;
-  loadRun(): Promise<RunSnapshot | null>;
+  /** `slot`: partida real (`run`) o del modo de pruebas (`test`), guardadas por separado. */
+  loadRun(slot: RunSlot): Promise<RunSnapshot | null>;
   /** null borra la copia guardada. */
-  saveRun(snapshot: RunSnapshot | null): Promise<void>;
+  saveRun(snapshot: RunSnapshot | null, slot: RunSlot): Promise<void>;
 }
 
 /** Tablas de Hábitos en el servidor. La sesión es la misma que la de Proyectos. */

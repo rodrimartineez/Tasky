@@ -5,6 +5,8 @@
  */
 :root[data-mode='habits'] {
   --hb-bg: #0d0b1a;
+  /* Cabecera opaca (también es el theme-color mientras Hábitos está abierto: HabitsApp.tsx). */
+  --hb-header-bg: #0d0b1a;
   --hb-surface-1: #151229;
   --hb-surface-2: #1d1938;
   --hb-surface-3: #282249;

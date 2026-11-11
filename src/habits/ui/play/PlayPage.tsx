@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
-import { HeartHandshake, Lock, Play, Swords } from 'lucide-react';
+import { FlaskConical, HeartHandshake, Lock, Play, Swords } from 'lucide-react';
 import { CHARACTERS } from '../../../game/content/characters';
 import { buildRunConfig } from '../../../game/content/run';
 import { STAGES } from '../../../game/content/stages';
@@ -12,6 +12,7 @@ import { EconomyError, isUnlocked, priceOf } from '../../core/economy';
 import type { RunSnapshot } from '../../core/ports';
 import { loadRunSnapshot, saveRunSnapshot, useEconomy, useHabits } from '../../state/store';
 import { comebackFor } from '../../core/comeback';
+import { GAME_BUILD, releaseFor } from '../../core/release';
 import { HabitBridge } from '../HabitBridge';
 import { CoinIcon } from '../PointsBadge';
 import styles from './PlayPage.module.css';
@@ -46,13 +47,17 @@ export function PlayPage() {
   const data = useHabits((s) => s.data);
   const today = useHabits((s) => s.today);
   const profile = data.profile;
-  const comeback = useMemo(() => comebackFor(data, today, eco.runs), [data, today, eco.runs]);
+  const testMode = useHabits((s) => s.testMode);
+  const setTestMode = useHabits((s) => s.setTestMode);
+  const comeback = useMemo(() => comebackFor(data, today, eco.runs, releaseFor(testMode)), [data, today, eco.runs, testMode]);
   const startRun = useHabits((s) => s.startRun);
   const finishRun = useHabits((s) => s.finishRun);
   const unlock = useHabits((s) => s.unlock);
   const setLoadout = useHabits((s) => s.setLoadout);
   const [session, setSession] = useState<Session | null>(null);
-  const [snapshot, setSnapshot] = useState<RunSnapshot | null | undefined>(undefined);
+  // Copia leída y de qué modo es: al cambiar de modo, la del otro no se muestra mientras se lee la nueva.
+  const [loaded, setLoaded] = useState<{ test: boolean; snapshot: RunSnapshot | null } | null>(null);
+  const snapshot = loaded && loaded.test === testMode ? loaded.snapshot : undefined;
   const [buying, setBuying] = useState<string | null>(null);
   const [closing, setClosing] = useState(false);
 
@@ -61,13 +66,13 @@ export function PlayPage() {
   useEffect(() => {
     if (session) return;
     let alive = true;
-    loadRunSnapshot()
-      .then((s) => alive && setSnapshot(s))
-      .catch(() => alive && setSnapshot(null));
+    loadRunSnapshot(testMode)
+      .then((s) => alive && setLoaded({ test: testMode, snapshot: s }))
+      .catch(() => alive && setLoaded({ test: testMode, snapshot: null }));
     return () => {
       alive = false;
     };
-  }, [session, open?.level]);
+  }, [session, open?.level, testMode]);
   const resumable = eco.testMode
     ? snapshot?.test
       ? snapshot
@@ -113,15 +118,16 @@ export function PlayPage() {
     });
   };
 
-  const finish = (level: number, result: RunResult) => {
-    finishRun(level, {
-      gold: result.gold,
-      time: result.time,
-      kills: result.kills,
-      won: result.won,
-      xpLevel: result.level,
-    });
-    void saveRunSnapshot(null);
+  const finish = (level: number, result: RunResult, test: boolean) => {
+    if (!test)
+      finishRun(level, {
+        gold: result.gold,
+        time: result.time,
+        kills: result.kills,
+        won: result.won,
+        xpLevel: result.level,
+      });
+    void saveRunSnapshot(null, test);
   };
 
   const choose = (kind: 'character' | 'stage', id: string) => {
@@ -162,14 +168,35 @@ export function PlayPage() {
 
   return (
     <div className={styles.page}>
+      {GAME_BUILD.devTools && (
+        <div className={`${styles.devBar} ${eco.testMode ? styles.devBarOn : ''}`} role="group" aria-label="Herramienta de desarrollo">
+          <FlaskConical />
+          <span className={styles.devText}>
+            <b>Desarrollo · Modo de pruebas {eco.testMode ? 'activado' : 'desactivado'}</b>
+            {eco.testMode
+              ? 'Nada de lo que juegues ahora cuenta para la progresión real.'
+              : 'Progresión real: partidas, niveles, oro y compras cuentan.'}
+          </span>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={eco.testMode}
+            className={styles.devSwitch}
+            onClick={() => setTestMode(!eco.testMode)}
+            disabled={!!session}
+          >
+            {eco.testMode ? 'Desactivar' : 'Activar'}
+          </button>
+        </div>
+      )}
       <section className={styles.card}>
         {eco.testMode ? (
           <>
             <p className={styles.testBadge}>Modo de pruebas</p>
             <h1 className={styles.title}>Nivel 1</h1>
             <p className={styles.text}>
-              Mientras el juego está en desarrollo puedes jugar sin límite: todas las partidas son de nivel 1 y tienes todos los personajes
-              y escenarios. El oro de estas partidas no se guarda; tus hábitos, puntos y mejoras funcionan con normalidad.
+              Puedes jugar sin límite: todas las partidas son de nivel 1 y tienes todos los personajes y escenarios. El oro de estas
+              partidas no se guarda; tus hábitos, puntos y mejoras funcionan con normalidad.
             </p>
             {resumable && (
               <Button variant="secondary" icon={<Play />} className={styles.play} onClick={resume} disabled={!!session}>
@@ -368,7 +395,7 @@ export function PlayPage() {
             config={session.config}
             resume={session.resume}
             test={session.test}
-            onFinish={(result) => finish(session.level, result)}
+            onFinish={(result) => finish(session.level, result, session.test)}
             onExit={() => setSession(null)}
           />
         </Suspense>

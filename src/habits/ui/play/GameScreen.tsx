@@ -106,7 +106,7 @@ export default function GameScreen({ level, config, resume, onFinish, onExit, te
     const start = startRef.current;
     const save = () => {
       const world = finishedRef.current ? null : gameRef.current?.snapshot();
-      if (world) void saveRunSnapshot({ level: start.level, savedAt: now(), world, ...(start.test ? { test: true } : {}) });
+      if (world) void saveRunSnapshot({ level: start.level, savedAt: now(), world, ...(start.test ? { test: true } : {}) }, start.test);
     };
     const saveTimer = setInterval(save, SAVE_MS);
     const onHidden = () => document.visibilityState === 'hidden' && save();
