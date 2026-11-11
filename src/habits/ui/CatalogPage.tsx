@@ -1,5 +1,7 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { ArrowRight, Plus } from 'lucide-react';
+import { GAME_BUILD } from '../core/release';
 import { evolutionEntries, passiveEntries, WEAPON_FIGURE_LABELS, weaponEntries, type WeaponFigures } from '../../game/content/catalog';
 import { spriteDataUrl } from '../../game/sprites/atlas';
 import styles from './CatalogPage.module.css';
@@ -56,6 +58,12 @@ export function CatalogPage() {
       <p className={styles.intro}>
         Todo lo que puede aparecer en una partida, lo hayas usado o no. Las armas y pasivas se eligen al subir de nivel; las evoluciones
         aparecen al abrir un cofre con el arma al nivel máximo y su pasiva.
+        {GAME_BUILD.devTools && (
+          <>
+            {' '}
+            <Link to="/habits/sprites">Ver todos los sprites</Link> (desarrollo).
+          </>
+        )}
       </p>
       <div className={styles.tabs} role="tablist" aria-label="Secciones del catálogo">
         {tabs.map((t) => (

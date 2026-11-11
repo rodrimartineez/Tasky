@@ -4,8 +4,7 @@ import { Application, Container, Rectangle, Sprite, Texture, TilingSprite, type 
 import { behaviourOf, WEAPON_BY_ID } from '../content/weapons';
 import { emberRadius, MINE_ARM } from '../sim/weapons';
 import type { Fx, Projectile, World } from '../sim/types';
-import { buildAtlas, buildGroundTile, CIRCLE_RADIUS, WHITE } from '../sprites/atlas';
-import { resolveSprite } from '../sprites/data';
+import { buildAtlas, buildGroundTile, CIRCLE_RADIUS, WHITE, type GroundStyle } from '../sprites/atlas';
 
 /**
  * Dibuja el estado de la simulación con PixiJS. No contiene reglas del juego: solo lee el mundo
@@ -18,13 +17,66 @@ const VIEW_SHORT = 260;
 const VIEW_LONG = 580;
 const PROP_CELL = 56;
 
-/** Colores del suelo de cada escenario (`StageDef.ground`): baldosa base, motas claras y oscuras, y fondo. */
-const GROUNDS: Record<string, { base: string; light: string; dark: string; background: number }> = {
-  t_grass: { base: '#1b2f24', light: '#24402f', dark: '#15251c', background: 0x12201a },
-  t_bog: { base: '#1d2b2c', light: '#2a3f3d', dark: '#141f21', background: 0x101a1b },
-  t_crypt: { base: '#2a2630', light: '#383241', dark: '#1d1a24', background: 0x16131c },
-  t_cave: { base: '#20243a', light: '#2e3452', dark: '#161a2c', background: 0x111424 },
-  t_ash: { base: '#33241f', light: '#47342b', dark: '#241915', background: 0x1c130f },
+/** Partículas de ambiente del escenario (hojas, luciérnagas, polvo, destellos, brasas). */
+interface Ambient {
+  colors: number[];
+  vx: number;
+  vy: number;
+  /** Amplitud del vaivén lateral. */
+  sway: number;
+  alpha: number;
+  /** Parpadeo (luces) en vez de brillo fijo. */
+  twinkle?: boolean;
+}
+const AMBIENT_COUNT = 28;
+
+/** Suelo de cada escenario (`StageDef.ground`): dibujo de la baldosa, fondo y partículas de ambiente. */
+const GROUNDS: Record<string, GroundStyle & { background: number; ambient: Ambient }> = {
+  t_grass: {
+    base: '#1b2f24',
+    light: '#26442f',
+    dark: '#14231a',
+    accent: '#c9a74a',
+    pattern: 'grass',
+    background: 0x12201a,
+    ambient: { colors: [0x8fbf5a, 0xc9a74a], vx: 6, vy: 9, sway: 10, alpha: 0.55 },
+  },
+  t_bog: {
+    base: '#1c2a2b',
+    light: '#2b403c',
+    dark: '#111b1d',
+    accent: '#6f9a4a',
+    pattern: 'bog',
+    background: 0x101a1b,
+    ambient: { colors: [0xd7ff8a], vx: 0, vy: -2, sway: 8, alpha: 0.75, twinkle: true },
+  },
+  t_crypt: {
+    base: '#2a2630',
+    light: '#3a3444',
+    dark: '#18151e',
+    accent: '#4c5a3c',
+    pattern: 'slabs',
+    background: 0x16131c,
+    ambient: { colors: [0xb8b0c8], vx: -3, vy: -2, sway: 3, alpha: 0.3 },
+  },
+  t_cave: {
+    base: '#1f2338',
+    light: '#2e3452',
+    dark: '#141729',
+    accent: '#5fb7e8',
+    pattern: 'rocks',
+    background: 0x111424,
+    ambient: { colors: [0x8fd8ff, 0xd0b8ff], vx: 0, vy: 0, sway: 2, alpha: 0.8, twinkle: true },
+  },
+  t_ash: {
+    base: '#32231e',
+    light: '#3b2b23',
+    dark: '#1f1512',
+    accent: '#ff7a2e',
+    pattern: 'ash',
+    background: 0x1c130f,
+    ambient: { colors: [0xff8a3c, 0xffc35e], vx: 2, vy: -16, sway: 6, alpha: 0.8, twinkle: true },
+  },
 };
 
 /** Reserva de sprites: se piden en orden cada fotograma y los que sobran se ocultan. */
@@ -52,6 +104,7 @@ class Pool {
     s.tint = 0xffffff;
     s.rotation = 0;
     s.scale.set(1);
+    s.blendMode = 'normal';
     return s;
   }
 
@@ -83,6 +136,16 @@ interface Ring {
   life: number;
   color: number;
 }
+/** Impacto animado (3 fotogramas). */
+interface Hit {
+  x: number;
+  y: number;
+  sprite: string;
+  life: number;
+}
+const HIT_LIFE = 0.24;
+const MAX_HITS = 60;
+
 interface Bolt {
   points: number[];
   life: number;
@@ -118,6 +181,9 @@ export class Renderer {
   private particles: Particle[] = [];
   private rings: Ring[] = [];
   private bolts: Bolt[] = [];
+  private hits: Hit[] = [];
+  /** Partículas de ambiente: posición en el mundo, fase del vaivén y color. */
+  private motes: { x: number; y: number; phase: number; color: number }[] = [];
   private shake = 0;
   private clock = 0;
   private deathBurst = false;
@@ -207,14 +273,15 @@ export class Renderer {
   private groundTexture(key: string): Texture {
     const g = GROUNDS[key] ?? GROUNDS.t_grass;
     this.groundKey = key in GROUNDS ? key : 't_grass';
+    this.motes = [];
     this.app.renderer.background.color = g.background;
-    const tile = Texture.from(buildGroundTile(g.base, g.light, g.dark));
+    const tile = Texture.from(buildGroundTile(g));
     tile.source.scaleMode = 'nearest';
     return tile;
   }
 
   private tex(name: string, white = false): Texture {
-    const key = resolveSprite(name) + (white ? WHITE : '');
+    const key = name + (white ? WHITE : '');
     return this.textures.get(key) ?? Texture.WHITE;
   }
 
@@ -244,6 +311,8 @@ export class Renderer {
             color: f.color,
           });
         }
+      } else if (f.type === 'hit') {
+        if (this.hits.length < MAX_HITS) this.hits.push({ x: f.x, y: f.y, sprite: f.sprite, life: HIT_LIFE });
       } else if (f.type === 'ring') {
         this.rings.push({ x: f.x, y: f.y, radius: f.radius, life: RING_LIFE, color: f.color });
       } else if (f.type === 'line') {
@@ -312,6 +381,30 @@ export class Renderer {
         s.position.set(Math.round((cx + hash(cx + 7, cy)) * PROP_CELL), Math.round((cy + hash(cx, cy + 7)) * PROP_CELL));
         s.alpha = 0.9;
       }
+    }
+    // Ambiente: cuando una partícula sale de la vista reaparece por el borde opuesto.
+    const amb = GROUNDS[this.groundKey].ambient;
+    while (this.motes.length < AMBIENT_COUNT) {
+      this.motes.push({
+        x: p.x + (Math.random() * 2 - 1) * halfW,
+        y: p.y + (Math.random() * 2 - 1) * halfH,
+        phase: Math.random() * Math.PI * 2,
+        color: amb.colors[this.motes.length % amb.colors.length],
+      });
+    }
+    for (const m of this.motes) {
+      m.phase += dt;
+      m.x += (amb.vx + Math.cos(m.phase * 1.3) * amb.sway) * dt;
+      m.y += amb.vy * dt;
+      if (m.x < p.x - halfW) m.x += halfW * 2;
+      else if (m.x > p.x + halfW) m.x -= halfW * 2;
+      if (m.y < p.y - halfH) m.y += halfH * 2;
+      else if (m.y > p.y + halfH) m.y -= halfH * 2;
+      const s = this.props.next(this.tex('px'));
+      s.position.set(m.x, m.y);
+      s.scale.set(0.5);
+      s.tint = m.color;
+      s.alpha = amb.twinkle ? amb.alpha * (0.35 + 0.65 * Math.abs(Math.sin(m.phase * 2))) : amb.alpha;
     }
     this.props.end();
 
@@ -406,7 +499,8 @@ export class Renderer {
       const s = this.enemies.next(this.tex(e.def.sprite, e.flash > 0));
       // Sombras y cabezas son copias pequeñas y oscuras de su jefe.
       const copy = e.def.id === 'clone' || e.def.id === 'head';
-      const size = e.def.ai === 'reaper' ? 1.6 : e.elite ? 1.5 : copy ? 0.6 : 1;
+      // La Muerte se dibuja a ~48 px de alto, sea cual sea su sprite.
+      const size = e.def.ai === 'reaper' ? 48 / s.texture.height : e.elite ? 1.5 : copy ? 0.6 : 1;
       // Rebote al andar (aplastar y estirar) y orientación hacia el jugador.
       const bounce = 1 + Math.sin(this.clock * 9 + e.uid) * 0.07;
       s.scale.set((p.x < e.x ? -size : size) * (2 - bounce), size * bounce);
@@ -421,7 +515,8 @@ export class Renderer {
     for (const e of w.enemies) {
       if (!visible(e.x, e.y) || e.def.ai !== 'boss') continue;
       const color = e.def.color ?? 0xff5a5a;
-      const size = e.def.patterns ? 2.4 : 2;
+      // Altura en pantalla fija (jefes de ciclo ~64 px, de escenario ~54 px), sea cual sea el tamaño de su sprite.
+      const size = (e.def.patterns ? 64 : 54) / this.tex(e.def.sprite).height;
       const pulse = 0.5 + 0.5 * Math.sin(this.clock * 4 + e.uid);
       const aura = this.enemies.next(this.tex('disc'));
       aura.position.set(e.x, e.y + 4);
@@ -467,12 +562,14 @@ export class Renderer {
     }
     // Barra de vida bajo el personaje.
     const barBack = this.actors.next(this.tex('px'));
-    barBack.position.set(p.x, p.y + 9);
+    // Barra de vida justo bajo los pies, según la altura del sprite.
+    const barY = p.y - 2 + hero.texture.height / 2 + 2;
+    barBack.position.set(p.x, barY);
     barBack.scale.set(8, 1.5);
     barBack.tint = 0x0b0a14;
     const ratio = Math.max(0, p.hp / p.stats.maxHp);
     const bar = this.actors.next(this.tex('px'));
-    bar.position.set(p.x - 7 + 7 * ratio, p.y + 9);
+    bar.position.set(p.x - 7 + 7 * ratio, barY);
     bar.scale.set(7 * ratio, 0.75);
     bar.tint = ratio > 0.35 ? 0x5ee08a : 0xe5484d;
     if (dying !== null) barBack.alpha = bar.alpha = Math.max(0, 1 - dying * 2);
@@ -683,6 +780,16 @@ export class Renderer {
       }
     }
     this.bolts = this.bolts.filter((b) => b.life > 0);
+
+    // Impactos: anticipación, impacto y disipación, con mezcla aditiva.
+    for (const hit of this.hits) {
+      hit.life -= dt;
+      const frame = Math.min(2, Math.floor((1 - hit.life / HIT_LIFE) * 3));
+      const s = fx.next(this.tex(`${hit.sprite}_${frame}`));
+      s.position.set(hit.x, hit.y);
+      s.blendMode = 'add';
+    }
+    this.hits = this.hits.filter((h) => h.life > 0);
 
     for (const part of this.particles) {
       part.life -= dt;

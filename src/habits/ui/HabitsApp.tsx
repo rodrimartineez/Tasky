@@ -4,6 +4,8 @@ import '@fontsource/pixelify-sans/latin-500.css';
 import '@fontsource/pixelify-sans/latin-700.css';
 import './theme.css';
 import { CatalogPage } from './CatalogPage';
+import { SpritesPage } from './SpritesPage';
+import { GAME_BUILD } from '../core/release';
 import { HabitPage } from './HabitPage';
 import { HabitsHome } from './HabitsHome';
 import { HabitsLayout } from './HabitsLayout';
@@ -37,6 +39,7 @@ export default function HabitsApp() {
         <Route path="upgrades" element={<UpgradesPage />} />
         <Route path="rewards" element={<RewardsPage />} />
         <Route path="catalog" element={<CatalogPage />} />
+        {GAME_BUILD.devTools && <Route path="sprites" element={<SpritesPage />} />}
         <Route path="habit/:habitId" element={<HabitPage />} />
         <Route path="*" element={<Navigate to="/habits" replace />} />
       </Route>

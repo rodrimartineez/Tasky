@@ -27,19 +27,19 @@ export const EVOLUTIONS: EvolutionDef[] = [
   evolution(
     'spark',
     'horn',
-    { id: 'constellation', name: 'Constelación', description: 'Un abanico de estrellas que atraviesa a sus víctimas.', icon: 'x_constellation', proj: 'x_constellation' },
+    { id: 'constellation', name: 'Constelación', description: 'Un abanico de estrellas que atraviesa a sus víctimas.', icon: 'w_constellation', proj: 'x_constellation' },
     { damage: 34, cooldown: 0.9, amount: 5, pierce: 4, area: 5, speed: 200, duration: 1.8, knockback: 40 },
   ),
   evolution(
     'lance',
     'whetstone',
-    { id: 'dawnlance', name: 'Lanza del alba', description: 'Lanzas más anchas y letales que atraviesan toda la pantalla.', icon: 'x_dawnlance', proj: 'x_dawnlance' },
+    { id: 'dawnlance', name: 'Lanza del alba', description: 'Lanzas más anchas y letales que atraviesan toda la pantalla.', icon: 'w_dawnlance', proj: 'x_dawnlance' },
     { damage: 55, cooldown: 1.15, amount: 4, pierce: 999, area: 12, speed: 280, duration: 1.1, knockback: 80 },
   ),
   evolution(
     'orbs',
     'candle',
-    { id: 'eclipse', name: 'Eclipse', description: 'Seis lunas oscuras que casi nunca dejan de girar.', icon: 'x_eclipse', proj: 'x_eclipse' },
+    { id: 'eclipse', name: 'Eclipse', description: 'Seis lunas oscuras que casi nunca dejan de girar.', icon: 'w_eclipse', proj: 'x_eclipse' },
     { damage: 20, cooldown: 2, amount: 6, pierce: 999, area: 48, speed: 3.8, duration: 7, knockback: 50 },
   ),
   evolution(
@@ -57,7 +57,7 @@ export const EVOLUTIONS: EvolutionDef[] = [
   evolution(
     'flask',
     'tome',
-    { id: 'elixir', name: 'Elixir arcano', description: 'Frascos de alquimia mayor con una explosión devastadora.', icon: 'x_elixir', proj: 'x_elixir' },
+    { id: 'elixir', name: 'Elixir arcano', description: 'Frascos de alquimia mayor con una explosión devastadora.', icon: 'w_elixir', proj: 'x_elixir' },
     { damage: 66, cooldown: 2.3, amount: 4, pierce: 999, area: 52, speed: 0, duration: 0.7, knockback: 100 },
   ),
   evolution(
@@ -75,7 +75,7 @@ export const EVOLUTIONS: EvolutionDef[] = [
   evolution(
     'mines',
     'lodestone',
-    { id: 'magnetmines', name: 'Campo magnético', description: 'Minas más potentes y duraderas que se atraen unas a otras.', icon: 'x_magnetmines', proj: 'x_magnetmines' },
+    { id: 'magnetmines', name: 'Campo magnético', description: 'Minas más potentes y duraderas que se atraen unas a otras.', icon: 'w_magnetmines', proj: 'x_magnetmines' },
     { damage: 62, cooldown: 1.9, amount: 4, pierce: 999, area: 62, speed: 0, duration: 12, knockback: 80 },
   ),
   evolution(
@@ -87,13 +87,13 @@ export const EVOLUTIONS: EvolutionDef[] = [
   evolution(
     'meteors',
     'hourglass',
-    { id: 'comets', name: 'Lluvia de cometas', description: 'Cometas helados que caen en oleadas sobre el campo de batalla.', icon: 'x_comets', proj: 'x_comets' },
+    { id: 'comets', name: 'Lluvia de cometas', description: 'Cometas helados que caen en oleadas sobre el campo de batalla.', icon: 'w_comets', proj: 'x_comets' },
     { damage: 90, cooldown: 2.9, amount: 5, pierce: 999, area: 72, speed: 0, duration: 0.7, knockback: 90 },
   ),
   evolution(
     'cloud',
     'fang',
-    { id: 'plague', name: 'Peste carmesí', description: 'Nubes de sangre más grandes y duraderas.', icon: 'x_plague', proj: 'x_plague' },
+    { id: 'plague', name: 'Peste carmesí', description: 'Nubes de sangre más grandes y duraderas.', icon: 'w_plague', proj: 'x_plague' },
     { damage: 24, cooldown: 2.4, amount: 4, pierce: 999, area: 64, speed: 0, duration: 7, knockback: 0 },
   ),
   evolution(
@@ -105,19 +105,19 @@ export const EVOLUTIONS: EvolutionDef[] = [
   evolution(
     'ricochet',
     'clover',
-    { id: 'luckyblades', name: 'Filos de la fortuna', description: 'Cuchillas doradas que rebotan una y otra vez.', icon: 'x_luckyblades', proj: 'x_luckyblades' },
+    { id: 'luckyblades', name: 'Filos de la fortuna', description: 'Cuchillas doradas que rebotan una y otra vez.', icon: 'w_luckyblades', proj: 'x_luckyblades' },
     { damage: 33, cooldown: 1.2, amount: 4, pierce: 7, area: 5, speed: 220, duration: 3, knockback: 25 },
   ),
   evolution(
     'drone',
     'hourglass',
-    { id: 'gunship', name: 'Dron de asalto', description: 'Cuatro drones artilleros que disparan sin descanso.', icon: 'x_gunship', proj: 'x_gunship' },
+    { id: 'gunship', name: 'Dron de asalto', description: 'Cuatro drones artilleros que disparan sin descanso.', icon: 'w_gunship', proj: 'x_gunship' },
     { damage: 34, cooldown: 1, amount: 4, pierce: 1, area: 38, speed: 2.8, duration: 10, knockback: 20 },
   ),
   evolution(
     'trail',
     'boots',
-    { id: 'inferno', name: 'Senda infernal', description: 'Llamas azules enormes que tardan en apagarse.', icon: 'x_inferno', proj: 'x_inferno' },
+    { id: 'inferno', name: 'Senda infernal', description: 'Llamas azules enormes que tardan en apagarse.', icon: 'w_inferno', proj: 'x_inferno' },
     { damage: 22, cooldown: 0.2, amount: 3, pierce: 999, area: 30, speed: 0, duration: 3.6, knockback: 0 },
   ),
 ];

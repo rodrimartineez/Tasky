@@ -1,4 +1,4 @@
-import { behaviourOf, WEAPON_BY_ID } from '../content/weapons';
+import { behaviourOf, hitFxOf, WEAPON_BY_ID } from '../content/weapons';
 import { damageEnemy, emit, hurtPlayer, near, nearestEnemy, queryNear, rand } from './core';
 import type { Enemy, ProjKind, Projectile, WeaponState, World } from './types';
 
@@ -399,6 +399,13 @@ export function updateWeapons(w: World, dt: number) {
   }
 }
 
+/** Impacto animado del arma (familia de su elemento, content/weapons.ts). */
+function hitFx(w: World, p: Projectile, x: number, y: number) {
+  const id = w.player.weapons[p.weapon]?.id;
+  const sprite = id && hitFxOf(id);
+  if (sprite) emit(w, { type: 'hit', x, y, sprite });
+}
+
 /** Golpea a los enemigos que toca un proyectil recto; muere al agotar los que puede atravesar. */
 function hitLine(w: World, p: Projectile) {
   const count = queryNear(p.x, p.y, p.radius);
@@ -408,6 +415,7 @@ function hitLine(w: World, p: Projectile) {
     p.hit.push(e.uid);
     const speed = Math.hypot(p.vx, p.vy) || 1;
     damageEnemy(w, e, p.damage, p.weapon, (p.vx / speed) * p.knockback, (p.vy / speed) * p.knockback);
+    hitFx(w, p, e.x, e.y);
     if (p.hit.length >= p.pierce) p.dead = true;
   }
 }
@@ -450,6 +458,7 @@ export function updateProjectiles(w: World, dt: number) {
           const dy = e.y - player.y;
           const d = Math.hypot(dx, dy) || 1;
           damageEnemy(w, e, p.damage, p.weapon, (dx / d) * p.knockback, (dy / d) * p.knockback);
+          hitFx(w, p, e.x, e.y);
         }
         break;
       }
@@ -517,6 +526,7 @@ export function updateProjectiles(w: World, dt: number) {
           if (along < 0 || along > p.orbitR + e.radius || Math.abs(dx * cy - dy * cx) > p.radius + e.radius) continue;
           const d = Math.hypot(dx, dy) || 1;
           damageEnemy(w, e, p.damage, p.weapon, (dx / d) * p.knockback, (dy / d) * p.knockback);
+          hitFx(w, p, e.x, e.y);
         }
         break;
       }
@@ -539,6 +549,7 @@ export function updateProjectiles(w: World, dt: number) {
           p.hit.push(e.uid);
           const speed = Math.hypot(p.vx, p.vy) || 1;
           damageEnemy(w, e, p.damage, p.weapon, (p.vx / speed) * p.knockback, (p.vy / speed) * p.knockback);
+          hitFx(w, p, e.x, e.y);
           // Rebota hacia el enemigo más cercano que aún no ha golpeado; sin rebotes o sin enemigos, se acaba.
           const next = p.pierce-- > 0 ? nearestEnemy(w, e.x, e.y, RICOCHET_RANGE, p.hit) : null;
           if (!next) {

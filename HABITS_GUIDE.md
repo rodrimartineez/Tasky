@@ -404,3 +404,15 @@ saltos, invocaciones, lluvias y anillos, cada jefe tiene ataques propios avisado
   acerca y golpea cada 0,8 s quitando el 26 % de la vida máxima (unos 4 tajos visibles), sin que la armadura, la
   invulnerabilidad ni revivir lo eviten. Las armas no le hacen nada; el jugador puede moverse. Al morir, el alma
   asciende con un destello dorado durante 2,4 s y aparece la pantalla de nivel superado.
+
+## 13. Arte del juego (Fase 7)
+
+- Todo el arte está en `src/game/sprites/art/` (personajes, enemigos, jefes, armas, objetos), un archivo por grupo,
+  como texto sobre la paleta de `sprites/data.ts`. La guía de estilo (tamaños, contorno, luz, familias de color de
+  las armas) está en `ARTE_GUIA.md`.
+- Revisión rápida: **Catálogo → Ver todos los sprites** (solo en desarrollo, ruta `/habits/sprites`), con filtro y
+  zoom; o `python scripts/render_sprites.py src/game/sprites/art/<grupo>.ts hoja.png`.
+- Cada arma pertenece a una familia (fuego, rayo, arcano, veneno, acero) que fija su impacto animado
+  (`fx_<familia>_hit_0..2`, `hitFxOf` en `content/weapons.ts`); las explosiones no lo usan para no saturar.
+- Cada escenario tiene un suelo propio (hierba, pantano, losas, rocas, ceniza; `buildGroundTile`) y partículas de
+  ambiente (hojas, luciérnagas, polvo, destellos, brasas) con tope de 28. Nada del arte cambia la simulación.

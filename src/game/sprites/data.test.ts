@@ -3,7 +3,7 @@ import { ENEMIES } from '../content/enemies';
 import { PASSIVES } from '../content/passives';
 import { WITHERED_WOODS } from '../content/stages';
 import { WEAPONS } from '../content/weapons';
-import { PALETTE, resolveSprite, SPRITES } from './data';
+import { PALETTE, SPRITES } from './data';
 
 describe('sprites', () => {
   it('son rectangulares y solo usan colores de la paleta', () => {
@@ -24,6 +24,6 @@ describe('sprites', () => {
       ...['x_spark', 'x_lance', 'x_orb', 'x_flask', 'x_thorn', 'hero_0', 'hero_1'],
       ...['i_xp1', 'i_xp2', 'i_xp3', 'i_coin', 'i_heart', 'i_chest', 'i_magnet'],
     ];
-    for (const name of used) expect(SPRITES[resolveSprite(name)], name).toBeDefined();
+    for (const name of used) expect(SPRITES[name], name).toBeDefined();
   });
 });

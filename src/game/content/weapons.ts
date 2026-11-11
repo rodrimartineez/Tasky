@@ -222,7 +222,7 @@ export const WEAPONS: WeaponDef[] = [
     name: 'Cuchillas rebotantes',
     description: 'Rebotan de un enemigo a otro.',
     attack: 'Proyectil rebotante',
-    icon: 'x_ricochet',
+    icon: 'w_ricochet',
     // `pierce` = rebotes; `duration` = segundos de vida; `speed` = velocidad de vuelo.
     base: { damage: 11, cooldown: 1.5, amount: 1, pierce: 3, area: 5, speed: 190, duration: 2.5, knockback: 20 },
     levels: [
@@ -239,7 +239,7 @@ export const WEAPONS: WeaponDef[] = [
     name: 'Dron centinela',
     description: 'Orbita a tu alrededor y dispara al enemigo más cercano.',
     attack: 'Invocación',
-    icon: 'x_drone',
+    icon: 'w_drone',
     // `speed` = disparos por segundo; `area` = distancia a la que orbita; `pierce` = enemigos que atraviesa cada disparo;
     // `cooldown` = descanso entre una tanda de drones y la siguiente.
     base: { damage: 11, cooldown: 1.2, amount: 1, pierce: 1, area: 34, speed: 1.2, duration: 6, knockback: 15 },
@@ -257,7 +257,7 @@ export const WEAPONS: WeaponDef[] = [
     name: 'Estela de fuego',
     description: 'Dejas llamas tras de ti que queman a quien las pisa.',
     attack: 'Rastro de daño',
-    icon: 'x_flame',
+    icon: 'w_flame',
     // `cooldown` = segundos entre llamas; `area` = radio de cada llama; `duration` = lo que dura encendida.
     base: { damage: 4, cooldown: 0.3, amount: 1, pierce: 999, area: 15, speed: 0, duration: 2.2, knockback: 0 },
     levels: [
@@ -285,4 +285,30 @@ export function weaponStatsAt(def: WeaponDef, level: number): WeaponStats {
   }
   stats.cooldown = Math.max(MIN_COOLDOWN, stats.cooldown);
   return stats;
+}
+
+/** Familia de elemento de cada arma base (ARTE_GUIA.md): da el color y el impacto animado. */
+const FAMILY: Record<string, 'fire' | 'lightning' | 'arcane' | 'poison' | 'steel'> = {
+  ember: 'fire',
+  meteors: 'fire',
+  trail: 'fire',
+  spark: 'lightning',
+  storm: 'lightning',
+  beam: 'lightning',
+  orbs: 'arcane',
+  nova: 'arcane',
+  ricochet: 'arcane',
+  flask: 'poison',
+  cloud: 'poison',
+  mines: 'poison',
+  lance: 'steel',
+  whip: 'steel',
+  boomerang: 'steel',
+  drone: 'steel',
+};
+
+/** Impacto animado de un arma (o de su evolución): `fx_<familia>_hit`. */
+export function hitFxOf(id: string): string | undefined {
+  const family = FAMILY[behaviourOf(id)];
+  return family && `fx_${family}_hit`;
 }

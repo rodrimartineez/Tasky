@@ -3,7 +3,7 @@ import { survivalBonus } from '../sim/difficulty';
 import { botPlay } from '../sim/bot';
 import { BASE_STATS, MAX_PASSIVES, MAX_WEAPONS, type World } from '../sim/types';
 import { createWorld } from '../sim/world';
-import { resolveSprite, SPRITES } from '../sprites/data';
+import { SPRITES } from '../sprites/data';
 import { CHARACTERS } from './characters';
 import { ENEMY_BY_ID, ENEMIES } from './enemies';
 import { PASSIVES } from './passives';
@@ -61,8 +61,8 @@ describe('contenido', () => {
 
   it('todos los enemigos, armas y objetos tienen sprite', () => {
     for (const e of ENEMIES) expect(SPRITES[e.sprite], e.name).toBeDefined();
-    for (const w of WEAPONS) expect(SPRITES[resolveSprite(w.icon)], w.name).toBeDefined();
-    for (const p of PASSIVES) expect(SPRITES[resolveSprite(p.icon)], p.name).toBeDefined();
+    for (const w of WEAPONS) expect(SPRITES[w.icon], w.name).toBeDefined();
+    for (const p of PASSIVES) expect(SPRITES[p.icon], p.name).toBeDefined();
   });
 
   it('hay 5 huecos de armas y de pasivas y variedad de armas y pasivas', () => {

@@ -68,7 +68,7 @@ conviene dibujar una sola vez sobre un contenido ya cerrado.
 | **5d — Progresión por niveles** ✔️ | Intentos ganados con hábitos, nivel solo al superar 30 min, La Muerte, 10 jefes de ciclo cada 7 niveles, hitos (×1,5/×2, infinito, reflejo) | E1 (adelantada) | 5c | **Máxima** (pedida por el usuario) |
 | **5e — Combate más intenso** ✔️ | Personaje siempre visible, armas y pasivas de 7 niveles (armas hasta el 999), Purga, jefes con ataques propios, oleadas y ~nivel 60 al minuto 30, dos muertes distintas | — | 5d | **Máxima** (pedida por el usuario) |
 | **6 — PWA y rendimiento** | Precarga sin conexión, rendimiento en móvil | — | 5, 5c, 5d, 5e | Alta |
-| **7 — Rediseño visual y artístico** | Efectos de armas, iconos y proyectiles, evoluciones, mapas con capas y ambiente, recogidas, enemigos, tienda | A1, A2, A3, C3 (ampliadas) | 6 | Alta |
+| **7 — Rediseño visual y artístico** (en curso, antes que la 6) | Todo el arte: personajes, enemigos, jefes, armas y sus efectos, proyectiles, pasivas, mejoras, recogidas y mapas; galería de sprites | A1, A2, A3, C3 (ampliadas) | 5e | Alta (pedida por el usuario) |
 | **8 — Validación global** | Estudio de equilibrio completo, prueba en iPhone, regresión de Proyectos | — | 5–7 | Hito: juego completo |
 | **9 — Sonido** | Efectos y música originales | A4 | 7 | Media |
 | **10 — Largo plazo** | Logros, estadísticas, usos del oro, arcanos | C2, E2, D1, B3 | 8 (D1 antes de ~1 año de uso) | Media-baja |
@@ -207,6 +207,20 @@ Pedida por el usuario el 11/11/2026; detalle en `HABITS_GUIDE.md` §12:
   con 424 enemigos (5 ms en el peor caso), así que el trabajo pendiente es sobre todo de dibujo en móvil.
 
 ### Fase 7 — Rediseño visual y artístico (amplía la antigua «Arte y sensación»)
+
+**Cambio pedido por el usuario el 11/11/2026:** la Fase 7 se hace **antes que la 6**, y el alcance pasa a ser
+**todo** el arte: personajes, enemigos, jefes, armas y sus efectos, proyectiles, pasivas, mejoras y mapas, con un
+estilo más cercano a los *survivors* clásicos (siluetas grandes, colores saturados sobre suelo oscuro, mucho
+contraste), siempre con diseños propios. Se añade un apartado **Catálogo → Ver todos los sprites** (solo en
+desarrollo) para revisarlos de un vistazo. Como la medición de rendimiento de la Fase 6 llega después, esa fase
+medirá ya el arte definitivo. La guía de estilo queda en `ARTE_GUIA.md` y deja de valer la regla de «no cambiar los
+personajes».
+
+**Hecho (11/11/2026, pendiente de tu validación):** todo el arte redibujado según `ARTE_GUIA.md` (40 sprites de
+personajes a 16×20, 15 enemigos, 17 jefes con diseño propio cada uno, 32 iconos de armas y evoluciones, 29
+proyectiles, 15 fotogramas de impacto por familia, 14 pasivas, 11 mejoras, recogidas y 25 adornos de mapa, 9 de
+ellos nuevos); suelo propio por escenario y partículas de ambiente; galería de sprites. Quedan para después: 7.5
+(arco de vuelo de las recogidas), 7.7 (animación de la tienda) y los 3–4 fotogramas por enemigo de 7.6.
 
 Pedida por el usuario el 11/11/2026. Integra A1, A2, A3 y C3, que ya estaban aprobadas, y las amplía. Se coloca
 **después de la Fase 6** porque esa fase deja la medición de rendimiento en móvil (fps, partículas, memoria) con la

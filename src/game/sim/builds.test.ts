@@ -5,7 +5,7 @@ import { PASSIVE_BY_ID, PASSIVES } from '../content/passives';
 import { WITHERED_WOODS } from '../content/stages';
 import { UPGRADE_BY_ID, withUpgrades } from '../content/upgrades';
 import { WEAPON_BY_ID, WEAPONS, weaponStatsAt } from '../content/weapons';
-import { SPRITES, resolveSprite } from '../sprites/data';
+import { SPRITES } from '../sprites/data';
 import { botPlay } from './bot';
 import { spawnEnemy } from './core';
 import { BASE_STATS, MAX_WEAPONS, type Stats, type World } from './types';
@@ -93,7 +93,7 @@ describe('contenido de las builds', () => {
       'u_reroll',
       'u_banish',
     ];
-    for (const name of names) expect(SPRITES[resolveSprite(name)], name).toBeDefined();
+    for (const name of names) expect(SPRITES[name], name).toBeDefined();
   });
 });
 

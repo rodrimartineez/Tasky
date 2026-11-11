@@ -354,6 +354,8 @@ export interface Pickup {
 export type Fx =
   | { type: 'number'; x: number; y: number; value: number; crit: boolean; player: boolean }
   | { type: 'puff'; x: number; y: number; color: number; count: number }
+  /** Impacto animado de un arma: sprites `<sprite>_0`, `_1` y `_2` (anticipación, impacto, disipación). */
+  | { type: 'hit'; x: number; y: number; sprite: string }
   | { type: 'ring'; x: number; y: number; radius: number; color: number }
   | { type: 'line'; x: number; y: number; x2: number; y2: number; color: number }
   | { type: 'shake'; power: number };
