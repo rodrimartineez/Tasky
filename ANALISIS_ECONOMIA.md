@@ -7,9 +7,9 @@ Todo es reproducible:
 
 - Modelo de economía: [src/habits/balance/economy.ts](src/habits/balance/economy.ts) (hábitos simulados día a día con
   perfiles de constancia, compra automática de mejoras).
-- Combate: [src/habits/balance/balance.study.test.ts](src/habits/balance/balance.study.test.ts) juega partidas reales de la
-  simulación con un bot (`src/game/sim/bot.ts`) usando las mejoras que tendría cada perfil ese día. Se ejecuta con
-  `BALANCE_OUT=<archivo.md> npx vitest run src/habits/balance` (en las pruebas normales se omite).
+- Combate: los estudios de `src/habits/balance/*.study.test.ts` juegan partidas reales de la simulación con un bot
+  (`src/game/sim/bot.ts`) usando las mejoras que tendría cada perfil ese día (en las pruebas normales se omiten). Los
+  del §4–§7 y §10.2 se retiraron en la Fase 5d; los vigentes están en el §11.
 
 Supuestos del modelo: 5 hábitos diarios + 2 semanales; cada hábito tiene «inercia» (cumplir ayer hace más probable
 cumplir hoy), así las rachas se parecen a las reales; los puntos se gastan siempre en la mejora de combate más barata.
@@ -257,3 +257,96 @@ Lectura:
   mejoras permanentes que salen de los hábitos.
 - Los números exactos dependen de cómo juegue una persona (el bot huye y no elige mejoras con criterio): habrá que
   revisarlos con datos reales tras el lanzamiento. Todo está en `characters.ts`, `stages.ts` y `difficulty.ts`.
+
+## 11. Fase 5d: progresión por niveles, intentos y jefes (noviembre de 2026)
+
+Sustituye a los §4–§7 y §10.2 en todo lo que dependía del nivel: desde la Fase 5d el nivel ya no es «la partida
+n-ésima», sino **el último nivel superado + 1**, y solo se supera llegando al minuto 30 (HABITS_GUIDE §11). Los
+estudios antiguos (`balance.study`, `gold.study`) se han retirado porque medían un sistema que ya no existe; sus
+conclusiones sobre puntos, mejoras y precios siguen valiendo.
+
+Estudios nuevos (se omiten en las pruebas normales; cada uno indica en su cabecera cómo ejecutarlo):
+
+- `frontier.study.test.ts`: para un perfil y un día, busca con el bot la **dureza máxima** (factor único sobre vida,
+  daño y densidad) con la que todavía llega al minuto 30. Es la «frontera» de ese jugador.
+- `progression.study.test.ts`: ajusta curvas a la frontera y simula 3 años día a día: intentos que dan los hábitos,
+  cuántos se juegan, niveles superados y oro.
+- `bosses.study.test.ts`: juega los 10 jefes de ciclo en la frontera del perfil Constante.
+
+### 11.1 Frontera medida (perfil Constante, Errante, Bosque Marchito)
+
+`F*(P) = 0,797 · (1 + P/1.484)^0,588`, con P = puntos gastados en mejoras. Valores medidos (una semilla por punto, con
+mucho ruido): día 30 → 1,10 · día 90 → 1,26 · día 180 → 2,38 · día 365 → 2,94 · día 730 → 3,62 · día 1.095 → 7,31.
+
+Probabilidad de llegar al minuto 30: `σ((0,06 − x) / 0,28)`, con `x = log(dureza / frontera)`. El ancho 0,28 es el
+dato clave: **de una partida a otra hay mucho más azar (±28 %) que lo que crece el jugador en un día (~0,2 %)**. Por
+eso los niveles superados en un día dependen sobre todo de cuántos intentos se juegan, y el ritmo a largo plazo lo
+fija que la curva de niveles siga a la frontera.
+
+### 11.2 Curva de niveles
+
+`levelHp(L) = 0,77 · (1 + L/63)^0,75` (`sim/difficulty.ts`): la dureza del nivel L es la frontera del perfil
+Constante en su día L (más el desplazamiento de la logística, para ~50 % por intento). El daño y la densidad derivan
+de la misma dureza (`damageFor`, `densityFor`). Reflejo: dureza ×2 y oro ×2.
+
+### 11.3 Ritmo resultante (3 años, 12 semillas, regla de puntos actual, niveles de jefe incluidos)
+
+| Perfil | Juega al día | Nivel día 30 / 90 / 365 / 1.095 | Niveles al día | Días con 2+ / 3+ niveles | Oro año 1 / 2 / 3 |
+|---|---|---|---|---|---|
+| Constante (95 %) | 1 | 17 / 52 / 233 / 727 | 0,67 | 0 % / 0 % | 1,23 M / 2,21 M / 2,99 M |
+| **Constante (95 %)** | **2** | **30 / 80 / 341 / 1.030** | **0,94** | **23 % / 0 %** | **2,63 M / 4,84 M / 6,64 M** |
+| Constante (95 %) | 3 | 40 / 102 / 412 / 1.218 | 1,11 | 32 % / 6 % | 3,86 M / 7,05 M / 9,68 M |
+| Constante (95 %) | todos | 59 / 141 / 537 / 1.551 | 1,40 | 42 % / 16 % | 7,03 M / 13,13 M / 18,00 M |
+| Normal (80 %) | 2 | 30 / 78 / 324 / 934 | 0,85 | 19 % / 0 % | 2,56 M / 4,52 M / 5,96 M |
+| Irregular (50 %) | 2 | 27 / 57 / 149 / 327 | 0,28 | 2 % / 0 % | 1,17 M / 1,22 M / 1,41 M |
+| Abandona y vuelve | 2 | 30 / 80 / 269 / 904 | 0,82 | 18 % / 0 % | 2,15 M / 4,14 M / 5,97 M |
+
+Lectura:
+- Objetivo cumplido: con casi todos los hábitos y 2 intentos al día, **~1 nivel al día** (0,94), 2 algunos días (23 %) y 3
+  prácticamente nunca. Jugar más intentos acelera (3+ niveles en el 6–17 % de los días), pero nunca más allá de lo
+  que permiten las mejoras: la frontera crece solo con los hábitos.
+- Quien cumple menos avanza más despacio (Irregular ~0,28 niveles al día) aunque tenga intentos de sobra.
+- Los intentos sobran: un jugador constante gana ~5 al día. Son oportunidades acumulables, no una obligación.
+- Volver tras un abandono no castiga: el nivel superado y las mejoras se conservan, y se retoma con intentos.
+
+### 11.4 Oro
+
+Con niveles que suben despacio, el oro por nivel tenía que crecer más deprisa que antes; se reajustó para mantener el
+calendario del §10.3: `levelGold` con `a = 0,017` (antes 0,03) y bonificación por supervivencia de 5 por minuto
+(antes 9). Comprarlo todo (~18 M) lleva unos **3,6 años** al Constante jugando 2 intentos al día (Archimaga ~0,7
+años, Fénix ~1,0) y bastante más a quien cumple menos. Infinito da oro sin cambiar el nivel; reflejo, el doble.
+
+### 11.5 Jefes de ciclo
+
+Diseño (`content/bosses.ts`, `sim/bosses.ts`): 10 jefes con 2–4 ataques cada uno, que aparecen en el minuto 20 de
+los niveles 7, 14, 21…; al acabar la rotación vuelven con +25 % de vida, +10 % de daño, más proyectiles, ataques más
+seguidos, ataques nuevos y furia bajo el 50 % de vida.
+
+Objetivo: en la frontera del Constante, un nivel de jefe se supera en **~1 de cada 3 intentos** (un nivel normal, en
+~1 de cada 2), así que cuesta de media un día más sin bloquear. Estudio en los días 30, 90, 180, 365 y 730 (rondas 0
+a 14 de la rotación), 3 semillas por jefe y día:
+
+| Ajuste (`BOSS_TUNING`) | Llega al minuto 30 | Supera (vence al jefe y llega al 30) |
+|---|---|---|
+| Inicial (vida ×1, disparos ×0,45–0,8 según el ataque, 2,4 s entre ataques) | 35 / 140 (25 %) | 13 / 140 (9 %) |
+| **Elegido (vida ×0,6, disparos ×0,35, 3 s)** | **60 / 150 (40 %)** | **46 / 150 (31 %)** |
+
+Por jefe (superados de 15): Guardián 7 · Madre de la Nidada 7 · Mago de las Sombras 6 · Tejedora 6 · Caballero
+Espectral 5 · Señor de la Plaga 4 · Coloso 3 · Fauces 3 · Dragón 3 · Hidra 2. Con 15 partidas por jefe la diferencia
+entre ellos está dentro del ruido; se revisará con datos reales. En el estudio de progresión los niveles de jefe
+cuentan como una dureza ×1,33 (la que da un 31 % en la logística del §11.1).
+
+### 11.6 Regla de puntos: hitos de racha frente a 1 punto plano
+
+Con la curva fijada al Constante, la regla de puntos decide cuánto se separan los perfiles. Simulado con 1 punto
+plano por hábito diario cumplido (sin hitos de racha): Constante 0,38 niveles al día, Normal 0,37 — la constancia
+casi no se nota y todos avanzan mucho más lento. **Se mantiene la regla actual** (base + hitos de racha de la Fase 5b):
+es la que hace que cumplir casi todo marque la diferencia.
+
+### 11.7 Límites del estudio
+
+- El bot juega peor que una persona (no elige mejoras con criterio, esquiva mal). Una persona real probablemente
+  supere más niveles al principio; hay que calibrarlo con partidas reales (Fase 8) y, si hace falta, desplazar la
+  curva (`DIFFICULTY.base`).
+- Frontera medida con un personaje y un escenario; los legendarios y escenarios difíciles la mueven.
+- Todo cambio en el poder del jugador o de los enemigos obliga a repetir frontera → progresión → jefes.

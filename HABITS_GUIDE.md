@@ -131,9 +131,9 @@ se calcula siempre sumándolos:
 - Saldo, nivel de cada mejora, desbloqueos y partidas disponibles = *replay* ordenado del ledger. Una compra que
   dejaría el saldo en negativo (p. ej. dos dispositivos sin conexión gastando lo mismo) se ignora al reproducir y
   la UI la marca como «no aplicada».
-- Las partidas no son asientos: disponibles = días desde `profile.startedOn` (incluido hoy) − partidas empezadas.
-  Imposible duplicarlas o perderlas; se acumulan sin límite. La n-ésima partida empezada es el **nivel n**
-  (ganes o pierdas), así dos dispositivos que juegan a la vez sin conexión generan el mismo `run:<nivel>`.
+- Los intentos no son asientos: se derivan de las recompensas de los hábitos (§11) y cada partida gasta uno
+  (`run:s<temporada>:<n.º de intento>`), así dos dispositivos que juegan a la vez sin conexión generan el mismo id.
+  El nivel solo sube con un resultado que lo supera (`result:…` con `won`).
 - Implementación: `habits/core/economy.ts` (`economyOf` reproduce el ledger; acciones `buyUpgrade`, `unlock`,
   `startRun`, `finishRun`).
 - «Manipulación accidental»: la app es personal, así que el cliente es de confianza; aun así, ids deterministas +
@@ -143,10 +143,10 @@ se calcula siempre sumándolos:
 - Al empezar se escribe `run-start` (la partida queda consumida) y el estado de la simulación se guarda en local
   cada ~10 s (la simulación es datos puros: serializable).
 - Si la app se cierra o el móvil la mata: al volver se ofrece **reanudar** exactamente desde el último guardado.
-- «Terminar partida» la cierra con el oro conseguido hasta ese momento. Si en este dispositivo no hay copia guardada
-  (se empezó en otro o no llegó a guardarse), solo se puede **cerrar sin oro** para pasar al nivel siguiente.
-  `result:<nivel>` es único → nunca dos resultados para la misma partida. No se puede reiniciar para «repetir la
-  tirada» porque la partida ya está consumida. *(Ver D-G2.)*
+- «Terminar partida» la cierra con el oro conseguido hasta ese momento (sin superar el nivel). Si en este dispositivo
+  no hay copia guardada (se empezó en otro o no llegó a guardarse), solo se puede **cerrar sin oro**: el intento
+  cuenta como gastado. `result:<n.º de intento>` es único → nunca dos resultados para la misma partida. No se puede
+  reiniciar para «repetir la tirada» porque el intento ya está gastado. *(Ver D-G2.)*
 - La copia guardada es local (`habits-run.json` / clave `run` de IndexedDB), no se sincroniza.
 
 ## 5. Juego
@@ -155,8 +155,8 @@ se calcula siempre sumándolos:
 Movimiento (joystick virtual flotante: aparece donde se apoya el pulgar, no tapa el escenario; WASD/flechas en
 escritorio) · ataque automático · gemas de experiencia con imán · subida de nivel → elegir 1 de 3–4 (armas nuevas,
 niveles de arma, pasivas) · cofres de élites y jefes (mejoras, evoluciones, oro) · oleadas guionizadas por minuto
-por escenario · jefes en minutos fijos · **minuto 30: llega un ente final imparable** que cierra la partida (victoria
-si se sobrevive hasta él). Máximo 6 armas y 6 pasivas.
+por escenario · jefes en minutos fijos · **minuto 30: llega La Muerte**, imparable, que cierra la partida (llegar a
+ella supera el nivel; §11). Máximo 5 armas y 5 pasivas.
 
 ### 5.2 Contenido inicial (objetivo, por fases)
 - **Armas (~16 base + evoluciones):** proyectil que busca, lanza que atraviesa, orbe que orbita, aura de daño
@@ -184,9 +184,9 @@ rendimientos decrecientes donde haría falta (velocidad, crítico) y coste expon
 repetir y descartar quedan como propuestas (`IDEAS_MEJORAS_JUEGO.md`). Fórmulas y ritmo: `ANALISIS_ECONOMIA.md` §3.
 
 ### 5.4 Dificultad
-La dificultad depende del **minuto de partida** y del **nivel** (la partida n-ésima jugada), no de las mejoras:
-`game/sim/difficulty.ts`, crecimiento sin techo pero cada vez más lento. Resultados del estudio en
-`ANALISIS_ECONOMIA.md` §4–§6. Objetivo original de la Fase 1 (como referencia):
+La dificultad depende del **minuto de partida**, del **nivel** (el último superado + 1) y de la modalidad, nunca de
+las mejoras: `game/sim/difficulty.ts`. Desde la Fase 5d la curva por nivel sigue la «frontera» medida de un jugador
+constante (§11, `ANALISIS_ECONOMIA.md` §11). Objetivo original de la Fase 1 (como referencia histórica):
 | Momento | Supervivencia típica | Oro por partida |
 |---|---|---|
 | Día 1, sin mejoras | 6–10 min | 80–150 |
@@ -266,12 +266,14 @@ desarrollo, con borde discontinuo para no confundirlo con la interfaz del juego.
 momento, sin desplegar. La elección se guarda **en ese dispositivo** (`localStorage`, clave `tasky-game-test-mode`):
 no es un dato de Hábitos, no se sincroniza y no entra en el ledger. Mientras no se elija, se empieza en pruebas.
 
-- **Activado:** partidas ilimitadas de **nivel 1**, todos los personajes y escenarios disponibles sin pagar, y el
-  oro de las partidas no se guarda. Las partidas de prueba **no escriben nada en el ledger** (ni partida, ni
+- **Activado:** partidas ilimitadas en **cualquier nivel** (selector de nivel y botón «Próximo jefe»), todas las
+  modalidades (infinito y reflejo) y velocidades, todos los personajes y escenarios sin pagar, y el oro de las
+  partidas no se guarda. Las partidas de prueba **no escriben nada en el ledger** (ni partida, ni
   resultado, ni compras). Los hábitos, los puntos y las mejoras permanentes funcionan con normalidad.
 - **Desactivado:** progresión real, idéntica a la de producción. Solo el personaje y el escenario iniciales son
-  gratis, el resto se ve bloqueado con su precio y sus características, y se compra con oro. Cada partida consume
-  una disponible (una al día, acumulables), los niveles suben y el oro se conserva.
+  gratis, el resto se ve bloqueado con su precio y sus características, y se compra con oro. Cada partida gasta un
+  intento de los ganados con los hábitos, el nivel solo sube al superarlo, los hitos (velocidad, infinito, reflejo)
+  se ganan al superar sus niveles y el oro se conserva.
 - **Alternar es seguro:** el modo solo cambia cómo se lee el ledger (`economyOf`), nunca lo modifica. Por eso no
   puede crear, duplicar ni borrar oro, partidas, compras, puntos, rachas ni mejoras. Cada modo tiene su propia copia
   de la partida interrumpida (`run` y `test-run` en IndexedDB; `habits-run.json` y `habits-test.json` en el
@@ -289,7 +291,60 @@ export const GAME_BUILD = { devTools: false, season: 1, startsOn: 'AAAA-MM-DD' /
 - `devTools: false` quita el selector y fuerza la progresión real: el modo de pruebas no se puede activar de
   ninguna forma, ni aunque el dispositivo tuviera guardada la clave del selector.
 - `season: 1` empieza la progresión del juego de cero: se ignoran las partidas, el oro y los desbloqueos de la
-  temporada 0 y los asientos antiguos sin temporada (`run:1`, de la Fase 4). Desde `startsOn` se recibe una partida
-  al día, con niveles desde el 1. Para reiniciarla otra vez en el futuro basta con subir `season`.
+  temporada 0 y los asientos antiguos sin temporada (`run:1`, de la Fase 4). Cuentan los intentos ganados con
+  hábitos cumplidos desde `startsOn`, y los niveles empiezan en el 1. Para reiniciarla otra vez basta con subir
+  `season`.
 - Los puntos de hábitos, las rachas y las mejoras permanentes no dependen de la temporada: se conservan.
 - No hace falta tocar Supabase ni borrar datos: los asientos antiguos se quedan y el replay los ignora.
+
+## 11. Progresión del juego: intentos, niveles, jefes y modalidades (Fase 5d)
+
+Reglas pedidas por el usuario el 11/11/2026. Todas las fases posteriores deben respetarlas.
+
+**Intentos (se ganan con los hábitos y no caducan).**
+- Cada hábito diario cumplido da **+1 intento** (y sus puntos de siempre). Los de construir lo dan al momento, al
+  registrar el cumplimiento; los de reducir, al cerrar el día (hasta entonces aún se puede pasar del límite).
+- Cada hábito semanal cumplido da **+3 intentos** al cerrarse su semana (sus puntos siguen la racha semanal, sin
+  duplicar recompensas).
+- Máximo por día = número de hábitos diarios activos. Los intentos se acumulan indefinidamente: no hay reinicio a
+  las 00:00 ni se pierden por cambiar de día, cerrar la app o dejar de jugar. Sin intentos no se puede jugar.
+- Implementación: `attemptsEarned` en `habits/core/economy.ts`. Se cuentan desde las recompensas del ledger (una por
+  hábito y periodo, id fijo) más los diarios de construir cumplidos hoy, así que nunca se cuentan dos veces.
+  Disponibles = ganados − partidas empezadas (todas las modalidades).
+
+**Niveles.** Cada intento es una partida completa desde el minuto 0:
+- Al minuto 30 aparece **La Muerte** (`content/bosses.ts`, `sim/bosses.ts`): no recibe daño, persigue más rápido de
+  lo que se puede huir y acaba la partida (ni revivir ni la invulnerabilidad la evitan).
+- **Superar el nivel** = llegar al minuto 30 en modalidad normal (y, en los niveles de jefe, haber vencido al jefe).
+  Desbloquea el siguiente, que se puede jugar enseguida si quedan intentos.
+- Morir antes (o terminar la partida) no supera el nivel: el siguiente intento vuelve al minuto 0 del mismo nivel,
+  sin tiempo, experiencia ni mejoras temporales de la partida anterior. **El oro conseguido se conserva siempre.**
+- Las derrotas nunca quitan progreso permanente: puntos, mejoras, oro, desbloqueos y nivel superado se mantienen.
+
+**Ciclos de 7 niveles y jefes.** Niveles 1–6 normales, el 7 es el jefe del ciclo, 8–13 normales, 14 jefe… sin fin.
+- 10 jefes de ciclo que se alternan (Guardián del Umbral, Madre de la Nidada, Coloso de Piedra, Mago de las
+  Sombras, Hidra del Pantano, Señor de la Plaga, Caballero Espectral, Fauces del Abismo, Tejedora del Tiempo, Dragón
+  del Eclipse). Cada uno combina 2–4 ataques de: ráfaga radial, abanico, espiral, embestida, salto tras el jugador,
+  invocación, lluvia de zonas marcadas y anillo que se cierra.
+- Aparece en el minuto 20 (sustituye al jefe de escenario de ese minuto). Hay que vencerlo antes de que llegue La
+  Muerte para superar el nivel.
+- Al acabar la rotación vuelven en orden («vuelta» 2, 3…): además de la vida y el daño del nivel, cada vuelta suma
+  +25 % de vida y +10 % de daño, más proyectiles y ataques más seguidos. Desde la 2.ª vuelta añaden ataques nuevos
+  (`advanced`) y se enfurecen por debajo de la mitad de vida. No es solo multiplicar estadísticas.
+
+**Hitos (al superar el nivel, no al alcanzarlo).**
+- Nivel 20: velocidades **×1,5 y ×2** (botón en la partida; la simulación es la misma, solo se dan más pasos por
+  fotograma, así que no cambia el equilibrio).
+- Nivel 30: **modo infinito**. Sin La Muerte ni final; la dureza sigue subiendo con los minutos y se repiten los
+  últimos 10 minutos de apariciones y los eventos del escenario. Gasta un intento, da oro y no cambia el nivel.
+- Nivel 60: **modo reflejo**. El nivel actual con dificultad doble (vida ×2, daño ×1,5, más densidad) y el doble de
+  oro. Gasta un intento y no cambia el nivel.
+- Ambas modalidades se eligen en el campamento al preparar la partida.
+
+**Equilibrio** (`ANALISIS_ECONOMIA.md` §11): la dureza del nivel L es la frontera medida de un jugador que cumple
+~95 % de sus hábitos en su día L. Resultado: quien cumple casi todo supera de media ~1 nivel al día jugando 2
+intentos diarios (2 niveles algunos días, 3 muy raramente), y quien cumple menos avanza más despacio porque sus
+mejoras crecen más despacio. Los intentos sobran (≈5 al día para un jugador constante): son oportunidades, no una
+obligación de jugarlos todos.
+
+**Modo de pruebas** (§10): cualquier nivel, jefe y modalidad sin gastar intentos ni guardar nada.

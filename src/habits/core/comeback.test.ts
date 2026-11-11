@@ -19,7 +19,15 @@ function withDays(days: number[]): HabitsData {
   for (const n of days) d = logHabit(d, 'h1', 1, `l${++seq}`, `${day(n)}T10:00:00.000Z`, day(n));
   return d;
 }
-const run = (n: number): RunRecord => ({ level: n, character: 'wanderer', stage: 'withered_woods', startedAt: `${day(n)}T18:00:00.000Z`, result: null });
+const run = (n: number): RunRecord => ({
+  attempt: n,
+  level: n,
+  mode: 'normal',
+  character: 'wanderer',
+  stage: 'withered_woods',
+  startedAt: `${day(n)}T18:00:00.000Z`,
+  result: null,
+});
 
 describe('ayuda de vuelta', () => {
   const back = withDays([1, 2, 3, 4, 5, 26]); // 20 días sin hábitos (6–25) y vuelve el 26

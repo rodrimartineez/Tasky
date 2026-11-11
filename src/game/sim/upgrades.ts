@@ -2,7 +2,7 @@ import { EVOLUTION_BY_WEAPON, type EvolutionDef } from '../content/evolutions';
 import { PASSIVE_BY_ID, PASSIVES } from '../content/passives';
 import { WEAPON_BY_ID, WEAPONS, weaponStatsAt } from '../content/weapons';
 import { emit, rand } from './core';
-import { levelGold } from './difficulty';
+import { runGold } from './difficulty';
 import { MAX_PASSIVES, MAX_WEAPONS, type UpgradeChoice, type WeaponDef, type WeaponState, type World } from './types';
 
 /** Subidas de nivel, evoluciones, cofres y cálculo de estadísticas. */
@@ -94,9 +94,19 @@ function pool(w: World): { choice: UpgradeChoice; weight: number }[] {
     // Una pasiva nueva que completa la evolución de un arma que ya está al máximo se avisa en la opción.
     const completes = owned
       ? undefined
-      : p.weapons.map((ws) => EVOLUTION_BY_WEAPON.get(ws.id)).find((evo) => evo?.passive === def.id && p.weapons.some((ws) => ws.id === evo.weapon && ws.level >= MAX_WEAPON_LEVEL));
+      : p.weapons
+          .map((ws) => EVOLUTION_BY_WEAPON.get(ws.id))
+          .find((evo) => evo?.passive === def.id && p.weapons.some((ws) => ws.id === evo.weapon && ws.level >= MAX_WEAPON_LEVEL));
     out.push({
-      choice: { kind: 'passive', id: def.id, name: def.name, icon: def.icon, level, text: def.text, ...(completes ? { evolves: completes.def.name } : {}) },
+      choice: {
+        kind: 'passive',
+        id: def.id,
+        name: def.name,
+        icon: def.icon,
+        level,
+        text: def.text,
+        ...(completes ? { evolves: completes.def.name } : {}),
+      },
       weight: owned ? 3 : 2,
     });
   }
@@ -185,6 +195,6 @@ export function openChest(w: World) {
     applyChoice(w, choice);
     rewards.push(choice);
   }
-  w.gold += (20 + Math.floor(w.time / 30)) * levelGold(w.config.level);
+  w.gold += (20 + Math.floor(w.time / 30)) * runGold(w.config);
   w.chestRewards = rewards;
 }

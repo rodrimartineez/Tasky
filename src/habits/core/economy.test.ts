@@ -2,8 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { CHARACTER_BY_ID } from '../../game/content/characters';
 import { UPGRADE_BY_ID } from '../../game/content/upgrades';
 import { emptyHabitsData } from './data';
+import type { RunMode } from '../../game/sim/types';
 import { buyUpgrade, economyOf, EconomyError, finishRun, isUnlocked, startRun, unlock } from './economy';
-import { ensureProfile } from './habits';
+import { createHabit, ensureProfile, evaluateRewards, logHabit } from './habits';
 import type { HabitsData, LedgerEntry } from './model';
 import { GAME_BUILD, GAME_RELEASE, releaseFor, type GameRelease } from './release';
 import { mergeHabitsRemote, noHabitsRecords } from './sync';
@@ -30,46 +31,111 @@ const grant = (data: HabitsData, points: number): HabitsData => {
   };
   return { ...data, ledger: [...data.ledger, reward] };
 };
-const grantEntry = (id: string): LedgerEntry => ({ id, kind: 'habit_reward', points: 0, gold: 0, habitId: null, period: null, details: null, createdAt: T(0), updatedAt: T(0), deletedAt: null });
+const grantEntry = (id: string): LedgerEntry => ({
+  id,
+  kind: 'habit_reward',
+  points: 0,
+  gold: 0,
+  habitId: null,
+  period: null,
+  details: null,
+  createdAt: T(0),
+  updatedAt: T(0),
+  deletedAt: null,
+});
 const outcome = (gold: number) => ({ gold, time: 600, kills: 100, won: false, xpLevel: 10 });
 
-describe('partidas diarias', () => {
-  it('se recibe una partida al día y se acumulan', () => {
-    expect(economyOf(base(), START, PROD).available).toBe(1);
-    expect(economyOf(base(), '2026-11-13', PROD).available).toBe(4);
+/** `n` intentos ganados: recompensas de hábitos diarios ya cerradas (1 intento cada una). */
+const attempts = (data: HabitsData, n: number, period = START): HabitsData => ({
+  ...data,
+  ledger: [
+    ...data.ledger,
+    ...Array.from({ length: n }, (_, i) => ({ ...grantEntry(`reward:a${data.ledger.length + i}:${period}`), period })),
+  ],
+});
+const won = (gold: number) => ({ ...outcome(gold), won: true, time: 1800 });
+const play = (d: HabitsData, result: ReturnType<typeof outcome>, mode: RunMode = 'normal', at = 1) => {
+  const started = startRun(d, 'wanderer', 'withered_woods', mode, START, T(at), 0, PROD);
+  return { ...started, data: finishRun(started.data, started.attempt, result, T(at + 1), PROD) };
+};
+
+describe('intentos', () => {
+  it('sin hábitos cumplidos no hay intentos, y no llegan por pasar los días', () => {
+    expect(economyOf(base(), START, PROD).available).toBe(0);
+    expect(economyOf(base(), '2026-12-31', PROD).available).toBe(0);
+    expect(() => startRun(base(), 'wanderer', 'withered_woods', 'normal', START, T(1), 0, PROD)).toThrow(EconomyError);
   });
 
-  it('cada partida que se empieza es el nivel siguiente, con independencia de la fecha', () => {
-    let d = base();
-    const today = '2026-11-12'; // 3 partidas acumuladas
-    for (let level = 1; level <= 3; level++) {
-      const started = startRun(d, 'wanderer', 'withered_woods', today, T(level * 2), 0, PROD);
-      expect(started.level).toBe(level);
-      d = finishRun(started.data, started.level, outcome(50), T(level * 2 + 1), PROD);
-    }
-    const eco = economyOf(d, today, PROD);
-    expect([eco.available, eco.nextLevel, eco.gold]).toEqual([0, 4, 150]);
-    expect(() => startRun(d, 'wanderer', 'withered_woods', today, T(9), 0, PROD)).toThrow(EconomyError);
+  it('un hábito diario cumplido da un intento al momento; uno de reducir, al cerrar el día', () => {
+    let d = createHabit(base(), { name: 'Leer', kind: 'build', period: 'daily', unit: '', step: 1, target: 1 }, 'read', T(0), START);
+    d = createHabit(d, { name: 'Azúcar', kind: 'reduce', period: 'daily', unit: '', step: 1, target: 1 }, 'sugar', T(0), START);
+    expect(economyOf(d, START, PROD).available).toBe(0);
+    d = logHabit(d, 'read', 1, 'l1', T(1), START);
+    expect(economyOf(d, START, PROD).available).toBe(1);
+    // Al cerrar el día se conceden las recompensas: el de leer sigue contando una vez y el de reducir suma el suyo.
+    const next = evaluateRewards(d, '2026-11-11', T(2));
+    expect(economyOf(next, '2026-11-11', PROD).available).toBe(2);
+  });
+
+  it('cada hábito semanal cumplido da tres intentos al cerrar su semana', () => {
+    expect(economyOf(attempts(base(), 1, 'W2026-11-16'), START, PROD).available).toBe(3);
+  });
+
+  it('los intentos no caducan: se acumulan y cada partida gasta uno, gane o pierda', () => {
+    let d = attempts(base(), 3);
+    expect(economyOf(d, '2027-06-01', PROD).available).toBe(3);
+    d = play(d, outcome(10)).data;
+    d = play(d, outcome(10), 'normal', 3).data;
+    const eco = economyOf(d, '2027-06-01', PROD);
+    expect([eco.available, eco.attemptsUsed, eco.gold]).toEqual([1, 2, 20]);
+  });
+});
+
+describe('niveles', () => {
+  it('morir antes del minuto 30 no sube de nivel (pero el oro se queda); superarlo sí', () => {
+    let d = attempts(base(), 3);
+    d = play(d, outcome(40)).data;
+    expect([economyOf(d, START, PROD).nextLevel, economyOf(d, START, PROD).gold]).toEqual([1, 40]);
+    const second = play(d, won(60), 'normal', 3);
+    expect(second.level).toBe(1);
+    const eco = economyOf(second.data, START, PROD);
+    expect([eco.nextLevel, eco.passedLevel, eco.gold, eco.available]).toEqual([2, 1, 100, 1]);
+  });
+
+  it('el modo infinito y el reflejo no superan niveles, y se desbloquean al superar los niveles 30 y 60', () => {
+    let d = attempts(base(), 62);
+    expect(() => startRun(d, 'wanderer', 'withered_woods', 'infinite', START, T(1), 0, PROD)).toThrow(EconomyError);
+    for (let i = 1; i <= 19; i++) d = play(d, won(0), 'normal', i * 2).data;
+    expect(economyOf(d, START, PROD).unlocks).toEqual({ speed: false, infinite: false, mirror: false });
+    d = play(d, won(0), 'normal', 40).data;
+    expect(economyOf(d, START, PROD).unlocks.speed).toBe(true);
+    for (let i = 21; i <= 30; i++) d = play(d, won(0), 'normal', i * 2).data;
+    expect(economyOf(d, START, PROD).unlocks).toEqual({ speed: true, infinite: true, mirror: false });
+    // Una partida infinita o reflejo «ganada» no sube de nivel.
+    d = play(d, won(500), 'infinite', 70).data;
+    expect(economyOf(d, START, PROD).nextLevel).toBe(31);
+    expect(() => startRun(d, 'wanderer', 'withered_woods', 'mirror', START, T(80), 0, PROD)).toThrow(EconomyError);
   });
 
   it('no se puede empezar otra con una en curso, ni guardar dos resultados de la misma', () => {
-    const { data, level } = startRun(base(), 'wanderer', 'withered_woods', '2026-11-12', T(1), 0, PROD);
-    expect(() => startRun(data, 'wanderer', 'withered_woods', '2026-11-12', T(2), 0, PROD)).toThrow(EconomyError);
-    expect(economyOf(data, '2026-11-12', PROD).openRun?.level).toBe(1);
-    const once = finishRun(data, level, outcome(80), T(3), PROD);
-    const twice = finishRun(once, level, outcome(999), T(4), PROD);
-    expect(economyOf(twice, '2026-11-12', PROD).gold).toBe(80);
+    const { data, attempt } = startRun(attempts(base(), 2), 'wanderer', 'withered_woods', 'normal', START, T(1), 0, PROD);
+    expect(() => startRun(data, 'wanderer', 'withered_woods', 'normal', START, T(2), 0, PROD)).toThrow(EconomyError);
+    expect(economyOf(data, START, PROD).openRun?.attempt).toBe(1);
+    const once = finishRun(data, attempt, outcome(80), T(3), PROD);
+    const twice = finishRun(once, attempt, outcome(999), T(4), PROD);
+    expect(economyOf(twice, START, PROD).gold).toBe(80);
   });
 
-  it('dos dispositivos que juegan el mismo nivel sin conexión cuentan una sola partida y un solo resultado', () => {
-    const a = startRun(base(), 'wanderer', 'withered_woods', START, T(1), 0, PROD);
-    const b = startRun(base(), 'wanderer', 'withered_woods', START, T(5), 0, PROD);
-    const doneA = finishRun(a.data, 1, outcome(100), T(2), PROD);
+  it('dos dispositivos que juegan el mismo intento sin conexión cuentan una sola partida y un solo resultado', () => {
+    const funded = attempts(base(), 2);
+    const a = startRun(funded, 'wanderer', 'withered_woods', 'normal', START, T(1), 0, PROD);
+    const b = startRun(funded, 'wanderer', 'withered_woods', 'normal', START, T(5), 0, PROD);
+    const doneA = finishRun(a.data, 1, won(100), T(2), PROD);
     const doneB = finishRun(b.data, 1, outcome(300), T(6), PROD);
     // El servidor se queda con lo que llegó primero (A); B lo recibe al sincronizar.
     const merged = mergeHabitsRemote(doneB, { ...noHabitsRecords(), ledger: doneA.ledger });
     const eco = economyOf(merged, START, PROD);
-    expect([eco.runs.length, eco.gold, eco.nextLevel]).toEqual([1, 100, 2]);
+    expect([eco.runs.length, eco.gold, eco.nextLevel, eco.available]).toEqual([1, 100, 2, 1]);
   });
 });
 
@@ -107,16 +173,16 @@ describe('mejoras y desbloqueos', () => {
   });
 
   it('los personajes se desbloquean con oro y el inicial es gratis', () => {
-    let d = base();
+    let d = attempts(base(), 2);
     expect(isUnlocked(economyOf(d, START, PROD), 'character:wanderer')).toBe(true);
     expect(() => unlock(d, 'character:warden', START, T(1), PROD)).toThrow(EconomyError);
-    const run = startRun(d, 'wanderer', 'withered_woods', START, T(1), 0, PROD);
+    const run = startRun(d, 'wanderer', 'withered_woods', 'normal', START, T(1), 0, PROD);
     d = finishRun(run.data, 1, outcome(700), T(2), PROD);
     d = unlock(d, 'character:warden', START, T(3), PROD);
     const eco = economyOf(d, START, PROD);
     expect(isUnlocked(eco, 'character:warden')).toBe(true);
     expect(eco.gold).toBe(700 - CHARACTER_BY_ID.get('warden')!.price);
-    expect(() => startRun(d, 'mystic', 'withered_woods', '2026-11-11', T(4), 0, PROD)).toThrow(EconomyError);
+    expect(() => startRun(d, 'mystic', 'withered_woods', 'normal', '2026-11-11', T(4), 0, PROD)).toThrow(EconomyError);
   });
 });
 
@@ -127,7 +193,7 @@ describe('modo de pruebas y temporadas', () => {
     const eco = economyOf(base(), START, TEST);
     expect([eco.available, eco.nextLevel]).toEqual([Infinity, 1]);
     expect(isUnlocked(eco, 'character:warden') && isUnlocked(eco, 'stage:ash_wastes')).toBe(true);
-    expect(() => startRun(base(), 'wanderer', 'withered_woods', START, T(1), 0, TEST)).toThrow(EconomyError);
+    expect(() => startRun(base(), 'wanderer', 'withered_woods', 'normal', START, T(1), 0, TEST)).toThrow(EconomyError);
     expect(finishRun(base(), 1, outcome(500), T(2), TEST).ledger).toHaveLength(0);
   });
 
@@ -137,20 +203,21 @@ describe('modo de pruebas y temporadas', () => {
   });
 
   it('al pasar a producción se ignoran partidas, oro y desbloqueos de otra temporada, pero no los puntos', () => {
-    let d = grant(base(), 50);
-    const run = startRun(d, 'wanderer', 'withered_woods', START, T(1), 0, PROD);
+    let d = attempts(grant(base(), 50), 2);
+    const run = startRun(d, 'wanderer', 'withered_woods', 'normal', START, T(1), 0, PROD);
     d = finishRun(run.data, 1, outcome(900), T(2), PROD);
     d = unlock(d, 'character:warden', START, T(3), PROD);
     const next: GameRelease = { testMode: false, season: 2, startsOn: '2026-12-01' };
     const eco = economyOf(d, '2026-12-03', next);
-    expect([eco.runs.length, eco.gold, eco.nextLevel, eco.available, eco.points, eco.legacy]).toEqual([0, 0, 1, 3, 50, 3]);
+    // Los intentos ganados antes de la temporada tampoco cuentan.
+    expect([eco.runs.length, eco.gold, eco.nextLevel, eco.available, eco.points, eco.legacy]).toEqual([0, 0, 1, 0, 50, 3]);
     expect(isUnlocked(eco, 'character:warden')).toBe(false);
   });
 
   it('alternar entre pruebas y progresión normal no crea, duplica ni pierde nada', () => {
-    let d = grant(base(), 40);
+    let d = attempts(grant(base(), 40), 3);
     d = buyUpgrade(d, 'might', START, T(1));
-    const run = startRun(d, 'wanderer', 'withered_woods', START, T(2), 0, PROD);
+    const run = startRun(d, 'wanderer', 'withered_woods', 'normal', START, T(2), 0, PROD);
     d = finishRun(run.data, 1, outcome(5_000), T(3), PROD);
     d = unlock(d, 'character:warden', START, T(4), PROD);
     const before = d.ledger.length;

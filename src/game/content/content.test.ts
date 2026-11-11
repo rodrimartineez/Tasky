@@ -91,7 +91,10 @@ describe('escenarios', () => {
       w.time = 600 - 1;
       botPlay(w, 3);
       expect(w.bossAlive || w.kills > 0, stage.name).toBe(true);
-      expect(w.enemies.some((e) => e.def.ai === 'boss'), stage.name).toBe(true);
+      expect(
+        w.enemies.some((e) => e.def.ai === 'boss'),
+        stage.name,
+      ).toBe(true);
       expect(finite(w)).toBe(true);
     }
   }, 30_000);
@@ -101,7 +104,14 @@ describe('equilibrio de armas', () => {
   // Daño de cada arma como inicial en 5 min con un personaje sin mejoras y casi inmortal: ninguna debe pasar de ~2× la mejor de las originales.
   const ORIGINAL = ['spark', 'lance', 'orbs', 'ember', 'storm', 'flask'];
   const dealt = (weapon: string) => {
-    const w = createWorld({ seed: 21, level: 1, stage: STAGES[0], stats: { ...BASE_STATS, maxHp: 1e6 }, startingWeapon: weapon, sprite: 'hero' });
+    const w = createWorld({
+      seed: 21,
+      level: 1,
+      stage: STAGES[0],
+      stats: { ...BASE_STATS, maxHp: 1e6 },
+      startingWeapon: weapon,
+      sprite: 'hero',
+    });
     botPlay(w, 300);
     return w.player.weapons.find((x) => x.id === weapon)?.dealt ?? 0;
   };
@@ -118,9 +128,9 @@ describe('equilibrio de armas', () => {
 
 describe('bonificación de oro por supervivencia', () => {
   it('no existe en el nivel 1 ni antes del minuto 10, y crece con el nivel y los minutos', () => {
-    expect(survivalBonus(1, 1800, 1)).toBe(0);
-    expect(survivalBonus(500, 600, 1)).toBe(0);
-    expect(survivalBonus(500, 1800, 1)).toBeGreaterThan(survivalBonus(500, 1200, 1));
-    expect(survivalBonus(1000, 1800, 1)).toBeGreaterThan(survivalBonus(500, 1800, 1));
+    expect(survivalBonus({ level: 1 }, 1800, 1)).toBe(0);
+    expect(survivalBonus({ level: 500 }, 600, 1)).toBe(0);
+    expect(survivalBonus({ level: 500 }, 1800, 1)).toBeGreaterThan(survivalBonus({ level: 500 }, 1200, 1));
+    expect(survivalBonus({ level: 1000 }, 1800, 1)).toBeGreaterThan(survivalBonus({ level: 500 }, 1800, 1));
   });
 });

@@ -119,7 +119,7 @@ export interface PassiveDef {
   apply(stats: Stats, level: number): void;
 }
 
-export type EnemyAi = 'chase' | 'charger' | 'waver' | 'shooter' | 'volley' | 'boss';
+export type EnemyAi = 'chase' | 'charger' | 'waver' | 'shooter' | 'volley' | 'boss' | 'reaper';
 
 export interface EnemyDef {
   id: string;
@@ -137,7 +137,24 @@ export interface EnemyDef {
   splitsInto?: string;
   /** Jefes: esbirros que invoca (por defecto, osamentas). */
   minion?: string;
+  /** Jefes de ciclo (content/bosses.ts): sus ataques, en orden. Sin esto, un jefe usa el patrón de los de escenario. */
+  patterns?: BossPattern[];
+  /** Jefes de ciclo: ataques que añaden a partir de la segunda vuelta de la rotación. */
+  advanced?: BossPattern[];
+  /** Color de los avisos y destellos del jefe. */
+  color?: number;
 }
+
+/** Ataques de los jefes de ciclo (sim/bosses.ts). */
+export type BossPattern = 'radial' | 'fan' | 'spiral' | 'charge' | 'blink' | 'summon' | 'rain' | 'wall';
+
+/**
+ * Modalidad de la partida (HABITS_GUIDE §11):
+ * - `normal`: 30 minutos y aparece La Muerte; superarla es llegar al minuto 30 (y vencer al jefe en los niveles de jefe).
+ * - `infinite`: sin La Muerte ni final; la dificultad sigue creciendo. No supera niveles.
+ * - `mirror`: el nivel actual con dificultad doble (MIRROR_SCALE). No supera niveles.
+ */
+export type RunMode = 'normal' | 'infinite' | 'mirror';
 
 /** Aparición continua de un enemigo entre dos minutos, con ritmo (por segundo) interpolado. */
 export interface SpawnRule {
@@ -180,6 +197,12 @@ export interface RunConfig {
   bonusWeapons?: string[];
   /** Sprite base del personaje elegido (`<sprite>_0` y `<sprite>_1`). */
   sprite: string;
+  /** Modalidad (por defecto, normal). */
+  mode?: RunMode;
+  /** Multiplicador de dificultad sobre la del nivel (modo reflejo y estudios de equilibrio). Por defecto 1. */
+  difficultyScale?: number;
+  /** Jefe de ciclo de esta partida (niveles múltiplos de 7) y vuelta de la rotación (0 = primera). */
+  cycleBoss?: { id: string; round: number };
 }
 
 export interface WeaponState {
@@ -243,6 +266,10 @@ export interface Enemy {
   /** Marca de la última consulta espacial que lo devolvió (evita repetidos). */
   stamp: number;
   dead: boolean;
+  /** Jefes de ciclo: ataque en curso (índice), su cronómetro interno y un ángulo de trabajo. */
+  pattern?: number;
+  sub?: number;
+  aim?: number;
 }
 
 export type ProjKind =
@@ -326,7 +353,7 @@ export interface UpgradeChoice {
   evolves?: string;
 }
 
-export type Phase = 'playing' | 'levelup' | 'dead' | 'won';
+export type Phase = 'playing' | 'levelup' | 'dead';
 
 export interface World {
   config: RunConfig;
@@ -351,10 +378,22 @@ export interface World {
   spawnAcc: number[];
   nextEvent: number;
   bossAlive: boolean;
+  /** Se llegó al minuto 30 (en modo normal o reflejo): ha aparecido La Muerte. */
+  completed?: boolean;
+  /** Jefe de ciclo: 0 = no ha aparecido, 1 = vivo, 2 = vencido. */
+  cycleBoss?: number;
+  /** Modo infinito: vueltas completas a los eventos del escenario. */
+  eventLoops?: number;
+  /** Ataques de jefe retardados (zonas que estallan tras un aviso). */
+  hazards?: { x: number; y: number; at: number; radius: number; damage: number }[];
 }
 
 export interface RunResult {
+  /** Nivel superado: llegó al minuto 30 en modo normal (y venció al jefe de ciclo, si lo había). */
   won: boolean;
+  /** Llegó al minuto 30 (apareció La Muerte). */
+  completed: boolean;
+  mode: RunMode;
   time: number;
   level: number;
   kills: number;

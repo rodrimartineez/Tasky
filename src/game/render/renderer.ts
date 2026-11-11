@@ -233,7 +233,14 @@ export class Renderer {
         for (let i = 0; i < f.count && this.particles.length < MAX_PARTICLES; i++) {
           const angle = Math.random() * Math.PI * 2;
           const speed = 20 + Math.random() * 60;
-          this.particles.push({ x: f.x, y: f.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 0.25 + Math.random() * 0.25, color: f.color });
+          this.particles.push({
+            x: f.x,
+            y: f.y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            life: 0.25 + Math.random() * 0.25,
+            color: f.color,
+          });
         }
       } else if (f.type === 'ring') {
         this.rings.push({ x: f.x, y: f.y, radius: f.radius, life: RING_LIFE, color: f.color });
@@ -266,7 +273,7 @@ export class Renderer {
     const p = w.player;
     this.setGround(w.config.stage.ground);
 
-    this.shake *=Math.exp(-12 * dt);
+    this.shake *= Math.exp(-12 * dt);
     const shakeX = (Math.random() - 0.5) * this.shake;
     const shakeY = (Math.random() - 0.5) * this.shake;
     const snap = (v: number) => Math.round(v * dpr) / dpr;
@@ -313,13 +320,36 @@ export class Renderer {
       edge.tint = 0xffb347;
       edge.alpha = 0.22;
     }
+    // Zonas marcadas por los jefes de ciclo: se intensifican hasta estallar (sim/bosses.ts).
+    for (const h of w.hazards ?? []) {
+      if (!visible(h.x, h.y)) continue;
+      const left = Math.max(0, Math.min(1, h.at - w.time));
+      const zone = this.under.next(this.tex('disc'));
+      zone.position.set(h.x, h.y);
+      zone.scale.set(h.radius / CIRCLE_RADIUS);
+      zone.tint = 0xff3c2e;
+      zone.alpha = 0.12 + (1 - left) * 0.3;
+      const rim = this.under.next(this.tex('ring'));
+      rim.position.set(h.x, h.y);
+      rim.scale.set(h.radius / CIRCLE_RADIUS);
+      rim.tint = 0xff6b4a;
+      rim.alpha = 0.5 + Math.sin(this.clock * 20) * 0.2;
+    }
     this.under.end();
 
     this.pickups.begin();
     for (const item of w.pickups) {
       if (!visible(item.x, item.y)) continue;
       const name =
-        item.kind === 'xp' ? (item.value >= 10 ? 'i_xp3' : item.value >= 3 ? 'i_xp2' : 'i_xp1') : item.kind === 'coin' ? 'i_coin' : `i_${item.kind}`;
+        item.kind === 'xp'
+          ? item.value >= 10
+            ? 'i_xp3'
+            : item.value >= 3
+              ? 'i_xp2'
+              : 'i_xp1'
+          : item.kind === 'coin'
+            ? 'i_coin'
+            : `i_${item.kind}`;
       const s = this.pickups.next(this.tex(name));
       s.position.set(item.x, item.y + (item.kind === 'chest' ? Math.sin(this.clock * 4) * 1.5 : 0));
     }
@@ -502,7 +532,8 @@ export class Renderer {
         return;
       }
       default: {
-        if (shot.kind === 'bolt' || shot.kind === 'lance') this.trail(shot, Math.cos(shot.angle), Math.sin(shot.angle), shot.angle, 2, shot.kind === 'bolt' ? 4 : 8);
+        if (shot.kind === 'bolt' || shot.kind === 'lance')
+          this.trail(shot, Math.cos(shot.angle), Math.sin(shot.angle), shot.angle, 2, shot.kind === 'bolt' ? 4 : 8);
         const s = pool.next(this.tex(shot.sprite));
         s.position.set(shot.x, shot.y);
         if (shot.kind !== 'orbit') s.rotation = shot.angle;

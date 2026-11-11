@@ -65,7 +65,8 @@ conviene dibujar una sola vez sobre un contenido ya cerrado.
 | **5 — Contenido** ✔️ | 16 personajes, 5 escenarios, más armas, pasivas y enemigos, 5+5 huecos | A5, B2 (parte) | Fase 4 | En curso |
 | **5b — Motivación** ✔️ | Que se note cada día el vínculo hábito → juego; protección y ayudas sin regalar puntos | M1, D2, D3, D4, C4 | Fase 4 | **Máxima** (es el principio de diseño) |
 | **5c — Builds** ✔️ | Evoluciones, resto de armas y pasivas, revivir/repetir/descartar | B1, B2 (resto), C1 | 5 | Alta |
-| **6 — PWA y rendimiento** | Precarga sin conexión, rendimiento en móvil, velocidad ×2 | E1 | 5, 5c | Alta |
+| **5d — Progresión por niveles** ✔️ | Intentos ganados con hábitos, nivel solo al superar 30 min, La Muerte, 10 jefes de ciclo cada 7 niveles, hitos (×1,5/×2, infinito, reflejo) | E1 (adelantada) | 5c | **Máxima** (pedida por el usuario) |
+| **6 — PWA y rendimiento** | Precarga sin conexión, rendimiento en móvil | — | 5, 5c, 5d | Alta |
 | **7 — Rediseño visual y artístico** | Efectos de armas, iconos y proyectiles, evoluciones, mapas con capas y ambiente, recogidas, enemigos, tienda | A1, A2, A3, C3 (ampliadas) | 6 | Alta |
 | **8 — Validación global** | Estudio de equilibrio completo, prueba en iPhone, regresión de Proyectos | — | 5–7 | Hito: juego completo |
 | **9 — Sonido** | Efectos y música originales | A4 | 7 | Media |
@@ -82,6 +83,18 @@ Por qué este orden:
   con iPhone real se hace sobre el juego tal como quedará.
 - **D1 (usos del oro)** tiene fecha límite: debe estar antes de que un jugador constante lo tenga todo desbloqueado
   (~1 año, según `ANALISIS_ECONOMIA.md` §7).
+
+### Reglas de progresión que respetan todas las fases (desde la 5d)
+
+Definidas por el usuario el 11/11/2026; detalle en `HABITS_GUIDE.md` §11:
+- Los intentos solo se ganan con hábitos (+1 por diario cumplido, +3 por semanal) y no caducan. Cada partida gasta
+  uno. Ninguna mecánica nueva puede dar intentos, puntos ni poder permanente por otra vía.
+- El nivel solo sube al llegar al minuto 30 (La Muerte) en modalidad normal, y en los niveles de jefe (múltiplos de
+  7) además venciendo al jefe. Morir no quita nada; el oro se conserva siempre.
+- La dificultad de cada nivel sigue la frontera medida de un jugador constante (~1 nivel al día jugando 2 intentos).
+  Todo lo que cambie el poder del jugador o de los enemigos obliga a repetir los estudios de frontera y progresión
+  (`ANALISIS_ECONOMIA.md` §11).
+- Infinito y reflejo nunca cambian el nivel; el modo de pruebas debe poder probar cualquier nivel, jefe y modalidad.
 
 ### Requisitos para pasar de fase (en todas)
 
@@ -163,11 +176,18 @@ mucho más fácil para los perfiles constante y normal (`ANALISIS_ECONOMIA.md` �
 - **Cabecera en móvil**: opaca y sin desenfoque (Safari ya no la sombrea bajo la barra de estado), con separación
   propia bajo la zona segura y `theme-color` igual a la cabecera mientras Hábitos está abierto.
 
+### Fase 5d — Progresión por niveles ✔️ (pendiente de tu validación)
+- Intentos ganados con hábitos, niveles que solo suben al superar los 30 minutos, La Muerte, ciclos de 7 niveles con
+  10 jefes en rotación que escalan por vueltas, hitos de los niveles 20, 30 y 60, y modo de pruebas adaptado.
+- Curva de dificultad y oro reajustados con dos estudios nuevos (frontera y progresión) y uno de jefes.
+- **E1** (velocidad ×1,5 y ×2) queda hecha aquí, como hito del nivel 20.
+
 ### Fase 6 — PWA y rendimiento
 - Lo ya previsto: precarga del juego para jugar sin conexión, rendimiento en móviles de gama media (objetivo:
-  60 fps con 400 enemigos) y partidas largas sin fugas de memoria.
-- **E1:** velocidad ×2 opcional. La simulación es la misma, así que no cambia el equilibrio. Validación: el
-  resultado con la misma semilla es idéntico a ×1 y ×2.
+  60 fps con 400 enemigos) y partidas largas sin fugas de memoria. Ahora también el modo infinito (partidas sin fin)
+  y los jefes de ciclo (muchos proyectiles a la vez).
+- Medido al empezar (11/11/2026): la precarga ya incluye el juego y la simulación cuesta 0,35 ms por paso de media
+  con 424 enemigos (5 ms en el peor caso), así que el trabajo pendiente es sobre todo de dibujo en móvil.
 
 ### Fase 7 — Rediseño visual y artístico (amplía la antigua «Arte y sensación»)
 
@@ -206,7 +226,7 @@ cerrado tras la 5c, así que el arte se dibuja una sola vez.
 | 7.3 | A2 | Iconos y proyectiles nuevos de las 16 armas, y versiones de evolución claramente superiores (marco, brillo y forma ampliada); iconos de pasivas y mejoras | Catálogo y HUD en escritorio y móvil; test de que todo icono existe |
 | 7.4 | A1 | Mapas: suelo por capas con variaciones (baldosas mezcladas sin repetición visible), adornos grandes y pequeños, luz y sombra, partículas de ambiente propias de cada mundo (hojas, niebla, polvo de cristal, ceniza) | Primero un escenario completo como guía y revisión con el usuario; después el resto; rendimiento en móvil |
 | 7.5 | A3 | Recogidas: arco de vuelo, chispa, cadena de recogidas, cofre con lluvia de monedas | Revisión en partida real |
-| 7.6 | A1 | Enemigos que lo necesiten: mejor silueta y contraste con el suelo, 3–4 fotogramas, aviso visual antes de atacar | Comparación lado a lado con los personajes |
+| 7.6 | A1 | Enemigos que lo necesiten: mejor silueta y contraste con el suelo, 3–4 fotogramas, aviso visual antes de atacar. **Jefes de ciclo y La Muerte**: hoy son 5 siluetas recoloreadas; cada jefe necesita diseño propio, aviso de cada ataque y una entrada de La Muerte a la altura | Comparación lado a lado con los personajes |
 | 7.7 | C3 | Tienda incremental: animación al comprar y efecto previsto en números reales | Navegador y móvil |
 
 - **Rendimiento:** todo sigue en un único atlas (las texturas no se multiplican); las partículas tienen tope y
@@ -215,7 +235,9 @@ cerrado tras la 5c, así que el arte se dibuja una sola vez.
   el resto.
 
 ### Fase 8 — Validación global (hito)
-- Estudio completo de 3 años con todos los perfiles y la tabla del §1 actualizada.
+- Estudio completo de 3 años con todos los perfiles y la tabla del §1 actualizada: frontera, progresión y jefes
+  (`ANALISIS_ECONOMIA.md` §11). Calibrar el bot con partidas reales del usuario (¿un jugador real supera más o menos
+  que el bot en la misma dureza?) y reajustar la curva si hace falta.
 - Prueba en un iPhone real (PWA instalada), en el escritorio (Tauri) y en el navegador. Sincronización entre dos
   dispositivos (compras, partidas y escudos).
 - Regresión completa del modo Proyectos y del servidor MCP.
@@ -267,7 +289,7 @@ cerrado tras la 5c, así que el arte se dibuja una sola vez.
 - **D4. Límite contra hábitos inflados** ✔️ (Fase 5b). Los diarios a partir del 8.º dan la mitad.
 
 ### E. Calidad de vida
-- **E1. Velocidad ×2** ✅ (Fase 6). Partidas más ágiles sin cambiar la simulación.
+- **E1. Velocidad ×1,5 y ×2** ✔️ (Fase 5d, hito del nivel 20). Partidas más ágiles sin cambiar la simulación.
 - **E2. Estadísticas y récords** ✅ (Fase 10). Seguimiento del progreso a largo plazo.
 
 ### M. Motivación

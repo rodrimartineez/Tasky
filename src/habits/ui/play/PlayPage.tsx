@@ -3,12 +3,13 @@ import { FlaskConical, HeartHandshake, Lock, Play, Swords } from 'lucide-react';
 import { CHARACTERS } from '../../../game/content/characters';
 import { buildRunConfig } from '../../../game/content/run';
 import { STAGES } from '../../../game/content/stages';
-import type { RunConfig, RunResult, World } from '../../../game/sim/types';
+import { CYCLE_BOSS_BY_ID, CYCLE_LENGTH, cycleBossFor } from '../../../game/content/bosses';
+import type { RunConfig, RunMode, RunResult, World } from '../../../game/sim/types';
 import { spriteDataUrl } from '../../../game/sprites/atlas';
 import { Button } from '../../../ui/components/Button';
 import { ConfirmDialog } from '../../../ui/components/ConfirmDialog';
 import { toast } from '../../../ui/components/Toaster';
-import { EconomyError, isUnlocked, priceOf } from '../../core/economy';
+import { EconomyError, isUnlocked, MILESTONES, modeUnlocked, priceOf } from '../../core/economy';
 import type { RunSnapshot } from '../../core/ports';
 import { loadRunSnapshot, saveRunSnapshot, useEconomy, useHabits } from '../../state/store';
 import { comebackFor } from '../../core/comeback';
@@ -22,11 +23,29 @@ const GameScreen = lazy(() => import('./GameScreen'));
 
 interface Session {
   level: number;
+  /** Número de intento (0 en el modo de pruebas). */
+  attempt: number;
   config: RunConfig;
   resume: World | null;
   /** Partida del modo de pruebas: no se registra. */
   test: boolean;
 }
+
+const MODES: { id: RunMode; name: string; text: string; milestone: number }[] = [
+  { id: 'normal', name: 'Normal', text: 'Sobrevive 30 minutos para superar el nivel.', milestone: 0 },
+  {
+    id: 'infinite',
+    name: 'Infinito',
+    text: 'Sin La Muerte ni final: aguanta todo lo que puedas. No cambia tu nivel.',
+    milestone: MILESTONES.infinite,
+  },
+  {
+    id: 'mirror',
+    name: 'Reflejo',
+    text: 'Tu nivel con el doble de dificultad y el doble de oro. No cambia tu nivel.',
+    milestone: MILESTONES.mirror,
+  },
+];
 
 const clock = (seconds: number) => `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
 const gold = (n: number) => n.toLocaleString('es-ES');
@@ -60,6 +79,9 @@ export function PlayPage() {
   const snapshot = loaded && loaded.test === testMode ? loaded.snapshot : undefined;
   const [buying, setBuying] = useState<string | null>(null);
   const [closing, setClosing] = useState(false);
+  const [mode, setMode] = useState<RunMode>('normal');
+  // Modo de pruebas: nivel que se quiere probar.
+  const [testLevel, setTestLevel] = useState(1);
 
   const open = eco.openRun;
   // Copia guardada de la partida en curso (solo si es de esa partida).
@@ -72,14 +94,20 @@ export function PlayPage() {
     return () => {
       alive = false;
     };
-  }, [session, open?.level, testMode]);
+  }, [session, open?.attempt, testMode]);
   const resumable = eco.testMode
     ? snapshot?.test
       ? snapshot
       : null
-    : open && snapshot && !snapshot.test && snapshot.level === open.level
+    : open && snapshot && !snapshot.test && snapshot.attempt === open.attempt
       ? snapshot
       : null;
+  // Modalidad elegida, si sigue disponible (al desactivar el modo de pruebas puede no estarlo).
+  const runMode = modeUnlocked(eco, mode) ? mode : 'normal';
+  const level = eco.testMode ? testLevel : eco.nextLevel;
+  const boss = runMode === 'infinite' ? null : cycleBossFor(level);
+  const bossDef = boss ? CYCLE_BOSS_BY_ID.get(boss.id) : undefined;
+  const cycle = Math.ceil(level / CYCLE_LENGTH);
 
   // Lo elegido en el modo de pruebas puede estar bloqueado en producción: entonces se usa lo inicial.
   const character = profile && isUnlocked(eco, `character:${profile.character}`) ? profile.character : 'wanderer';
@@ -88,39 +116,32 @@ export function PlayPage() {
 
   const play = () =>
     attempt(() => {
-      const { level, comeback: boost, test } = startRun();
-      if (level > 0)
+      const started = startRun(runMode, testLevel);
+      if (started.level > 0)
         setSession({
-          level,
-          config: buildRunConfig(level, character, stage, eco.upgrades, boost ?? undefined),
+          level: started.level,
+          attempt: started.attempt,
+          config: buildRunConfig(started.level, character, stage, eco.upgrades, {
+            boost: started.comeback ?? undefined,
+            mode: runMode,
+            // Las de prueba no se registran: cada una con una semilla distinta.
+            seed: started.test ? Math.floor(Math.random() * 1e9) : started.attempt,
+          }),
           resume: null,
-          test,
+          test: started.test,
         });
     });
 
+  // La partida guardada lleva su propia configuración (nivel, modalidad, jefe…).
   const resume = () => {
-    if (!resumable) return;
-    if (eco.testMode) {
-      setSession({
-        level: 1,
-        config: buildRunConfig(1, character, stage, eco.upgrades),
-        resume: resumable.world as World,
-        test: true,
-      });
-      return;
-    }
-    if (!open) return;
-    setSession({
-      level: open.level,
-      config: buildRunConfig(open.level, open.character, open.stage, eco.upgrades),
-      resume: resumable.world as World,
-      test: false,
-    });
+    if (!resumable || (!eco.testMode && !open)) return;
+    const world = resumable.world as World;
+    setSession({ level: world.config.level, attempt: open?.attempt ?? 0, config: world.config, resume: world, test: eco.testMode });
   };
 
-  const finish = (level: number, result: RunResult, test: boolean) => {
+  const finish = (attemptNumber: number, result: RunResult, test: boolean) => {
     if (!test)
-      finishRun(level, {
+      finishRun(attemptNumber, {
         gold: result.gold,
         time: result.time,
         kills: result.kills,
@@ -190,24 +211,7 @@ export function PlayPage() {
         </div>
       )}
       <section className={styles.card}>
-        {eco.testMode ? (
-          <>
-            <p className={styles.testBadge}>Modo de pruebas</p>
-            <h1 className={styles.title}>Nivel 1</h1>
-            <p className={styles.text}>
-              Puedes jugar sin límite: todas las partidas son de nivel 1 y tienes todos los personajes y escenarios. El oro de estas
-              partidas no se guarda; tus hábitos, puntos y mejoras funcionan con normalidad.
-            </p>
-            {resumable && (
-              <Button variant="secondary" icon={<Play />} className={styles.play} onClick={resume} disabled={!!session}>
-                Continuar la partida de prueba
-              </Button>
-            )}
-            <Button variant="primary" icon={<Swords />} className={styles.play} onClick={play} disabled={!!session}>
-              {session ? 'Cargando…' : resumable ? 'Nueva partida' : 'Jugar'}
-            </Button>
-          </>
-        ) : open ? (
+        {open && !eco.testMode ? (
           <>
             <p className={styles.stage}>Partida en curso</p>
             <h1 className={styles.title}>Nivel {open.level}</h1>
@@ -221,8 +225,8 @@ export function PlayPage() {
             ) : (
               <>
                 <p className={styles.text}>
-                  Esta partida se empezó en otro dispositivo o no llegó a guardarse aquí. Ciérrala para seguir con el nivel {open.level + 1}
-                  .
+                  Esta partida se empezó en otro dispositivo o no llegó a guardarse aquí. Ciérrala para seguir: el intento cuenta como
+                  gastado y sigues en el nivel {open.level}.
                 </p>
                 <Button variant="primary" className={styles.play} onClick={() => setClosing(true)}>
                   Cerrar partida
@@ -232,23 +236,90 @@ export function PlayPage() {
           </>
         ) : (
           <>
-            <p className={styles.stage}>{stageDef.name}</p>
-            <h1 className={styles.title}>Nivel {eco.nextLevel}</h1>
-            <p className={styles.text}>
-              {eco.available > 0
-                ? `${eco.available === 1 ? 'Tienes 1 partida disponible' : `Tienes ${eco.available} partidas disponibles`}. Cada partida que juegas, ganes o pierdas, sube el nivel: más enemigos y más fuertes, y más oro.`
-                : 'Ya has jugado todas tus partidas. Mañana a las 00:00 recibirás otra (se acumulan si no las juegas).'}
+            {eco.testMode && <p className={styles.testBadge}>Modo de pruebas</p>}
+            <p className={styles.stage}>
+              {bossDef
+                ? `Fin del ciclo ${cycle} · Jefe: ${bossDef.name}`
+                : `${stageDef.name} · Ciclo ${cycle}, nivel ${((level - 1) % CYCLE_LENGTH) + 1} de ${CYCLE_LENGTH}`}
             </p>
+            <h1 className={styles.title}>{runMode === 'infinite' ? 'Modo infinito' : `Nivel ${level}`}</h1>
+            {eco.testMode ? (
+              <div className={styles.levelPicker}>
+                <span>Nivel de prueba</span>
+                <button type="button" onClick={() => setTestLevel((n) => Math.max(1, n - 1))} aria-label="Nivel anterior">
+                  −
+                </button>
+                <input
+                  type="number"
+                  min={1}
+                  inputMode="numeric"
+                  value={testLevel}
+                  onChange={(e) => setTestLevel(Math.max(1, Math.floor(Number(e.target.value) || 1)))}
+                  aria-label="Nivel de prueba"
+                />
+                <button type="button" onClick={() => setTestLevel((n) => n + 1)} aria-label="Nivel siguiente">
+                  +
+                </button>
+                <button type="button" onClick={() => setTestLevel((n) => (Math.floor(n / CYCLE_LENGTH) + 1) * CYCLE_LENGTH)}>
+                  Próximo jefe
+                </button>
+              </div>
+            ) : (
+              <p className={styles.attempts}>
+                <Swords /> {eco.available === 1 ? '1 intento' : `${gold(eco.available)} intentos`}
+              </p>
+            )}
+            <p className={styles.text}>
+              {eco.testMode
+                ? 'Juega cualquier nivel, jefe y modalidad sin gastar intentos. No se guarda el oro ni el nivel; tus hábitos, puntos y mejoras funcionan con normalidad.'
+                : eco.available > 0
+                  ? `${MODES.find((m) => m.id === runMode)!.text} Al minuto 30 llega La Muerte. Si caes antes, sigues en este nivel y te quedas el oro.`
+                  : 'No te quedan intentos. Consigue más cumpliendo hábitos: +1 por cada hábito diario y +3 por cada semanal. No caducan.'}
+              {boss && ' El jefe aparece en el minuto 20: véncelo antes de que llegue La Muerte para superar el nivel.'}
+            </p>
+            <div className={styles.modes} role="radiogroup" aria-label="Modalidad">
+              {MODES.map((m) => {
+                const unlocked = modeUnlocked(eco, m.id);
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={runMode === m.id}
+                    className={`${styles.mode} ${runMode === m.id ? styles.modeOn : ''}`}
+                    disabled={!unlocked}
+                    onClick={() => setMode(m.id)}
+                  >
+                    <span>
+                      {!unlocked && <Lock />} {m.name}
+                    </span>
+                    {!unlocked && <small>Supera el nivel {m.milestone}</small>}
+                  </button>
+                );
+              })}
+            </div>
+            {eco.testMode && resumable && (
+              <Button variant="secondary" icon={<Play />} className={styles.play} onClick={resume} disabled={!!session}>
+                Continuar la partida de prueba
+              </Button>
+            )}
             <Button variant="primary" icon={<Swords />} className={styles.play} onClick={play} disabled={eco.available <= 0 || !!session}>
               {session ? 'Cargando…' : 'Jugar'}
             </Button>
           </>
         )}
         {!eco.testMode && (
+          <ul className={styles.milestones} aria-label="Hitos">
+            <li className={eco.unlocks.speed ? styles.done : ''}>Nivel {MILESTONES.speed}: velocidad ×1,5 y ×2</li>
+            <li className={eco.unlocks.infinite ? styles.done : ''}>Nivel {MILESTONES.infinite}: modo infinito</li>
+            <li className={eco.unlocks.mirror ? styles.done : ''}>Nivel {MILESTONES.mirror}: modo reflejo</li>
+          </ul>
+        )}
+        {!eco.testMode && (
           <dl className={styles.stats}>
             <div>
-              <dt>Partidas jugadas</dt>
-              <dd>{eco.runs.length}</dd>
+              <dt>Niveles superados</dt>
+              <dd>{eco.passedLevel}</dd>
             </div>
             <div>
               <dt>Mejor tiempo</dt>
@@ -279,8 +350,8 @@ export function PlayPage() {
             {eco.gold >= goal.price
               ? '¡Ya puedes desbloquearlo!'
               : goal.runs !== null
-                ? `Al ritmo de tus últimas partidas, te faltan unas ${goal.runs.toLocaleString('es-ES')} ${goal.runs === 1 ? 'partida' : 'partidas'}.`
-                : 'Cada partida te acerca un poco más.'}
+                ? `Al ritmo de tus últimas partidas, te faltan unos ${goal.runs.toLocaleString('es-ES')} ${goal.runs === 1 ? 'intento' : 'intentos'}.`
+                : 'Cada intento te acerca un poco más.'}
           </p>
         </div>
       )}
@@ -372,11 +443,11 @@ export function PlayPage() {
       <ConfirmDialog
         open={closing}
         title="Cerrar la partida"
-        description="Como no hay una copia guardada en este dispositivo, la partida se cerrará sin oro. El nivel siguiente queda disponible."
+        description="Como no hay una copia guardada en este dispositivo, la partida se cerrará sin oro y el intento contará como gastado."
         confirmLabel="Cerrar partida"
         onConfirm={() => {
           if (open)
-            finishRun(open.level, {
+            finishRun(open.attempt, {
               gold: 0,
               time: 0,
               kills: 0,
@@ -392,10 +463,12 @@ export function PlayPage() {
         <Suspense fallback={null}>
           <GameScreen
             level={session.level}
+            attempt={session.attempt}
             config={session.config}
             resume={session.resume}
             test={session.test}
-            onFinish={(result) => finish(session.level, result, session.test)}
+            speeds={eco.unlocks.speed}
+            onFinish={(result) => finish(session.attempt, result, session.test)}
             onExit={() => setSession(null)}
           />
         </Suspense>

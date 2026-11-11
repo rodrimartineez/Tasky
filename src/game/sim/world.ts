@@ -1,6 +1,8 @@
+import { CYCLE_BOSS_AT } from '../content/bosses';
 import { ENEMY_BY_ID } from '../content/enemies';
+import { reaperTouch, spawnCycleBoss, spawnReaper, updateCycleBoss, updateHazards } from './bosses';
 import { emit, hurtPlayer, maxEnemies, near, queryNear, rand, rebuildGrid, ringPoint, spawnEnemy } from './core';
-import { levelDensity, survivalBonus } from './difficulty';
+import { runDensity, survivalBonus } from './difficulty';
 import { MAX_WEAPONS, RUN_SECONDS, type Enemy, type RunConfig, type RunResult, type World } from './types';
 import { applyChoice, newWeapon, openChest, rollChoices } from './upgrades';
 import { enemyShot, updateProjectiles, updateWeapons } from './weapons';
@@ -51,11 +53,16 @@ export const xpForLevel = (level: number) => 5 + (level - 1) * 5 + Math.floor(Ma
 
 // ── Aparición de enemigos ───────────────────────────────────────────────────────────────────────
 
+/** Fin de la última fase de aparición de los escenarios: en el modo infinito se repite desde aquí. */
+const LOOP_FROM = 20;
+
 function updateSpawns(w: World, dt: number) {
   const { stage } = w.config;
-  const minute = w.time / 60;
+  // Modo infinito: pasado el minuto 30 se repiten los últimos 10 minutos de apariciones (la dureza sigue subiendo).
+  const real = w.time / 60;
+  const minute = real < 30 ? real : LOOP_FROM + ((real - LOOP_FROM) % 10);
   const cap = maxEnemies(w);
-  const density = levelDensity(w.config.level);
+  const density = runDensity(w.config);
   for (let i = 0; i < stage.spawns.length; i++) {
     const rule = stage.spawns[i];
     if (minute < rule.from || minute >= rule.to) continue;
@@ -70,10 +77,20 @@ function updateSpawns(w: World, dt: number) {
     }
   }
 
-  while (w.nextEvent < stage.events.length && stage.events[w.nextEvent].at <= w.time) {
+  if (w.config.cycleBoss && !w.cycleBoss && w.time >= CYCLE_BOSS_AT) spawnCycleBoss(w);
+
+  const loops = w.eventLoops ?? 0;
+  if (w.config.mode === 'infinite' && w.nextEvent >= stage.events.length && w.time >= (loops + 1) * RUN_SECONDS) {
+    w.eventLoops = loops + 1;
+    w.nextEvent = 0;
+  }
+  const offset = (w.eventLoops ?? 0) * RUN_SECONDS;
+  while (w.nextEvent < stage.events.length && stage.events[w.nextEvent].at + offset <= w.time) {
     const event = stage.events[w.nextEvent++];
     const def = ENEMY_BY_ID.get(event.enemy);
     if (!def) continue;
+    // En los niveles de jefe, el jefe de ciclo sustituye al del escenario del minuto 20.
+    if (w.config.cycleBoss && event.kind === 'boss' && event.at === CYCLE_BOSS_AT) continue;
     for (let i = 0; i < event.count; i++) {
       // Los anillos rodean al jugador a intervalos iguales; élites y jefes llegan por un punto al azar.
       const at = event.kind === 'ring' ? ringPoint(w, (i / event.count) * Math.PI * 2, 300) : ringPoint(w);
@@ -177,8 +194,16 @@ function updateEnemy(w: World, e: Enemy, dt: number) {
         for (let i = -1; i <= 1; i++) enemyShot(w, e.x, e.y, aim + i * 0.22, 90, e.damage * 0.8, 'x_arrow');
       }
       break;
-    case 'boss':
-      // Ráfaga radial cada 4 s e invocación de esbirros cada 9 s.
+    case 'reaper':
+      if (dist < e.radius + PLAYER_RADIUS + 2) reaperTouch(w);
+      break;
+    case 'boss': {
+      if (e.def.patterns) {
+        const velocity = updateCycleBoss(w, e, dt, Math.atan2(dy, dx));
+        if (velocity) [vx, vy] = velocity;
+        break;
+      }
+      // Jefes de escenario: ráfaga radial cada 4 s e invocación de esbirros cada 9 s.
       e.t1 -= dt;
       e.t2 -= dt;
       if (e.t1 <= 0) {
@@ -190,9 +215,11 @@ function updateEnemy(w: World, e: Enemy, dt: number) {
       if (e.t2 <= 0) {
         e.t2 = 9;
         const minion = ENEMY_BY_ID.get(e.def.minion ?? 'bones');
-        if (minion && w.enemies.length < maxEnemies(w)) for (let i = 0; i < 6; i++) spawnEnemy(w, minion, e.x + Math.cos(i) * 26, e.y + Math.sin(i) * 26);
+        if (minion && w.enemies.length < maxEnemies(w))
+          for (let i = 0; i < 6; i++) spawnEnemy(w, minion, e.x + Math.cos(i) * 26, e.y + Math.sin(i) * 26);
       }
       break;
+    }
     case 'chase':
       break;
   }
@@ -210,7 +237,7 @@ function updateEnemy(w: World, e: Enemy, dt: number) {
 /** Los enemigos se empujan entre sí para no apilarse en un solo punto. */
 function separate(w: World) {
   for (const e of w.enemies) {
-    if (e.dead || e.def.ai === 'boss') continue;
+    if (e.dead || e.def.ai === 'boss' || e.def.ai === 'reaper') continue;
     const count = queryNear(e.x, e.y, e.radius * 0.6);
     for (let i = 0; i < count; i++) {
       const o = near[i];
@@ -301,6 +328,7 @@ export function step(w: World, dt: number, moveX: number, moveY: number) {
   separate(w);
   updateWeapons(w, dt);
   updateProjectiles(w, dt);
+  updateHazards(w);
   updatePickups(w, dt);
   compact(w.enemies);
   compact(w.projectiles);
@@ -310,9 +338,11 @@ export function step(w: World, dt: number, moveX: number, moveY: number) {
   if (p.hp <= 0) {
     p.hp = 0;
     w.phase = 'dead';
-  } else if (w.time >= RUN_SECONDS) {
-    w.phase = 'won';
-  } else if (w.pendingLevels > 0) {
+    return;
+  }
+  // Minuto 30: llega La Muerte (salvo en el modo infinito). La partida sigue hasta que alcanza al jugador.
+  if (!w.completed && w.config.mode !== 'infinite' && w.time >= RUN_SECONDS) spawnReaper(w);
+  if (w.pendingLevels > 0) {
     w.choices = rollChoices(w);
     w.phase = 'levelup';
   }
@@ -353,10 +383,18 @@ export function chooseUpgrade(w: World, index: number) {
   }
 }
 
+/**
+ * ¿Supera el nivel? Solo en modo normal: llegar al minuto 30 y, en los niveles de jefe, haberlo vencido.
+ * Infinito y reflejo nunca hacen avanzar de nivel.
+ */
+export const passed = (w: World) => (w.config.mode ?? 'normal') === 'normal' && !!w.completed && (!w.config.cycleBoss || w.cycleBoss === 2);
+
 export function runResult(w: World): RunResult {
-  const bonus = survivalBonus(w.config.level, w.time, w.player.stats.greed);
+  const bonus = survivalBonus(w.config, w.time, w.player.stats.greed);
   return {
-    won: w.phase === 'won',
+    won: passed(w),
+    completed: !!w.completed,
+    mode: w.config.mode ?? 'normal',
     time: w.time,
     level: w.player.level,
     kills: w.kills,

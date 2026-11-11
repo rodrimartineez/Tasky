@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { Ban, Dices, Pause, Play, Skull } from 'lucide-react';
 import { PASSIVE_BY_ID } from '../../../game/content/passives';
 import { WEAPON_BY_ID } from '../../../game/content/weapons';
-import { Game, type Hud } from '../../../game/Game';
+import { Game, SPEEDS, type Hud } from '../../../game/Game';
 import { MAX_PASSIVES, MAX_WEAPONS, type RunConfig, type RunResult, type UpgradeChoice, type World } from '../../../game/sim/types';
 import { spriteDataUrl } from '../../../game/sprites/atlas';
 import { now } from '../../../core/clock';
@@ -59,6 +59,8 @@ function Slots({
 
 interface GameScreenProps {
   level: number;
+  /** Número de intento (0 en el modo de pruebas): identifica la copia guardada de la partida. */
+  attempt: number;
   config: RunConfig;
   /** Estado guardado para continuar una partida interrumpida. */
   resume: World | null;
@@ -67,15 +69,46 @@ interface GameScreenProps {
   onExit: () => void;
   /** Partida del modo de pruebas (el resultado no se guarda). */
   test: boolean;
+  /** Velocidades ×1,5 y ×2 desbloqueadas (nivel 20 superado, o modo de pruebas). */
+  speeds: boolean;
 }
 
+const SPEED_KEY = 'tasky-game-speed';
+/** Última velocidad elegida en este dispositivo (solo si está desbloqueada). */
+function savedSpeed(unlocked: boolean): number {
+  if (!unlocked) return 1;
+  try {
+    const value = Number(localStorage.getItem(SPEED_KEY));
+    return SPEEDS.includes(value) ? value : 1;
+  } catch {
+    return 1;
+  }
+}
+const speedLabel = (s: number) => `×${s.toLocaleString('es-ES')}`;
+
 /** Partida a pantalla completa. Se monta al empezar a jugar (el motor se descarga en ese momento). */
-export default function GameScreen({ level, config, resume, onFinish, onExit, test }: GameScreenProps) {
+/** Titular del final: nivel superado, o por qué no. */
+function resultTitle(r: RunResult, level: number, bossLevel: boolean): string {
+  if (r.mode === 'infinite') return `Has resistido ${clock(r.time)}`;
+  if (r.won) return `¡Nivel ${level} superado!`;
+  if (r.mode === 'mirror') return r.completed ? '¡Reflejo completado!' : 'Fin del reflejo';
+  if (r.completed && bossLevel) return 'La Muerte llegó antes de vencer al jefe';
+  return 'No has llegado al minuto 30';
+}
+
+function resultNote(r: RunResult, level: number, test: boolean): string {
+  if (test) return 'Partida de prueba: no se guarda nada (ni el oro ni el nivel).';
+  if (r.won) return `El oro ya está guardado. Siguiente: nivel ${level + 1}.`;
+  if (r.mode !== 'normal') return 'El oro ya está guardado. Esta modalidad no cambia tu nivel.';
+  return `El oro ya está guardado. Sigues en el nivel ${level}: cada intento empieza desde el minuto 0.`;
+}
+
+export default function GameScreen({ level, attempt, config, resume, onFinish, onExit, test, speeds }: GameScreenProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const gameRef = useRef<Game | null>(null);
   const finishedRef = useRef(false);
   // La partida se arranca una sola vez con los valores iniciales de las props.
-  const startRef = useRef({ level, config, resume, onFinish, test });
+  const startRef = useRef({ level, attempt, config, resume, onFinish, test, speed: savedSpeed(speeds) });
   const [hud, setHud] = useState<Hud | null>(null);
   const [choices, setChoices] = useState<UpgradeChoice[] | null>(null);
   const [chest, setChest] = useState<UpgradeChoice[] | null>(null);
@@ -106,7 +139,11 @@ export default function GameScreen({ level, config, resume, onFinish, onExit, te
     const start = startRef.current;
     const save = () => {
       const world = finishedRef.current ? null : gameRef.current?.snapshot();
-      if (world) void saveRunSnapshot({ level: start.level, savedAt: now(), world, ...(start.test ? { test: true } : {}) }, start.test);
+      if (world)
+        void saveRunSnapshot(
+          { level: start.level, attempt: start.attempt, savedAt: now(), world, ...(start.test ? { test: true } : {}) },
+          start.test,
+        );
     };
     const saveTimer = setInterval(save, SAVE_MS);
     const onHidden = () => document.visibilityState === 'hidden' && save();
@@ -118,7 +155,11 @@ export default function GameScreen({ level, config, resume, onFinish, onExit, te
       {
         onHud: (h) => {
           hudRef.current = h;
-          setTools((t) => (h.rerolls > t.rerolls || h.banishes > t.banishes ? { rerolls: Math.max(t.rerolls, h.rerolls), banishes: Math.max(t.banishes, h.banishes) } : t));
+          setTools((t) =>
+            h.rerolls > t.rerolls || h.banishes > t.banishes
+              ? { rerolls: Math.max(t.rerolls, h.rerolls), banishes: Math.max(t.banishes, h.banishes) }
+              : t,
+          );
           setHud(h);
         },
         onLevelUp: (c) => setChoices([...c]),
@@ -139,7 +180,10 @@ export default function GameScreen({ level, config, resume, onFinish, onExit, te
       .then((game) => {
         // Si la pantalla se cerró mientras cargaba el motor, se libera en cuanto esté listo.
         if (cancelled) game.destroy();
-        else gameRef.current = game;
+        else {
+          gameRef.current = game;
+          game.setSpeed(start.speed);
+        }
       })
       .catch((e) => {
         console.error(e);
@@ -156,6 +200,16 @@ export default function GameScreen({ level, config, resume, onFinish, onExit, te
       gameRef.current = null;
     };
   }, []);
+
+  const cycleSpeed = () => {
+    const next = SPEEDS[(SPEEDS.indexOf(hudRef.current?.speed ?? 1) + 1) % SPEEDS.length];
+    gameRef.current?.setSpeed(next);
+    try {
+      localStorage.setItem(SPEED_KEY, String(next));
+    } catch {
+      // Sin almacenamiento la velocidad dura hasta el final de la partida.
+    }
+  };
 
   const choose = useCallback((index: number) => {
     setChoices(null);
@@ -217,7 +271,8 @@ export default function GameScreen({ level, config, resume, onFinish, onExit, te
           </div>
           <div className={styles.top}>
             <span className={styles.level}>
-              Nivel {level} · Nv {hud.level}
+              {config.mode === 'infinite' ? 'Infinito' : `Nivel ${level}`}
+              {config.mode === 'mirror' ? ' · Reflejo' : ''} · Nv {hud.level}
             </span>
             <span className={styles.timer}>{clock(hud.time)}</span>
             <span className={styles.counters}>
@@ -228,6 +283,11 @@ export default function GameScreen({ level, config, resume, onFinish, onExit, te
                 <Icon name="i_coin" size={14} /> {hud.gold}
               </span>
             </span>
+            {speeds && (
+              <button type="button" className={styles.speed} onClick={cycleSpeed} aria-label={`Velocidad ${speedLabel(hud.speed)}`}>
+                {speedLabel(hud.speed)}
+              </button>
+            )}
             <button type="button" className={styles.pause} onClick={() => gameRef.current?.setPaused(true)} aria-label="Pausa">
               <Pause />
             </button>
@@ -236,14 +296,30 @@ export default function GameScreen({ level, config, resume, onFinish, onExit, te
             <Slots items={hud.weapons} total={MAX_WEAPONS} defs={WEAPON_BY_ID} />
             <Slots items={hud.passives} total={MAX_PASSIVES} defs={PASSIVE_BY_ID} passive />
           </div>
-          {hud.bossAlive && <div className={styles.boss}>¡Jefe!</div>}
+          {hud.cycleBoss ? (
+            <div className={styles.bossBar} role="status">
+              <span>{hud.cycleBoss.name}</span>
+              <i>
+                <b style={{ width: `${hud.cycleBoss.hp * 100}%` }} />
+              </i>
+            </div>
+          ) : (
+            hud.bossAlive && <div className={styles.boss}>¡Jefe!</div>
+          )}
+          {hud.reaper && (
+            <div className={styles.reaper} role="status">
+              ¡Ha llegado La Muerte!
+            </div>
+          )}
           {chest && (
             <div className={styles.chest} role="status">
               <Icon name="i_chest" size={28} />
               <div>
                 {chest.map((c, i) => (
                   <p key={i} className={c.kind === 'evolution' ? styles.evolution : ''}>
-                    {c.kind === 'evolution' ? `¡Evolución! ${c.text}` : `${c.name} ${c.kind === 'weapon' || c.kind === 'passive' ? `→ Nv ${c.level}` : `· ${c.text}`}`}
+                    {c.kind === 'evolution'
+                      ? `¡Evolución! ${c.text}`
+                      : `${c.name} ${c.kind === 'weapon' || c.kind === 'passive' ? `→ Nv ${c.level}` : `· ${c.text}`}`}
                   </p>
                 ))}
               </div>
@@ -290,7 +366,13 @@ export default function GameScreen({ level, config, resume, onFinish, onExit, te
                   </button>
                 )}
                 {tools.banishes > 0 && (
-                  <button type="button" className={`${styles.tool} ${banishing ? styles.toolOn : ''}`} disabled={!hud?.banishes} onClick={toggleBanish} aria-pressed={banishing}>
+                  <button
+                    type="button"
+                    className={`${styles.tool} ${banishing ? styles.toolOn : ''}`}
+                    disabled={!hud?.banishes}
+                    onClick={toggleBanish}
+                    aria-pressed={banishing}
+                  >
                     <Ban /> Descartar ({hud?.banishes ?? 0}) <kbd className={styles.key}>D</kbd>
                   </button>
                 )}
@@ -323,15 +405,15 @@ export default function GameScreen({ level, config, resume, onFinish, onExit, te
       {result && (
         <div className={styles.overlay}>
           <div className={styles.panel} role="dialog" aria-label="Fin de la partida">
-            <h2 className={`${styles.title} ${result.won ? '' : styles.lost}`}>{result.won ? '¡Has sobrevivido!' : 'Fin de la partida'}</h2>
+            <h2 className={`${styles.title} ${result.won ? '' : styles.lost}`}>{resultTitle(result, level, !!config.cycleBoss)}</h2>
             <div className={styles.results}>
               <div>
                 <span>Tiempo</span>
                 <b>{clock(result.time)}</b>
               </div>
               <div>
-                <span>Nivel</span>
-                <b>{result.level}</b>
+                <span>Experiencia</span>
+                <b>Nv {result.level}</b>
               </div>
               <div>
                 <span>Enemigos</span>
@@ -344,7 +426,8 @@ export default function GameScreen({ level, config, resume, onFinish, onExit, te
             </div>
             {result.survivalBonus > 0 && (
               <p className={styles.note}>
-                Incluye {result.survivalBonus.toLocaleString('es-ES')} de oro de bonificación por sobrevivir {Math.floor(result.time / 60)} minutos.
+                Incluye {result.survivalBonus.toLocaleString('es-ES')} de oro de bonificación por sobrevivir {Math.floor(result.time / 60)}{' '}
+                minutos.
               </p>
             )}
             <ul className={styles.damage}>
@@ -360,9 +443,7 @@ export default function GameScreen({ level, config, resume, onFinish, onExit, te
                   </li>
                 ))}
             </ul>
-            <p className={styles.note}>
-              {test ? 'Partida de prueba: el oro no se guarda.' : `El oro ya está guardado. La próxima partida será el nivel ${level + 1}.`}
-            </p>
+            <p className={styles.note}>{resultNote(result, level, test)}</p>
             <button type="button" className={styles.primary} onClick={onExit}>
               Volver al campamento
             </button>
@@ -374,7 +455,9 @@ export default function GameScreen({ level, config, resume, onFinish, onExit, te
         <div className={styles.overlay}>
           <div className={styles.panel}>
             <h2 className={`${styles.title} ${styles.lost}`}>No se pudo iniciar el juego</h2>
-            <p className={styles.note}>Este dispositivo o navegador no ha podido arrancar los gráficos. Prueba a cerrar otras pestañas o apps y vuelve a intentarlo.</p>
+            <p className={styles.note}>
+              Este dispositivo o navegador no ha podido arrancar los gráficos. Prueba a cerrar otras pestañas o apps y vuelve a intentarlo.
+            </p>
             <p className={styles.note}>
               <small>{failed}</small>
             </p>

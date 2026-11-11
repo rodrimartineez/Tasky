@@ -41,11 +41,22 @@ export function HabitBridge() {
             'Crea hábitos para conseguir puntos de mejora.'
           ) : (
             <>
-              Hoy: <b>+{secured}</b> asegurados{pending > 0 && <> · <b>+{pending}</b> más si cumples el resto</>}
+              Hoy: <b>+{secured}</b> asegurados
+              {pending > 0 && (
+                <>
+                  {' '}
+                  · <b>+{pending}</b> más si cumples el resto
+                </>
+              )}
             </>
           )}
         </span>
         <span className={styles.goal}>{goal}</span>
+        {!eco.testMode && (
+          <span className={styles.goal}>
+            Intentos para jugar: <b>{eco.available.toLocaleString('es-ES')}</b> · cada hábito diario cumplido da +1 y cada semanal +3.
+          </span>
+        )}
       </span>
       <ChevronRight className={styles.arrow} />
     </Link>

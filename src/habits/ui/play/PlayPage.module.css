@@ -294,3 +294,112 @@
   opacity: 0.5;
   cursor: default;
 }
+
+/* Intentos disponibles (se ganan con los hábitos y no caducan). */
+.attempts {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-family: var(--hb-pixel-font);
+  font-size: var(--fs-lg);
+  color: var(--hb-gold);
+}
+.attempts svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Modalidad: normal, infinito y reflejo. */
+.modes {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.mode {
+  flex: 1;
+  min-width: 90px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-height: 44px;
+  padding: 6px 8px;
+  border: 2px solid var(--hb-border);
+  border-radius: var(--radius-sm);
+  background: var(--hb-surface-2);
+  color: var(--text);
+  font-family: var(--hb-pixel-font);
+  font-size: var(--fs-md);
+  cursor: pointer;
+}
+.mode svg {
+  width: 12px;
+  height: 12px;
+}
+.mode small {
+  color: var(--text-faint);
+  font-family: var(--font);
+  font-size: var(--fs-xs);
+}
+.mode:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.modeOn {
+  border-color: var(--hb-gold);
+  color: var(--hb-gold);
+}
+
+/* Modo de pruebas: elegir el nivel. */
+.levelPicker {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+.levelPicker input {
+  width: 72px;
+  min-height: 36px;
+  padding: 0 8px;
+  border: 2px solid var(--hb-border);
+  border-radius: var(--radius-sm);
+  background: var(--hb-surface-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 16px;
+}
+.levelPicker button {
+  min-width: 36px;
+  min-height: 36px;
+  padding: 0 8px;
+  border: 2px solid var(--hb-border);
+  border-radius: var(--radius-sm);
+  background: var(--hb-surface-3);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+/* Hitos de la progresión. */
+.milestones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+}
+.milestones li::before {
+  content: '○ ';
+}
+.milestones li.done {
+  color: var(--hb-build);
+}
+.milestones li.done::before {
+  content: '✓ ';
+}

@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { now } from '../../core/clock';
 import { newId } from '../../core/ids';
 import type { LocalDate } from '../../core/model';
+import type { RunMode } from '../../game/sim/types';
 import { emptyHabitsData, HabitsDataError, parseHabitsData } from '../core/data';
 import {
   archiveHabit,
@@ -53,12 +54,12 @@ interface HabitsState {
   unlock(key: string): void;
   setLoadout(character: string, stage: string): void;
   /**
-   * Consume una partida y devuelve su nivel (0 si no se pudo) y la ayuda de vuelta que le corresponde.
-   * En el modo de pruebas no consume nada ni se registra: siempre nivel 1 (`test: true`).
+   * Gasta un intento y devuelve el número de intento, el nivel (0 si no se pudo) y la ayuda de vuelta.
+   * En el modo de pruebas no gasta nada ni se registra, y se juega el nivel elegido (`testLevel`).
    */
-  startRun(): { level: number; comeback: Comeback | null; test: boolean };
+  startRun(mode: RunMode, testLevel?: number): { attempt: number; level: number; comeback: Comeback | null; test: boolean };
   /** Registra el resultado de una partida real (las de prueba no se registran). */
-  finishRun(level: number, outcome: RunOutcome): void;
+  finishRun(attempt: number, outcome: RunOutcome): void;
 }
 
 /**
@@ -177,10 +178,11 @@ export const useHabits = create<HabitsState>()((set, get) => {
     buyUpgrade: (id) => commit((d) => buyUpgrade(d, id, todayIn(d), now())),
     unlock: (key) => commit((d) => unlock(d, key, todayIn(d), now(), releaseFor(get().testMode))),
     setLoadout: (character, stage) => commit((d) => setLoadout(d, character, stage, now())),
-    startRun() {
+    startRun(mode, testLevel = 1) {
       const release = releaseFor(get().testMode);
-      if (release.testMode) return { level: 1, comeback: null, test: true };
+      if (release.testMode) return { attempt: 0, level: Math.max(1, Math.floor(testLevel)), comeback: null, test: true };
       let level = 0;
+      let attempt = 0;
       let comeback: Comeback | null = null;
       commit((d) => {
         const today = todayIn(d);
@@ -189,17 +191,19 @@ export const useHabits = create<HabitsState>()((set, get) => {
           d,
           d.profile?.character ?? 'wanderer',
           d.profile?.stage ?? 'withered_woods',
+          mode,
           today,
           now(),
           comeback?.strength ?? 0,
           release,
         );
         level = started.level;
+        attempt = started.attempt;
         return started.data;
       });
-      return { level, comeback, test: false };
+      return { attempt, level, comeback, test: false };
     },
-    finishRun: (level, outcome) => commit((d) => finishRun(d, level, outcome, now(), releaseFor(false))),
+    finishRun: (attempt, outcome) => commit((d) => finishRun(d, attempt, outcome, now(), releaseFor(false))),
   };
 });
 

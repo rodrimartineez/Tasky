@@ -1,5 +1,5 @@
 import { ENEMY_BY_ID } from '../content/enemies';
-import { levelDamage, levelDensity, levelGold, levelHp } from './difficulty';
+import { runDamage, runDensity, runGold, runHp } from './difficulty';
 import type { Enemy, EnemyDef, Fx, PickupKind, World } from './types';
 
 /** Utilidades compartidas por los sistemas de la simulación: azar, consulta espacial, daño y botín. */
@@ -86,12 +86,12 @@ export function nearestEnemy(w: World, x: number, y: number, range: number, skip
 // ── Dificultad ──────────────────────────────────────────────────────────────────────────────────
 // Depende del minuto de partida y del nivel (sim/difficulty.ts), nunca de las mejoras del jugador.
 const minutes = (w: World) => w.time / 60;
-export const hpScale = (w: World) => (1 + minutes(w) * 0.12 + minutes(w) * minutes(w) * 0.014) * levelHp(w.config.level);
-export const damageScale = (w: World) => (1 + minutes(w) * 0.055) * levelDamage(w.config.level);
+export const hpScale = (w: World) => (1 + minutes(w) * 0.12 + minutes(w) * minutes(w) * 0.014) * runHp(w.config);
+export const damageScale = (w: World) => (1 + minutes(w) * 0.055) * runDamage(w.config);
 /** Los enemigos aceleran poco a poco: al final ya no basta con huir. */
 export const speedScale = (w: World) => 1 + minutes(w) * 0.01;
 /** Máximo de enemigos vivos generados por aparición continua e invocaciones. */
-export const maxEnemies = (w: World) => Math.min(400, (50 + minutes(w) * 14) * levelDensity(w.config.level));
+export const maxEnemies = (w: World) => Math.min(400, (50 + minutes(w) * 14) * runDensity(w.config));
 
 // ── Enemigos ────────────────────────────────────────────────────────────────────────────────────
 const SPAWN_RADIUS = 310;
@@ -155,14 +155,15 @@ function killEnemy(w: World, e: Enemy) {
   dropPickup(w, 'xp', e.x, e.y, e.def.xp * (e.elite ? 10 : 1));
   if (boss) {
     w.bossAlive = w.enemies.some((o) => !o.dead && o.def.ai === 'boss');
+    if (e.def.patterns) w.cycleBoss = 2;
     dropPickup(w, 'chest', e.x + 10, e.y, 1);
-    dropPickup(w, 'coin', e.x - 10, e.y, 60 * levelGold(w.config.level));
+    dropPickup(w, 'coin', e.x - 10, e.y, (e.def.patterns ? 300 : 60) * runGold(w.config));
     emit(w, { type: 'shake', power: 6 });
   } else if (e.elite) {
     dropPickup(w, 'chest', e.x, e.y + 6, 1);
   } else {
     const roll = rand(w);
-    if (roll < 0.05 * luck) dropPickup(w, 'coin', e.x + 4, e.y, (1 + Math.floor(minutes(w) / 8)) * levelGold(w.config.level));
+    if (roll < 0.05 * luck) dropPickup(w, 'coin', e.x + 4, e.y, (1 + Math.floor(minutes(w) / 8)) * runGold(w.config));
     else if (roll > 0.996) dropPickup(w, 'heart', e.x, e.y, 30);
     else if (roll > 0.9945) dropPickup(w, 'magnet', e.x, e.y, 1);
   }
@@ -181,7 +182,8 @@ function killEnemy(w: World, e: Enemy) {
  * (kx, ky) es la dirección del retroceso multiplicada por su fuerza.
  */
 export function damageEnemy(w: World, e: Enemy, base: number, weapon: number, kx: number, ky: number) {
-  if (e.dead) return;
+  // La Muerte no recibe daño.
+  if (e.dead || e.def.ai === 'reaper') return;
   const stats = w.player.stats;
   const crit = rand(w) < stats.critChance;
   const dmg = Math.max(1, Math.round(base * stats.might * (crit ? stats.critMult : 1)));

@@ -7,6 +7,8 @@ import type { HabitsData } from './model';
  */
 export interface RunSnapshot {
   level: number;
+  /** Intento al que pertenece (las copias anteriores a los intentos no lo tienen y no se reanudan). */
+  attempt?: number;
   savedAt: Timestamp;
   /** Estado completo de la simulación (game/sim World), JSON puro. */
   world: unknown;

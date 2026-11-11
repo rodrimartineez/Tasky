@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { WITHERED_WOODS } from '../content/stages';
 import { WEAPONS } from '../content/weapons';
 import { botPlay } from './bot';
+import { runHp } from './difficulty';
 import { BASE_STATS, RUN_SECONDS, type RunConfig, type Stats, type World } from './types';
 import { weaponStatsAt } from './upgrades';
 import { chooseUpgrade, createWorld, runResult, step, xpForLevel } from './world';
@@ -52,22 +53,59 @@ describe('simulación', () => {
   });
 
   it('sin mejoras la partida acaba en muerte; un personaje muy mejorado sobrevive más y gana más oro', () => {
-    const weak = createWorld(config(3));
+    // El nivel 1 se puede superar sin mejoras: la prueba usa una dureza mayor.
+    const weak = createWorld({ ...config(3), difficultyScale: 3 });
     play(weak, RUN_SECONDS);
     expect(weak.phase).toBe('dead');
     expect(finite(weak)).toBe(true);
-    const strong = createWorld(config(3, { ...BASE_STATS, might: 2.5, maxHp: 300, armor: 4, regen: 1.5, moveSpeed: 75 }));
+    const strong = createWorld({
+      ...config(3, { ...BASE_STATS, might: 2.5, maxHp: 300, armor: 4, regen: 1.5, moveSpeed: 75 }),
+      difficultyScale: 3,
+    });
     play(strong, RUN_SECONDS);
     expect(strong.time).toBeGreaterThan(weak.time);
     expect(runResult(strong).gold).toBeGreaterThan(runResult(weak).gold);
   }, 60_000);
 
-  it('la partida se gana al llegar a los 30 minutos', () => {
-    const w = createWorld(config(2, { ...BASE_STATS, maxHp: 1e9, might: 50 }));
+  it('al minuto 30 llega La Muerte, que acaba la partida sin remedio: el nivel queda superado', () => {
+    const w = createWorld(config(2, { ...BASE_STATS, maxHp: 1e9, might: 50, revival: 3 }));
     w.time = RUN_SECONDS - 1;
-    play(w, 3);
-    expect(w.phase).toBe('won');
-    expect(runResult(w).won).toBe(true);
+    play(w, 20);
+    expect(w.completed).toBe(true);
+    expect(w.phase).toBe('dead');
+    expect(w.player.stats.revival).toBe(0);
+    const r = runResult(w);
+    expect([r.won, r.completed, r.mode]).toEqual([true, true, 'normal']);
+  });
+
+  it('morir antes del minuto 30 no supera el nivel, pero el oro se conserva en el resultado', () => {
+    const w = createWorld({ ...config(3), difficultyScale: 3 });
+    play(w, RUN_SECONDS);
+    expect(w.phase).toBe('dead');
+    const r = runResult(w);
+    expect([r.won, r.completed]).toEqual([false, false]);
+    expect(r.gold).toBe(Math.floor(w.gold) + r.survivalBonus);
+  }, 60_000);
+
+  it('modo infinito: sin La Muerte, la partida sigue y siguen apareciendo enemigos; nunca supera niveles', () => {
+    const w = createWorld({ ...config(4, { ...BASE_STATS, maxHp: 1e12, might: 200 }), mode: 'infinite' });
+    w.time = RUN_SECONDS - 1;
+    play(w, 60);
+    expect(w.phase).not.toBe('dead');
+    expect(w.completed).toBeFalsy();
+    expect(w.enemies.some((e) => e.def.ai === 'reaper')).toBe(false);
+    expect(w.enemies.length).toBeGreaterThan(0);
+    expect(runResult(w).won).toBe(false);
+  });
+
+  it('modo reflejo: enemigos con el doble de vida; llegar al 30 no supera el nivel', () => {
+    const mirror = createWorld({ ...config(5), mode: 'mirror' });
+    expect(runHp(mirror.config)).toBeCloseTo(runHp(config(5)) * 2, 10);
+    mirror.player.hp = mirror.player.stats.maxHp = 1e12;
+    mirror.time = RUN_SECONDS - 1;
+    play(mirror, 20);
+    expect(runResult(mirror).completed).toBe(true);
+    expect(runResult(mirror).won).toBe(false);
   });
 
   it('todas las armas funcionan como arma inicial', () => {
