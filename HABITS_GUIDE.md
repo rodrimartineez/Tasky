@@ -1,7 +1,7 @@
 # HABITS_GUIDE.md — Modo Hábitos (habit tracker + videojuego)
 
 > Documento de diseño de la Fase 1 (análisis). Complementa a [TASKY_GUIDE.md](TASKY_GUIDE.md), que sigue
-> siendo la referencia del modo Proyectos. **Estado: diseño aprobado; Fase 2 implementada (ver §9).**
+> siendo la referencia del modo Proyectos. **Estado: diseño aprobado; Fases 2 y 3 implementadas (ver §9).**
 
 ---
 
@@ -233,7 +233,16 @@ minuto. Así las mejoras se notan directamente como «sobrevivo más y gano más
 | Fase 2 — Hábitos positivos y de reducción, diarios y semanales, objetivo/límite con unidad e incremento, registro rápido (+/−, o un toque si el objetivo es un solo paso), detalle con rachas, historial y menú (editar, archivar, eliminar) | ✅ 20 tests de `habits/core` + navegador |
 | Fase 2 — Cierre de periodos y recompensas (1/3 puntos, ledger con ids deterministas), recompensas de días sin abrir la app, cambio de día con la app abierta | ✅ Tests (cambios de hora, cruce de año, idempotencia, dos dispositivos) + navegador simulando el paso a mañana |
 | Fase 2 — Persistencia local (`habits.json` en escritorio, IndexedDB `tasky-habits` en web) y sincronización propia con la misma sesión | ✅ Local verificado. **Sync pendiente:** ejecutar `supabase/schema.sql` en el SQL Editor (crea `habit_profile`, `habits`, `habit_logs`, `habit_ledger`); mientras tanto los hábitos funcionan en local y la app avisa de que no se sincronizan |
-| Fase 3 — Núcleo jugable | Pendiente |
+| Fase 3 — Núcleo jugable (`src/game/`): simulación pura y determinista a 60 Hz (rejilla espacial, 6 armas con comportamientos distintos y 8 niveles, 6 pasivas, 9 enemigos con 5 comportamientos, élites con cofre, jefe con ráfagas e invocaciones, experiencia, subidas de nivel, objetos, victoria a los 30 min), render con PixiJS v8 (atlas de pixel art definido en código, reservas de sprites, números de daño, partículas, rayos, temblor), joystick flotante + teclado, pantalla de juego (HUD, subida de nivel, pausa automática al ocultar la app, resumen final) en la pestaña «Jugar» como **partida de prueba** | ✅ 10 tests (determinismo, todas las armas, sprites válidos, sin mejoras se muere / muy mejorado sobrevive más y gana más oro). Navegador: partida, subida de nivel, cofre, jefe, pausa, abandonar, reiniciar y salir (sin lienzos huérfanos); vista móvil con joystick táctil simulado. Rendimiento: 1 ms de dibujado por fotograma con 419 enemigos; la simulación completa de 30 min tarda ~7 s sin pantalla. **Pendiente de probar en un iPhone real** |
+| Fase 4 — Progresión y economía | Pendiente |
+
+Notas de la Fase 3:
+- **Equilibrio provisional** (bot de `sim/bot.ts`, 4 semillas por perfil): sin mejoras 2–12 min; «1 mes» 11–22 min;
+  «3 meses» 20–30 min; «6 meses» gana siempre. Hay mucha varianza entre semillas; el ajuste fino y el oro por
+  partida se harán con el simulador de la Fase 4.
+- La dificultad (vida, daño y velocidad de los enemigos) depende solo del minuto de partida (`sim/core.ts`).
+- El motor (PixiJS) va en un archivo aparte que se descarga al pulsar «Jugar».
+- La partida de prueba no gasta partidas diarias ni guarda oro: eso es la Fase 4.
 
 Pruebas locales sin tocar los datos reales: configuración `tasky-web-offline` de `.claude/launch.json`
 (puerto 1430, `vite --mode offline`; necesita un `.env.offline` local con `VITE_SUPABASE_URL=` y `VITE_SUPABASE_KEY=` vacíos).

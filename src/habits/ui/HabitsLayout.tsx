@@ -1,6 +1,6 @@
 import { NavLink, useLocation, useOutlet } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { ListChecks, TriangleAlert, Trophy } from 'lucide-react';
+import { ListChecks, Swords, TriangleAlert, Trophy } from 'lucide-react';
 import { ModeSwitch } from '../../ui/app/ModeSwitch';
 import { Toaster } from '../../ui/components/Toaster';
 import { SyncButton } from '../../ui/sync/SyncButton';
@@ -12,6 +12,7 @@ import styles from './HabitsLayout.module.css';
 
 const TABS = [
   { to: '/habits', label: 'Hábitos', icon: <ListChecks />, end: true },
+  { to: '/habits/play', label: 'Jugar', icon: <Swords />, end: false },
   { to: '/habits/rewards', label: 'Recompensas', icon: <Trophy />, end: false },
 ];
 

@@ -51,6 +51,31 @@ export default tseslint.config(
       ],
     },
   },
+  // El videojuego no conoce React, los hábitos ni el servidor: recibe una configuración y devuelve un resultado.
+  {
+    files: ['src/game/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            { group: ['@tauri-apps/*', 'react', 'react-*', 'zustand', '@supabase/*'], message: 'game/ es independiente de la interfaz y la plataforma.' },
+            { group: ['**/habits/**', '**/core/**', '**/state/**', '**/adapters/**', '**/ui/**'], message: 'game/ no depende del resto de la app.' },
+          ],
+        },
+      ],
+    },
+  },
+  // La simulación no dibuja: se ejecuta también sin pantalla (tests y simulador de economía).
+  {
+    files: ['src/game/sim/**/*.ts', 'src/game/content/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        { patterns: [{ group: ['pixi.js', '**/render/**', '**/input/**', '**/sprites/atlas', 'react', '**/habits/**'], message: 'La simulación es TypeScript puro.' }] },
+      ],
+    },
+  },
   // (Las reglas se sustituyen, no se suman: cada bloque repite las restricciones que le aplican.)
   {
     files: ['src/state/**/*.ts', 'src/mcp/**/*.ts', 'src/ui/projects/**', 'src/ui/tasks/**', 'src/ui/ideas/**'],

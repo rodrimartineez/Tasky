@@ -1,0 +1,312 @@
+/**
+ * Tipos de la simulación. Todo el estado de una partida es datos planos (sin clases ni referencias a la pantalla):
+ * se puede ejecutar sin render (tests, simulador de economía) y serializar (reanudar partidas, Fase 4).
+ */
+
+/** Estadísticas del personaje. Las mejoras permanentes (Fase 4) y las pasivas de la partida las modifican. */
+export interface Stats {
+  maxHp: number;
+  /** Vida por segundo. */
+  regen: number;
+  /** Daño que se resta de cada golpe recibido. */
+  armor: number;
+  /** Píxeles por segundo. */
+  moveSpeed: number;
+  /** Multiplicador de daño. */
+  might: number;
+  /** Multiplicador de área de las armas. */
+  area: number;
+  /** Multiplicador del tiempo entre ataques (menos = más rápido). */
+  cooldown: number;
+  /** Multiplicador de velocidad de proyectiles. */
+  projSpeed: number;
+  /** Multiplicador de duración de los efectos. */
+  duration: number;
+  /** Proyectiles extra en cada arma. */
+  amount: number;
+  /** Radio de recogida, en píxeles. */
+  pickup: number;
+  /** Multiplicador de suerte (cofres, opciones extra, objetos). */
+  luck: number;
+  /** Multiplicador de experiencia. */
+  growth: number;
+  /** Multiplicador de oro. */
+  greed: number;
+  critChance: number;
+  critMult: number;
+}
+
+export const BASE_STATS: Stats = {
+  maxHp: 100,
+  regen: 0,
+  armor: 0,
+  moveSpeed: 62,
+  might: 1,
+  area: 1,
+  cooldown: 1,
+  projSpeed: 1,
+  duration: 1,
+  amount: 0,
+  pickup: 28,
+  luck: 1,
+  growth: 1,
+  greed: 1,
+  critChance: 0.05,
+  critMult: 2,
+};
+
+/** Valores de un arma en su nivel actual (cada comportamiento usa los que necesita). */
+export interface WeaponStats {
+  damage: number;
+  /** Segundos entre ataques. */
+  cooldown: number;
+  amount: number;
+  /** Enemigos que atraviesa cada proyectil (o saltos de un rayo). */
+  pierce: number;
+  /** Radio o alcance, en píxeles. */
+  area: number;
+  speed: number;
+  /** Segundos que dura el efecto. */
+  duration: number;
+  knockback: number;
+}
+
+export interface WeaponLevel {
+  /** Texto de la mejora que se muestra al subir de nivel. */
+  text: string;
+  mods: Partial<WeaponStats>;
+}
+
+export interface WeaponDef {
+  id: string;
+  name: string;
+  description: string;
+  /** Sprite del icono (game/sprites). */
+  icon: string;
+  base: WeaponStats;
+  /** Niveles 2…8: cada uno suma sus `mods` a los valores anteriores. */
+  levels: WeaponLevel[];
+}
+
+export interface PassiveDef {
+  id: string;
+  name: string;
+  icon: string;
+  /** Texto de cada nivel, p. ej. «+10 % de daño». */
+  text: string;
+  maxLevel: number;
+  /** Aplica `level` niveles de la pasiva a las estadísticas. */
+  apply(stats: Stats, level: number): void;
+}
+
+export type EnemyAi = 'chase' | 'charger' | 'waver' | 'shooter' | 'boss';
+
+export interface EnemyDef {
+  id: string;
+  name: string;
+  sprite: string;
+  hp: number;
+  speed: number;
+  damage: number;
+  radius: number;
+  xp: number;
+  ai: EnemyAi;
+  /** 0 = el retroceso le afecta entero; 1 = inmune. */
+  knockResist: number;
+  /** Al morir se divide en este enemigo (×2). */
+  splitsInto?: string;
+}
+
+/** Aparición continua de un enemigo entre dos minutos, con ritmo (por segundo) interpolado. */
+export interface SpawnRule {
+  enemy: string;
+  from: number;
+  to: number;
+  rateStart: number;
+  rateEnd: number;
+}
+
+export interface StageEvent {
+  /** Segundo de la partida en el que ocurre. */
+  at: number;
+  kind: 'ring' | 'elite' | 'boss';
+  enemy: string;
+  count: number;
+}
+
+export interface StageDef {
+  id: string;
+  name: string;
+  /** Sprites del suelo y de la decoración. */
+  ground: string;
+  props: string[];
+  spawns: SpawnRule[];
+  events: StageEvent[];
+}
+
+export interface RunConfig {
+  seed: number;
+  stage: StageDef;
+  /** Estadísticas iniciales (personaje + mejoras permanentes). */
+  stats: Stats;
+  startingWeapon: string;
+}
+
+export interface WeaponState {
+  id: string;
+  level: number;
+  stats: WeaponStats;
+  /** Segundos hasta el próximo ataque. */
+  timer: number;
+  /** Daño total causado en la partida (resumen final). */
+  dealt: number;
+}
+
+export interface Player {
+  x: number;
+  y: number;
+  hp: number;
+  /** Última dirección de movimiento (para armas direccionales y para orientar el sprite). */
+  dirX: number;
+  dirY: number;
+  moving: boolean;
+  /** Segundos de invulnerabilidad tras un golpe. */
+  hurtTimer: number;
+  level: number;
+  xp: number;
+  xpNext: number;
+  stats: Stats;
+  weapons: WeaponState[];
+  passives: { id: string; level: number }[];
+}
+
+export interface Enemy {
+  uid: number;
+  def: EnemyDef;
+  x: number;
+  y: number;
+  hp: number;
+  maxHp: number;
+  damage: number;
+  speed: number;
+  radius: number;
+  elite: boolean;
+  /** Retroceso pendiente. */
+  kx: number;
+  ky: number;
+  /** Segundos de destello tras un golpe. */
+  flash: number;
+  /** Temporizadores del comportamiento. */
+  t1: number;
+  t2: number;
+  /** Estado del comportamiento (p. ej. 0 acercarse, 1 preparar, 2 embestir). */
+  state: number;
+  vx: number;
+  vy: number;
+  /** Segundos hasta que un arma de contacto continuo (orbes, aura) puede volver a golpearlo. */
+  contactCd: number;
+  /** Marca de la última consulta espacial que lo devolvió (evita repetidos). */
+  stamp: number;
+  dead: boolean;
+}
+
+export type ProjKind = 'bolt' | 'lance' | 'orbit' | 'bomb' | 'enemyShot';
+
+export interface Projectile {
+  kind: ProjKind;
+  sprite: string;
+  weapon: number;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  damage: number;
+  radius: number;
+  life: number;
+  pierce: number;
+  knockback: number;
+  /** Ángulo de dibujo (y de órbita). */
+  angle: number;
+  /** Órbita: radio alrededor del jugador. */
+  orbitR: number;
+  /** Bomba: origen, destino y duración total del vuelo. */
+  sx: number;
+  sy: number;
+  tx: number;
+  ty: number;
+  total: number;
+  /** Enemigos ya golpeados por este proyectil. */
+  hit: number[];
+  dead: boolean;
+}
+
+export type PickupKind = 'xp' | 'coin' | 'heart' | 'chest' | 'magnet';
+
+export interface Pickup {
+  kind: PickupKind;
+  x: number;
+  y: number;
+  value: number;
+  /** Ya vuela hacia el jugador. */
+  pulled: boolean;
+  dead: boolean;
+}
+
+/** Efectos visuales que la simulación emite y el render consume (sin efecto en el juego). */
+export type Fx =
+  | { type: 'number'; x: number; y: number; value: number; crit: boolean; player: boolean }
+  | { type: 'puff'; x: number; y: number; color: number; count: number }
+  | { type: 'ring'; x: number; y: number; radius: number; color: number }
+  | { type: 'line'; x: number; y: number; x2: number; y2: number; color: number }
+  | { type: 'shake'; power: number };
+
+export interface UpgradeChoice {
+  kind: 'weapon' | 'passive' | 'gold' | 'heal';
+  id: string;
+  name: string;
+  icon: string;
+  /** Nivel que tendrá al elegirla (1 = nueva). */
+  level: number;
+  text: string;
+}
+
+export type Phase = 'playing' | 'levelup' | 'dead' | 'won';
+
+export interface World {
+  config: RunConfig;
+  rngState: number;
+  phase: Phase;
+  /** Segundos de partida. */
+  time: number;
+  player: Player;
+  enemies: Enemy[];
+  projectiles: Projectile[];
+  pickups: Pickup[];
+  fx: Fx[];
+  nextUid: number;
+  kills: number;
+  gold: number;
+  /** Subidas de nivel pendientes de elegir. */
+  pendingLevels: number;
+  choices: UpgradeChoice[];
+  /** Últimas mejoras concedidas por un cofre (la interfaz las muestra y las vacía). */
+  chestRewards: UpgradeChoice[];
+  /** Acumuladores de aparición por regla y siguiente evento del escenario. */
+  spawnAcc: number[];
+  nextEvent: number;
+  bossAlive: boolean;
+}
+
+export interface RunResult {
+  won: boolean;
+  time: number;
+  level: number;
+  kills: number;
+  gold: number;
+  weapons: { id: string; level: number; dealt: number }[];
+}
+
+/** Duración máxima de una partida. */
+export const RUN_SECONDS = 30 * 60;
+export const MAX_WEAPONS = 6;
+export const MAX_PASSIVES = 6;
