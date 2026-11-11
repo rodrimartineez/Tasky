@@ -99,7 +99,7 @@ export interface PassiveDef {
   apply(stats: Stats, level: number): void;
 }
 
-export type EnemyAi = 'chase' | 'charger' | 'waver' | 'shooter' | 'boss';
+export type EnemyAi = 'chase' | 'charger' | 'waver' | 'shooter' | 'volley' | 'boss';
 
 export interface EnemyDef {
   id: string;
@@ -115,6 +115,8 @@ export interface EnemyDef {
   knockResist: number;
   /** Al morir se divide en este enemigo (×2). */
   splitsInto?: string;
+  /** Jefes: esbirros que invoca (por defecto, osamentas). */
+  minion?: string;
 }
 
 /** Aparición continua de un enemigo entre dos minutos, con ritmo (por segundo) interpolado. */
@@ -139,7 +141,7 @@ export interface StageDef {
   name: string;
   /** Oro para desbloquearlo (0 = disponible desde el principio). */
   price: number;
-  /** Sprites del suelo y de la decoración. */
+  /** Clave del suelo (colores en render/renderer.ts) y sprites de la decoración. */
   ground: string;
   props: string[];
   spawns: SpawnRule[];
@@ -154,6 +156,8 @@ export interface RunConfig {
   /** Estadísticas iniciales (personaje + mejoras permanentes). */
   stats: Stats;
   startingWeapon: string;
+  /** Sprite base del personaje elegido (`<sprite>_0` y `<sprite>_1`). */
+  sprite: string;
 }
 
 export interface WeaponState {
@@ -214,7 +218,20 @@ export interface Enemy {
   dead: boolean;
 }
 
-export type ProjKind = 'bolt' | 'lance' | 'orbit' | 'bomb' | 'enemyShot';
+export type ProjKind =
+  | 'bolt'
+  | 'lance'
+  | 'orbit'
+  | 'bomb'
+  | 'enemyShot'
+  /** Látigo: daño instantáneo en un sector; el proyectil es solo el destello. */
+  | 'slash'
+  | 'boomerang'
+  | 'mine'
+  /** Haz giratorio alrededor del jugador. */
+  | 'beam'
+  | 'meteor'
+  | 'cloud';
 
 export interface Projectile {
   kind: ProjKind;
@@ -233,7 +250,7 @@ export interface Projectile {
   angle: number;
   /** Órbita: radio alrededor del jugador. */
   orbitR: number;
-  /** Bomba: origen, destino y duración total del vuelo. */
+  /** Bomba, meteorito y mina: origen, destino y duración total (en nubes y haces, `total` es el cronómetro del daño). */
   sx: number;
   sy: number;
   tx: number;
@@ -312,5 +329,5 @@ export interface RunResult {
 
 /** Duración máxima de una partida. */
 export const RUN_SECONDS = 30 * 60;
-export const MAX_WEAPONS = 6;
-export const MAX_PASSIVES = 6;
+export const MAX_WEAPONS = 5;
+export const MAX_PASSIVES = 5;

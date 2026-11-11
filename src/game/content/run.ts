@@ -13,5 +13,5 @@ export function buildRunConfig(level: number, characterId: string, stageId: stri
   const stage = STAGE_BY_ID.get(stageId) ?? STAGES[0];
   const stats = withUpgrades(BASE_STATS, upgrades);
   character.apply(stats);
-  return { seed: (Math.imul(level, 2654435761) ^ 0x5bd1e995) | 0, level, stage, stats, startingWeapon: character.weapon };
+  return { seed: (Math.imul(level, 2654435761) ^ 0x5bd1e995) | 0, level, stage, stats, startingWeapon: character.weapon, sprite: character.sprite };
 }

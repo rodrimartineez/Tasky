@@ -1,6 +1,6 @@
 import { Application, Container, Rectangle, Sprite, Texture, TilingSprite } from 'pixi.js';
-import { emberRadius } from '../sim/weapons';
-import type { Fx, World } from '../sim/types';
+import { emberRadius, MINE_ARM } from '../sim/weapons';
+import type { Fx, Projectile, World } from '../sim/types';
 import { buildAtlas, buildGroundTile, CIRCLE_RADIUS, WHITE } from '../sprites/atlas';
 import { resolveSprite } from '../sprites/data';
 
@@ -14,6 +14,15 @@ const VIEW_SHORT = 260;
 /** Lado largo máximo: más allá aparecerían los enemigos dentro de la pantalla. */
 const VIEW_LONG = 580;
 const PROP_CELL = 56;
+
+/** Colores del suelo de cada escenario (`StageDef.ground`): baldosa base, motas claras y oscuras, y fondo. */
+const GROUNDS: Record<string, { base: string; light: string; dark: string; background: number }> = {
+  t_grass: { base: '#1b2f24', light: '#24402f', dark: '#15251c', background: 0x12201a },
+  t_bog: { base: '#1d2b2c', light: '#2a3f3d', dark: '#141f21', background: 0x101a1b },
+  t_crypt: { base: '#2a2630', light: '#383241', dark: '#1d1a24', background: 0x16131c },
+  t_cave: { base: '#20243a', light: '#2e3452', dark: '#161a2c', background: 0x111424 },
+  t_ash: { base: '#33241f', light: '#47342b', dark: '#241915', background: 0x1c130f },
+};
 
 /** Reserva de sprites: se piden en orden cada fotograma y los que sobran se ocultan. */
 class Pool {
@@ -94,6 +103,7 @@ export class Renderer {
   private textures = new Map<string, Texture>();
   private world = new Container();
   private ground!: TilingSprite;
+  private groundKey = '';
   private props: Pool;
   private under: Pool;
   private pickups: Pool;
@@ -142,10 +152,24 @@ export class Renderer {
     for (const [name, f] of atlas.frames) {
       this.textures.set(name, new Texture({ source, frame: new Rectangle(f.x, f.y, f.w, f.h) }));
     }
-    const tile = Texture.from(buildGroundTile('#1b2f24', '#24402f', '#15251c'));
-    tile.source.scaleMode = 'nearest';
-    this.ground = new TilingSprite({ texture: tile, width: 16, height: 16 });
+    this.ground = new TilingSprite({ texture: this.groundTexture('t_grass'), width: 16, height: 16 });
     this.app.stage.addChild(this.ground, this.world);
+  }
+
+  /** Cambia el suelo al del escenario (solo se recalcula cuando cambia). */
+  private setGround(key: string) {
+    if (key === this.groundKey) return;
+    this.ground.texture.destroy(true);
+    this.ground.texture = this.groundTexture(key);
+  }
+
+  private groundTexture(key: string): Texture {
+    const g = GROUNDS[key] ?? GROUNDS.t_grass;
+    this.groundKey = key in GROUNDS ? key : 't_grass';
+    this.app.renderer.background.color = g.background;
+    const tile = Texture.from(buildGroundTile(g.base, g.light, g.dark));
+    tile.source.scaleMode = 'nearest';
+    return tile;
   }
 
   private tex(name: string, white = false): Texture {
@@ -201,8 +225,9 @@ export class Renderer {
     const ideal = Math.max(Math.min(width, height) / VIEW_SHORT, Math.max(width, height) / VIEW_LONG);
     const zoom = Math.max(1, Math.round(ideal * dpr)) / dpr;
     const p = w.player;
+    this.setGround(w.config.stage.ground);
 
-    this.shake *= Math.exp(-12 * dt);
+    this.shake *=Math.exp(-12 * dt);
     const shakeX = (Math.random() - 0.5) * this.shake;
     const shakeY = (Math.random() - 0.5) * this.shake;
     const snap = (v: number) => Math.round(v * dpr) / dpr;
@@ -274,7 +299,9 @@ export class Renderer {
     this.enemies.end();
 
     this.actors.begin();
-    const hero = this.actors.next(this.tex(p.moving && Math.floor(this.clock * 8) % 2 === 1 ? 'hero_1' : 'hero_0'));
+    // Las partidas guardadas antes de existir los demás personajes no traen sprite: usan el del héroe base.
+    const sprite = w.config.sprite ?? 'hero';
+    const hero = this.actors.next(this.tex(`${sprite}_${p.moving && Math.floor(this.clock * 8) % 2 === 1 ? 1 : 0}`));
     hero.position.set(p.x, p.y - 2);
     hero.scale.x = p.dirX < 0 ? -1 : 1;
     if (p.hurtTimer > 0) hero.alpha = Math.floor(this.clock * 20) % 2 === 0 ? 0.35 : 1;
@@ -293,22 +320,122 @@ export class Renderer {
     this.shots.begin();
     for (const shot of w.projectiles) {
       if (!visible(shot.x, shot.y)) continue;
-      const s = this.shots.next(this.tex(shot.sprite));
-      if (shot.kind === 'bomb') {
-        // Vuelo en arco: sube y baja, y gira.
-        const t = 1 - Math.max(0, shot.life) / shot.total;
-        s.position.set(shot.x, shot.y - Math.sin(t * Math.PI) * 34);
-        s.rotation = t * 9;
-      } else {
-        s.position.set(shot.x, shot.y);
-        if (shot.kind !== 'orbit') s.rotation = shot.angle;
-        if (shot.kind === 'lance') s.scale.set(1, Math.max(1, shot.radius / 6));
-      }
+      this.drawShot(shot);
     }
     this.shots.end();
 
     this.drawEffects(dt);
     this.app.render();
+  }
+
+  /** Estela: copias tenues del proyectil detrás de su trayectoria (dirección unitaria `dx, dy`). */
+  private trail(shot: Projectile, dx: number, dy: number, rotation: number, steps = 3, gap = 4) {
+    for (let i = steps; i >= 1; i--) {
+      const t = this.shots.next(this.tex(shot.sprite));
+      t.position.set(shot.x - dx * gap * i, shot.y - dy * gap * i);
+      t.rotation = rotation;
+      t.alpha = 0.5 - i * 0.12;
+      t.scale.set(1 - i * 0.12);
+    }
+  }
+
+  private drawShot(shot: Projectile) {
+    const pool = this.shots;
+    switch (shot.kind) {
+      case 'bomb': {
+        // Vuelo en arco: sube y baja, y gira.
+        const t = 1 - Math.max(0, shot.life) / shot.total;
+        const s = pool.next(this.tex(shot.sprite));
+        s.position.set(shot.x, shot.y - Math.sin(t * Math.PI) * 34);
+        s.rotation = t * 9;
+        return;
+      }
+      case 'meteor': {
+        // Sombra en el suelo que se concreta al caer, y la roca con su cola de fuego.
+        const t = 1 - Math.max(0, shot.life) / shot.total;
+        const shadow = pool.next(this.tex('disc'));
+        shadow.position.set(shot.tx, shot.ty);
+        shadow.scale.set((shot.radius * (0.3 + 0.7 * t)) / CIRCLE_RADIUS);
+        shadow.tint = 0x1a0d0a;
+        shadow.alpha = 0.2 + 0.25 * t;
+        const rot = Math.atan2(shot.ty - shot.sy, shot.tx - shot.sx);
+        this.trail(shot, Math.cos(rot), Math.sin(rot), rot, 4, 6);
+        const s = pool.next(this.tex(shot.sprite));
+        s.position.set(shot.x, shot.y);
+        s.rotation = rot;
+        return;
+      }
+      case 'boomerang': {
+        const speed = Math.hypot(shot.vx, shot.vy) || 1;
+        this.trail(shot, shot.vx / speed, shot.vy / speed, shot.angle, 2, 5);
+        const s = pool.next(this.tex(shot.sprite));
+        s.position.set(shot.x, shot.y);
+        s.rotation = shot.angle;
+        return;
+      }
+      case 'mine': {
+        const s = pool.next(this.tex(shot.sprite));
+        s.position.set(shot.x, shot.y);
+        // Armada: parpadea en rojo; si va a desaparecer, titila.
+        if (shot.total - shot.life >= MINE_ARM && Math.floor(this.clock * 4) % 2 === 0) s.tint = 0xff8888;
+        if (shot.life < 1.5) s.alpha = Math.floor(this.clock * 10) % 2 === 0 ? 0.4 : 1;
+        return;
+      }
+      case 'beam': {
+        // Rayo: núcleo blanco sobre un halo cian, con un destello en la punta.
+        const cx = Math.cos(shot.angle);
+        const cy = Math.sin(shot.angle);
+        const mid = shot.orbitR / 2;
+        const glow = pool.next(this.tex('px'));
+        glow.position.set(shot.x + cx * mid, shot.y + cy * mid);
+        glow.rotation = shot.angle;
+        glow.scale.set(shot.orbitR / 2, shot.radius * 0.9);
+        glow.tint = 0x4fd6e8;
+        glow.alpha = 0.55 + Math.sin(this.clock * 30) * 0.1;
+        const core = pool.next(this.tex('px'));
+        core.position.set(glow.x, glow.y);
+        core.rotation = shot.angle;
+        core.scale.set(shot.orbitR / 2, shot.radius * 0.35);
+        const tip = pool.next(this.tex(shot.sprite));
+        tip.position.set(shot.x + cx * shot.orbitR, shot.y + cy * shot.orbitR);
+        tip.rotation = this.clock * 6;
+        return;
+      }
+      case 'cloud': {
+        // Nube: disco tenue con tres bocanadas que giran despacio.
+        const pulse = 1 + Math.sin(this.clock * 3 + shot.x) * 0.04;
+        const base = pool.next(this.tex('disc'));
+        base.position.set(shot.x, shot.y);
+        base.scale.set((shot.radius * pulse) / CIRCLE_RADIUS);
+        base.tint = 0x5ee08a;
+        base.alpha = Math.min(0.22, shot.life * 0.4);
+        for (let i = 0; i < 3; i++) {
+          const a = this.clock * 0.8 + i * 2.1 + shot.x;
+          const puff = pool.next(this.tex(shot.sprite));
+          puff.position.set(shot.x + Math.cos(a) * shot.radius * 0.5, shot.y + Math.sin(a) * shot.radius * 0.4);
+          puff.scale.set(Math.max(1, shot.radius / 22));
+          puff.alpha = Math.min(0.7, shot.life * 0.8);
+        }
+        return;
+      }
+      case 'slash': {
+        // Destello del látigo: la media luna se estira y se desvanece.
+        const t = 1 - Math.max(0, shot.life) / shot.total;
+        const s = pool.next(this.tex(shot.sprite));
+        s.position.set(shot.x, shot.y);
+        s.rotation = shot.angle;
+        s.scale.set(shot.radius / 20, shot.radius / 14);
+        s.alpha = 1 - t;
+        return;
+      }
+      default: {
+        if (shot.kind === 'bolt' || shot.kind === 'lance') this.trail(shot, Math.cos(shot.angle), Math.sin(shot.angle), shot.angle, 2, shot.kind === 'bolt' ? 4 : 8);
+        const s = pool.next(this.tex(shot.sprite));
+        s.position.set(shot.x, shot.y);
+        if (shot.kind !== 'orbit') s.rotation = shot.angle;
+        if (shot.kind === 'lance') s.scale.set(1, Math.max(1, shot.radius / 6));
+      }
+    }
   }
 
   private drawEffects(dt: number) {

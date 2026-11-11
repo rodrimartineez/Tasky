@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { CHARACTER_BY_ID } from '../../game/content/characters';
 import { UPGRADE_BY_ID } from '../../game/content/upgrades';
 import { emptyHabitsData } from './data';
 import { buyUpgrade, economyOf, EconomyError, finishRun, isUnlocked, startRun, unlock } from './economy';
@@ -109,7 +110,7 @@ describe('mejoras y desbloqueos', () => {
     d = unlock(d, 'character:warden', START, T(3));
     const eco = economyOf(d, START);
     expect(isUnlocked(eco, 'character:warden')).toBe(true);
-    expect(eco.gold).toBe(100);
+    expect(eco.gold).toBe(700 - CHARACTER_BY_ID.get('warden')!.price);
     expect(() => startRun(d, 'mystic', 'withered_woods', '2026-11-11', T(4))).toThrow(EconomyError);
   });
 });

@@ -14,7 +14,7 @@ export interface Atlas {
   frames: Map<string, Frame>;
 }
 
-const SIZE = 256;
+const SIZE = 512;
 /** Sufijo de la silueta blanca de un sprite (destello al recibir un golpe). */
 export const WHITE = '!';
 /** Radio, en píxeles del atlas, de los círculos `ring` y `disc` (se escalan al dibujarlos). */

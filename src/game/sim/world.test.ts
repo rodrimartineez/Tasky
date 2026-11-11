@@ -13,6 +13,7 @@ const config = (seed: number, stats: Stats = BASE_STATS, weapon = 'spark'): RunC
   stage: WITHERED_WOODS,
   stats,
   startingWeapon: weapon,
+  sprite: 'hero',
 });
 
 const play = (w: World, seconds: number) => botPlay(w, seconds, DT);

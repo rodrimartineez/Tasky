@@ -102,40 +102,76 @@
   height: 18px;
 }
 
+/* Huecos de armas (fila superior) y objetos (fila inferior), bajo la barra de arriba y a la izquierda */
 .loadout {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 4px;
-  padding: 4px 10px;
-  max-width: 220px;
+  padding: 6px 10px;
+}
+.slots {
+  display: flex;
+  gap: 4px;
 }
 .slot {
   position: relative;
   display: grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
-  background: rgba(7, 6, 15, 0.55);
+  flex: none;
+  width: 38px;
+  height: 38px;
+  background: rgba(7, 6, 15, 0.62);
   border-radius: 4px;
-  box-shadow: inset 0 0 0 1px rgba(246, 201, 69, 0.5);
+  box-shadow: inset 0 0 0 2px rgba(246, 201, 69, 0.65);
 }
-.passive {
-  box-shadow: inset 0 0 0 1px rgba(181, 140, 255, 0.5);
+.passive .slot {
+  box-shadow: inset 0 0 0 2px rgba(181, 140, 255, 0.65);
+}
+.slot.empty {
+  background: rgba(7, 6, 15, 0.22);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.14);
+}
+.slotIcon {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  pointer-events: none;
 }
 .slot i {
   position: absolute;
-  right: 1px;
-  bottom: -3px;
+  right: 2px;
+  bottom: 0;
+  padding: 0 2px;
+  border-radius: 3px;
+  background: rgba(7, 6, 15, 0.8);
   font-style: normal;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
+  line-height: 14px;
+}
+@media (max-width: 480px) {
+  .slots {
+    gap: 3px;
+  }
+  .slot {
+    width: 30px;
+    height: 30px;
+  }
+  .slotIcon {
+    width: 20px;
+    height: 20px;
+  }
+  .slot i {
+    font-size: 11px;
+    line-height: 12px;
+  }
 }
 
 .boss {
   position: absolute;
-  left: 50%;
-  top: calc(env(safe-area-inset-top) + 116px);
-  transform: translateX(-50%);
+  right: calc(env(safe-area-inset-right) + 10px);
+  top: calc(env(safe-area-inset-top) + 60px);
   padding: 2px 12px;
   background: #9b2335;
   border-radius: 4px;

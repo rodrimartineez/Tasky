@@ -2,6 +2,8 @@
  * Pixel art original del juego, definido como texto: cada carácter es un píxel de la paleta ('.' = transparente).
  * Se rasteriza a un atlas al arrancar el juego (atlas.ts). Versionable, sin archivos de imagen ni recursos de terceros.
  */
+import { PEOPLE } from './people';
+
 export const PALETTE: Record<string, string> = {
   k: '#0b0a14', // contorno
   w: '#ffffff',
@@ -30,6 +32,8 @@ export const PALETTE: Record<string, string> = {
 };
 
 export const SPRITES: Record<string, string[]> = {
+  ...PEOPLE,
+
   // ── Personaje (2 fotogramas de paso) ──
   hero_0: [
     '....kkkk....',
@@ -218,6 +222,78 @@ export const SPRITES: Record<string, string[]> = {
     '..kkkkkk..kkkk..kkkkkk..',
   ],
 
+  e_toad: [
+    '..kkk..kkk..',
+    '.kyyk..kyyk.',
+    '.kykkppkkyk.',
+    'kppppppppppk',
+    'kpPppppppPpk',
+    'kppppkkppppk',
+    'kppppppppppk',
+    '.kPPpPPpPPk.',
+    '..kkPPPPkk..',
+    '.kPk....kPk.',
+    '..k......k..',
+  ],
+  e_leech: [
+    '............',
+    '............',
+    '...kkkkkkk..',
+    '.kkTTtTTTkk.',
+    'kTwkTTTTTTDk',
+    'krTTTTDTTDDk',
+    'kTTTTDDDDDk.',
+    '.kkkkkkkkk..',
+  ],
+  e_rat: [
+    '.kk........',
+    'ksskkkkkk..',
+    'kswsssssSkk',
+    'ksssssssSSk',
+    '.kkssssSSk.',
+    '..kkkkkkkkm',
+    '..k.k..k.k.',
+  ],
+  e_archer: [
+    '...kkkkkk...',
+    '..kWWWWWWk.T',
+    '..kWkWWkWkwT',
+    '..kWWkkWWkwT',
+    '...kWWWWkswT',
+    '..kssWWsskwT',
+    '..kskWWksk.T',
+    '...kWkkWk..T',
+    '...kskksk...',
+    '...kk..kk...',
+  ],
+  e_crystal: [
+    '.k...kk...k.',
+    'kck.kcck.kck',
+    'kcbkcwcckbck',
+    '.kbkcwccBkB.',
+    '.kcbcccccBk.',
+    'kcbkckkcckbk',
+    'kcbkckkcckbk',
+    'kcBkcccccBbk',
+    '.kBkcccccBk.',
+    '..kBBcccBBk.',
+    '..kBBBBBBBk.',
+    '..kkBkkkBkk.',
+  ],
+  e_imp: [
+    'k..........k',
+    'kr.kkkkkk.rk',
+    '.krkrrrrkrk.',
+    '..krrrrrrk..',
+    '..krykkyrk..',
+    '..krrrrrrk..',
+    '...krwwrk...',
+    '..kRrrrrRk..',
+    '.krRrrrrRrk.',
+    '..kRRkkRRk..',
+    '..kk....kk..',
+  ],
+
   // ── Objetos del suelo ──
   i_xp1: ['..kkk..', '.kbbbk.', 'kbwbbbk', 'kbbbbBk', 'kbbbBBk', '.kbBBk.', '..kBk..', '...k...'],
   i_xp2: ['..kkk..', '.kgggk.', 'kgwgggk', 'kggggGk', 'kgggGGk', '.kgGGk.', '..kGk..', '...k...'],
@@ -244,6 +320,21 @@ export const SPRITES: Record<string, string[]> = {
   x_orb: ['..kkkkk..', '.kWWWWWk.', 'kWWwwWWsk', 'kWwwWWWsk', 'kWWWWWssk', 'kWWWWsssk', 'kWsssssSk', '.kssSSSk.', '..kkkkk..'],
   x_flask: ['...kk...', '..kTTk..', '...kk...', '..kcck..', '.kcwcck.', 'kcwccgck', 'kccggggk', 'kcggggGk', '.kgggGk.', '..kkkk..'],
   x_thorn: ['.kkk.', 'kmmmk', 'kmwmk', 'kmmmk', '.kkk.'],
+  x_arrow: ['..w....', 'yTTTTWW', '..w....'],
+  x_slash: ['..www...', '....www.', '.....wWw', '......wW', '......wW', '.....wWw', '....www.', '..www...'],
+  x_boomerang: ['.kkkk....', 'kWWWWk...', 'kWsskk...', '.kkWWk...', '...kWWk..', '....kWWk.', '.....kWWk', '......kWk', '.......kk'],
+  x_mine: ['..kkkk..', '.kSSSSk.', 'kSsSSsSk', 'kSSrrSSk', 'kSSrrSSk', 'kSsSSsSk', '.kSSSSk.', '..kkkk..'],
+  x_beam: ['..c..', '.cwc.', 'cwwwc', '.cwc.', '..c..'],
+  x_meteor: [
+    '..o...kkkk..',
+    'oo.okkDDDDk.',
+    '.oyoDDsDDDDk',
+    'oyyyDsDDDDDk',
+    '.oyoDDDDDDk.',
+    'oo.okkDDDDk.',
+    '..o...kkkk..',
+  ],
+  x_cloud: ['..gggg....', '.gGggggGg.', 'gggGggggGg', 'gGggggGggg', '.gggGggGg.', '..gggggg..'],
 
   // ── Iconos de armas y objetos (interfaz) ──
   w_ember: ['....k....', '...kok...', '..kooyk..', '.kooyook.', '.koyyook.', 'kooywyook', 'koyywyyok', 'koyywwyok', '.koyyyok.', '..kkkkk..'],
@@ -252,6 +343,16 @@ export const SPRITES: Record<string, string[]> = {
   p_hourglass: ['kkkkkkkk', 'kTTTTTTk', '.kyyyyk.', '..kyyk..', '...kk...', '...kk...', '..kwyk..', '.kwyyyk.', 'kTTTTTTk', 'kkkkkkkk'],
   p_lens: ['..kkkk....', '.kbbbbk...', 'kbwbbbbk..', 'kbwbbbbk..', 'kbbbbbbk..', '.kbbbbkk..', '..kkkkTTk.', '......kTTk', '.......kk.'],
   p_boots: ['.kkkk....', '.kTTk....', '.kTTk....', '.kTTk....', '.kTTkkk..', '.kTTTTTk.', 'kTTTTTTTk', 'kDDDDDDDk', 'kkkkkkkkk'],
+  w_whip: ['.kkkk.....', 'kTTTTk....', 'kTkkTTk...', '.kk.kTTk..', '.....kTTk.', '......kTk.', '..kkk.kTk.', '.kyyyk.kk.', '.kyYYk....', '..kkk.....'],
+  w_boomerang: ['kkk.......', 'kWWk......', 'kWWWk.....', '.kWWWk....', '..kWWWk...', '...kWWWk..', '....kWWWk.', '.....kWWk.', '......kWk.', '.......k..'],
+  w_beam: ['......kkk.', '.....kccck', '....kcwck.', '...kcwck..', '..kcwck...', '.kcwck....', 'kcwck.....', 'kwck......', 'kck.......', 'kk........'],
+  w_nova: ['...kkkk...', '..kbbbbk..', '.kb....bk.', 'kb..kk..bk', 'kb.kwwk.bk', 'kb.kwwk.bk', 'kb..kk..bk', '.kb....bk.', '..kbbbbk..', '...kkkk...'],
+  p_clover: ['..kk.kk..', '.kggkggk.', '.kgggggk.', 'kkggGggkk', 'kgggGgggk', 'kkggGggkk', '.kgggggk.', '..kk.Gk..', '.....kGk.'],
+  p_tome: ['.kkkkkkk.', 'kPPPPPPPk', 'kPyyyyyPk', 'kPPPPPPPk', 'kPPwwwPPk', 'kPPPPPPPk', 'kWWWWWWWk', '.kkkkkkk.'],
+  p_scales: ['kkkkkkkkk', 'kbcbcbcbk', 'kcbcbcbck', 'kbcbcbcbk', '.kcbcbck.', '..kbcbk..', '...kck...', '....k....'],
+  p_feather: ['......kk.', '.....kWWk', '....kWWWk', '...kWWWk.', '..kWWWk..', '.kWWsk...', 'kTWsk....', 'kTk......', 'kk.......'],
+  p_candle: ['....y....', '...yoy...', '...kok...', '..kWWWk..', '..kWWWk..', '..kWWWk..', '..kWWsk..', '.kkkkkkk.'],
+  p_horn: ['......kk.', '....kkWWk', '..kkWWWWk', '.kWWWWWk.', 'kWWWWWk..', 'kWWWWk...', 'kTTWk....', '.kkk.....'],
   // Mejoras permanentes (tienda).
   u_armor: ['.kkkkkkk.', 'kWWWWWWsk', 'kWwwWWWsk', 'kWwWWWssk', 'kWWWWWssk', '.kWWWssk.', '.kWWsssk.', '..kWssk..', '...kkk...'],
   u_regen: ['...kkk...', '...kgk...', '...kgk...', 'kkkkgkkkk', 'kgggwgggk', 'kkkkgkkkk', '...kgk...', '...kGk...', '...kkk...'],
@@ -269,6 +370,19 @@ export const SPRITES: Record<string, string[]> = {
   d_stump: ['..DDDDDD..', '.DTttttTD.', 'DTtTttTtTD', 'DTttttttTD', '.DTTTTTTD.', '.DTDTTDTD.', '.DDDDDDDD.'],
   d_bush: ['...dddd.....', '..dGGGGdddd.', '.dGgGGGGGGGd', 'dGGGGgGGGgGd', 'dGGGGGGGGGGd', '.dGGdGGGdGd.', '..dddddddd..'],
 
+  // ── Decoración de los demás escenarios ──
+  d_reed: ['.T...T.', '.D...D.', '.T.T.T.', '.d.G.d.', '.dGdGd.', '..dGd..'],
+  d_puddle: ['..bbbbbb..', '.bBbbbbBb.', 'bBbbwbbbBb', '.bBBBBBBb.', '..bbbbbb..'],
+  d_log: ['..DDDDDDDDD..', '.DTttttttTTD.', 'DTtTkkkkTtTTD', '.DDTTTTTTTDD.'],
+  d_tomb: ['...SSS...', '...SsS...', '.SSSsSSS.', '.SsssssS.', '...SsS...', '..SSsSS..', '.SSSSSSS.'],
+  d_bones: ['W.....W.', '.WW.WW..', '..WWW...', '.WW.WW..', 'W.....W.'],
+  d_pillar: ['SSSSSSSS', '.SsssSS.', '.SsssSS.', '.SSsSSS.', '.SsssSS.', '.SsssSS.', '.SSSSSS.', 'SSSSSSSS'],
+  d_crystal: ['...c...', '..cwc..', '..cwbc.', '.ccwbbc', '.cbwbbB', '..cbbB.', '..BBBB.'],
+  d_rock: ['..SSSSS..', '.SssSSSS.', 'SsWsSSSSS', 'SSSSSSSSS', '.SSSSSSS.'],
+  d_stalagmite: ['...S...', '..SsS..', '..SsS..', '.SSsSS.', '.SsssS.', 'SSSSSSS'],
+  d_cinder: ['.o..o.', '..oo..', '.oOOo.', 'OoOoOO', '.OOOO.'],
+  d_deadtree: ['..T.T...', '...TT.T.', '.T.TT.T.', '..TTTT..', '...TT...', '...TD...', '..DDDD..'],
+
   // ── Cifras de los indicadores de daño (3×5) ──
   n0: ['www', 'w.w', 'w.w', 'w.w', 'www'],
   n1: ['.w.', 'ww.', '.w.', '.w.', 'www'],
@@ -282,12 +396,22 @@ export const SPRITES: Record<string, string[]> = {
   n9: ['www', 'w.w', 'www', '..w', 'www'],
 };
 
+/** Variante de un sprite con otros colores (los jefes de los demás escenarios reutilizan el dibujo del Roble Anciano). */
+const recolor = (rows: string[], map: Record<string, string>) => rows.map((row) => row.replace(/./g, (ch) => map[ch] ?? ch));
+SPRITES.e_bog_king = recolor(SPRITES.e_elder, { G: 'P', g: 'p', d: 'k', T: 'G', D: 'd' });
+SPRITES.e_bone_lord = recolor(SPRITES.e_elder, { G: 'W', g: 'w', d: 'S', T: 's', D: 'S' });
+SPRITES.e_crystal_titan = recolor(SPRITES.e_elder, { G: 'B', g: 'c', d: 'k', T: 'S', D: 'k' });
+SPRITES.e_cinder_lord = recolor(SPRITES.e_elder, { G: 'R', g: 'o', d: 'k', T: 'D', D: 'k', r: 'y' });
+
 /** Nombres que reutilizan otro sprite (iconos de interfaz que coinciden con el objeto del juego). */
 export const ALIASES: Record<string, string> = {
   w_spark: 'x_spark',
   w_lance: 'x_lance',
   w_orb: 'x_orb',
   w_flask: 'x_flask',
+  w_mine: 'x_mine',
+  w_meteor: 'x_meteor',
+  w_cloud: 'x_cloud',
   p_heart: 'i_heart',
   p_lodestone: 'i_magnet',
 };

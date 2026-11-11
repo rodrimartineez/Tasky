@@ -29,7 +29,7 @@ describe.skipIf(!OUT)('estudio de equilibrio', () => {
         const times: number[] = [];
         const golds: number[] = [];
         for (let seed = 1; seed <= SEEDS; seed++) {
-          const w = createWorld({ seed: seed * 97 + day, level, stage: WITHERED_WOODS, stats, startingWeapon: 'spark' });
+          const w = createWorld({ seed: seed * 97 + day, level, stage: WITHERED_WOODS, stats, startingWeapon: 'spark', sprite: 'hero' });
           botPlay(w, RUN_SECONDS);
           const r = runResult(w);
           times.push(r.time / 60);

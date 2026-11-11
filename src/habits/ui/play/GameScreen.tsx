@@ -4,7 +4,7 @@ import { Pause, Play, Skull } from 'lucide-react';
 import { PASSIVE_BY_ID } from '../../../game/content/passives';
 import { WEAPON_BY_ID } from '../../../game/content/weapons';
 import { Game, type Hud } from '../../../game/Game';
-import type { RunConfig, RunResult, UpgradeChoice, World } from '../../../game/sim/types';
+import { MAX_PASSIVES, MAX_WEAPONS, type RunConfig, type RunResult, type UpgradeChoice, type World } from '../../../game/sim/types';
 import { spriteDataUrl } from '../../../game/sprites/atlas';
 import { now } from '../../../core/clock';
 import { saveRunSnapshot } from '../../state/store';
@@ -20,6 +20,26 @@ const clock = (seconds: number) => {
 
 function Icon({ name, size = 24 }: { name: string; size?: number }) {
   return <img className={styles.icon} src={spriteDataUrl(name)} alt="" style={{ width: size, height: size }} draggable={false} />;
+}
+
+/** Una fila de huecos de la partida: los ocupados con su icono y nivel, y los libres como marcos tenues. */
+function Slots({ items, total, defs, passive = false }: { items: { id: string; level: number }[]; total: number; defs: Map<string, { name: string; icon: string }>; passive?: boolean }) {
+  return (
+    <div className={`${styles.slots} ${passive ? styles.passive : ''}`}>
+      {Array.from({ length: total }, (_, i) => {
+        const item = items[i];
+        const def = item && defs.get(item.id);
+        return def ? (
+          <span key={item.id} className={styles.slot} title={def.name}>
+            <img className={styles.slotIcon} src={spriteDataUrl(def.icon)} alt="" draggable={false} />
+            <i>{item.level}</i>
+          </span>
+        ) : (
+          <span key={`empty-${i}`} className={`${styles.slot} ${styles.empty}`} />
+        );
+      })}
+    </div>
+  );
 }
 
 interface GameScreenProps {
@@ -153,18 +173,8 @@ export default function GameScreen({ level, config, resume, onFinish, onExit }: 
             </button>
           </div>
           <div className={styles.loadout}>
-            {hud.weapons.map((w) => (
-              <span key={w.id} className={styles.slot} title={WEAPON_BY_ID.get(w.id)?.name}>
-                <Icon name={WEAPON_BY_ID.get(w.id)?.icon ?? ''} size={18} />
-                <i>{w.level}</i>
-              </span>
-            ))}
-            {hud.passives.map((p) => (
-              <span key={p.id} className={`${styles.slot} ${styles.passive}`} title={PASSIVE_BY_ID.get(p.id)?.name}>
-                <Icon name={PASSIVE_BY_ID.get(p.id)?.icon ?? ''} size={18} />
-                <i>{p.level}</i>
-              </span>
-            ))}
+            <Slots items={hud.weapons} total={MAX_WEAPONS} defs={WEAPON_BY_ID} />
+            <Slots items={hud.passives} total={MAX_PASSIVES} defs={PASSIVE_BY_ID} passive />
           </div>
           {hud.bossAlive && <div className={styles.boss}>¡Jefe!</div>}
           {chest && (

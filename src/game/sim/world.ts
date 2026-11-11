@@ -158,6 +158,22 @@ function updateEnemy(w: World, e: Enemy, dt: number) {
         enemyShot(w, e.x, e.y, Math.atan2(dy, dx), 80, e.damage);
       }
       break;
+    case 'volley':
+      // Se mantiene lejos y dispara tres flechas en abanico.
+      if (dist < 100) {
+        vx = -vx * 0.7;
+        vy = -vy * 0.7;
+      } else if (dist < 140) {
+        vx = -ny * e.speed * 0.5;
+        vy = nx * e.speed * 0.5;
+      }
+      e.t1 -= dt;
+      if (e.t1 <= 0 && dist < 230) {
+        e.t1 = 3.2;
+        const aim = Math.atan2(dy, dx);
+        for (let i = -1; i <= 1; i++) enemyShot(w, e.x, e.y, aim + i * 0.22, 90, e.damage * 0.8, 'x_arrow');
+      }
+      break;
     case 'boss':
       // Ráfaga radial cada 4 s e invocación de esbirros cada 9 s.
       e.t1 -= dt;
@@ -170,7 +186,7 @@ function updateEnemy(w: World, e: Enemy, dt: number) {
       }
       if (e.t2 <= 0) {
         e.t2 = 9;
-        const minion = ENEMY_BY_ID.get('bones');
+        const minion = ENEMY_BY_ID.get(e.def.minion ?? 'bones');
         if (minion && w.enemies.length < maxEnemies(w)) for (let i = 0; i < 6; i++) spawnEnemy(w, minion, e.x + Math.cos(i) * 26, e.y + Math.sin(i) * 26);
       }
       break;
