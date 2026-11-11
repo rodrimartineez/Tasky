@@ -23,6 +23,8 @@ interface Session {
   level: number;
   config: RunConfig;
   resume: World | null;
+  /** Partida del modo de pruebas: no se registra. */
+  test: boolean;
 }
 
 const clock = (seconds: number) => `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
@@ -66,25 +68,59 @@ export function PlayPage() {
       alive = false;
     };
   }, [session, open?.level]);
-  const resumable = open && snapshot && snapshot.level === open.level ? snapshot : null;
+  const resumable = eco.testMode
+    ? snapshot?.test
+      ? snapshot
+      : null
+    : open && snapshot && !snapshot.test && snapshot.level === open.level
+      ? snapshot
+      : null;
 
-  const character = profile?.character ?? 'wanderer';
-  const stage = profile?.stage ?? 'withered_woods';
+  // Lo elegido en el modo de pruebas puede estar bloqueado en producción: entonces se usa lo inicial.
+  const character = profile && isUnlocked(eco, `character:${profile.character}`) ? profile.character : 'wanderer';
+  const stage = profile && isUnlocked(eco, `stage:${profile.stage}`) ? profile.stage : 'withered_woods';
   const stageDef = STAGES.find((s) => s.id === stage) ?? STAGES[0];
 
   const play = () =>
     attempt(() => {
-      const { level, comeback: boost } = startRun();
-      if (level > 0) setSession({ level, config: buildRunConfig(level, character, stage, eco.upgrades, boost ?? undefined), resume: null });
+      const { level, comeback: boost, test } = startRun();
+      if (level > 0)
+        setSession({
+          level,
+          config: buildRunConfig(level, character, stage, eco.upgrades, boost ?? undefined),
+          resume: null,
+          test,
+        });
     });
 
   const resume = () => {
-    if (!open || !resumable) return;
-    setSession({ level: open.level, config: buildRunConfig(open.level, open.character, open.stage, eco.upgrades), resume: resumable.world as World });
+    if (!resumable) return;
+    if (eco.testMode) {
+      setSession({
+        level: 1,
+        config: buildRunConfig(1, character, stage, eco.upgrades),
+        resume: resumable.world as World,
+        test: true,
+      });
+      return;
+    }
+    if (!open) return;
+    setSession({
+      level: open.level,
+      config: buildRunConfig(open.level, open.character, open.stage, eco.upgrades),
+      resume: resumable.world as World,
+      test: false,
+    });
   };
 
   const finish = (level: number, result: RunResult) => {
-    finishRun(level, { gold: result.gold, time: result.time, kills: result.kills, won: result.won, xpLevel: result.level });
+    finishRun(level, {
+      gold: result.gold,
+      time: result.time,
+      kills: result.kills,
+      won: result.won,
+      xpLevel: result.level,
+    });
     void saveRunSnapshot(null);
   };
 
@@ -104,13 +140,47 @@ export function PlayPage() {
     });
     setBuying(null);
   };
-  const buyingName = buying && (CHARACTERS.find((c) => `character:${c.id}` === buying)?.name ?? STAGES.find((s) => `stage:${s.id}` === buying)?.name);
+  // Objetivo de oro: el contenido bloqueado más barato, con una estimación de cuántas partidas faltan.
+  const goal = useMemo(() => {
+    if (eco.testMode) return null;
+    const locked = [
+      ...CHARACTERS.map((c) => ({ key: `character:${c.id}`, name: c.name, price: c.price })),
+      ...STAGES.map((s) => ({ key: `stage:${s.id}`, name: s.name, price: s.price })),
+    ]
+      .filter((x) => !isUnlocked(eco, x.key))
+      .sort((a, b) => a.price - b.price)[0];
+    if (!locked) return null;
+    const recent = eco.runs.filter((r) => r.result).slice(-7);
+    const average = recent.reduce((sum, r) => sum + (r.result?.gold ?? 0), 0) / Math.max(1, recent.length);
+    const runs = average > 0 ? Math.ceil((locked.price - eco.gold) / average) : null;
+    return { ...locked, runs };
+  }, [eco]);
+
+  const buyingName =
+    buying && (CHARACTERS.find((c) => `character:${c.id}` === buying)?.name ?? STAGES.find((s) => `stage:${s.id}` === buying)?.name);
   const buyingPrice = buying ? priceOf(buying) : 0;
 
   return (
     <div className={styles.page}>
       <section className={styles.card}>
-        {open ? (
+        {eco.testMode ? (
+          <>
+            <p className={styles.testBadge}>Modo de pruebas</p>
+            <h1 className={styles.title}>Nivel 1</h1>
+            <p className={styles.text}>
+              Mientras el juego está en desarrollo puedes jugar sin límite: todas las partidas son de nivel 1 y tienes todos los personajes
+              y escenarios. El oro de estas partidas no se guarda; tus hábitos, puntos y mejoras funcionan con normalidad.
+            </p>
+            {resumable && (
+              <Button variant="secondary" icon={<Play />} className={styles.play} onClick={resume} disabled={!!session}>
+                Continuar la partida de prueba
+              </Button>
+            )}
+            <Button variant="primary" icon={<Swords />} className={styles.play} onClick={play} disabled={!!session}>
+              {session ? 'Cargando…' : resumable ? 'Nueva partida' : 'Jugar'}
+            </Button>
+          </>
+        ) : open ? (
           <>
             <p className={styles.stage}>Partida en curso</p>
             <h1 className={styles.title}>Nivel {open.level}</h1>
@@ -124,7 +194,8 @@ export function PlayPage() {
             ) : (
               <>
                 <p className={styles.text}>
-                  Esta partida se empezó en otro dispositivo o no llegó a guardarse aquí. Ciérrala para seguir con el nivel {open.level + 1}.
+                  Esta partida se empezó en otro dispositivo o no llegó a guardarse aquí. Ciérrala para seguir con el nivel {open.level + 1}
+                  .
                 </p>
                 <Button variant="primary" className={styles.play} onClick={() => setClosing(true)}>
                   Cerrar partida
@@ -146,21 +217,46 @@ export function PlayPage() {
             </Button>
           </>
         )}
-        <dl className={styles.stats}>
-          <div>
-            <dt>Partidas jugadas</dt>
-            <dd>{eco.runs.length}</dd>
-          </div>
-          <div>
-            <dt>Mejor tiempo</dt>
-            <dd>{clock(eco.bestTime)}</dd>
-          </div>
-          <div>
-            <dt>Oro ganado</dt>
-            <dd>{gold(eco.totalGoldEarned)}</dd>
-          </div>
-        </dl>
+        {!eco.testMode && (
+          <dl className={styles.stats}>
+            <div>
+              <dt>Partidas jugadas</dt>
+              <dd>{eco.runs.length}</dd>
+            </div>
+            <div>
+              <dt>Mejor tiempo</dt>
+              <dd>{clock(eco.bestTime)}</dd>
+            </div>
+            <div>
+              <dt>Oro ganado</dt>
+              <dd>{gold(eco.totalGoldEarned)}</dd>
+            </div>
+          </dl>
+        )}
       </section>
+
+      {goal && (
+        <div className={styles.goal}>
+          <div className={styles.goalHead}>
+            <span>
+              Próximo objetivo: <b>{goal.name}</b>
+            </span>
+            <span className={styles.goalPrice}>
+              <CoinIcon size={12} /> {gold(eco.gold)} / {gold(goal.price)}
+            </span>
+          </div>
+          <div className={styles.goalBar} aria-hidden="true">
+            <span style={{ width: `${Math.min(100, (eco.gold / goal.price) * 100)}%` }} />
+          </div>
+          <p className={styles.goalText}>
+            {eco.gold >= goal.price
+              ? '¡Ya puedes desbloquearlo!'
+              : goal.runs !== null
+                ? `Al ritmo de tus últimas partidas, te faltan unas ${goal.runs.toLocaleString('es-ES')} ${goal.runs === 1 ? 'partida' : 'partidas'}.`
+                : 'Cada partida te acerca un poco más.'}
+          </p>
+        </div>
+      )}
 
       {comeback && !open && (
         <div className={styles.comeback} role="status">
@@ -184,13 +280,14 @@ export function PlayPage() {
               <button
                 key={c.id}
                 type="button"
-                className={`${styles.option} ${c.id === character ? styles.selected : ''} ${unlocked ? '' : styles.locked}`}
+                className={`${styles.option} ${c.id === character ? styles.selected : ''} ${unlocked ? '' : styles.locked} ${c.legendary ? styles.legendary : ''}`}
                 onClick={() => choose('character', c.id)}
                 disabled={!!open}
                 aria-pressed={c.id === character}
               >
                 <img className={styles.sprite} src={spriteDataUrl(`${c.sprite}_0`)} alt="" draggable={false} />
                 <span className={styles.optionName}>{c.name}</span>
+                {c.legendary && <span className={styles.legendaryTag}>Legendario</span>}
                 <span className={styles.optionText}>{c.trait}</span>
                 {!unlocked && (
                   <span className={styles.price}>
@@ -229,7 +326,9 @@ export function PlayPage() {
         </div>
       </section>
 
-      <p className={styles.note}>Móvil: arrastra el dedo por la pantalla · Teclado: WASD o flechas, Esc para pausar y 1–4 para elegir mejora.</p>
+      <p className={styles.note}>
+        Móvil: arrastra el dedo por la pantalla · Teclado: WASD o flechas, Esc para pausar y 1–4 para elegir mejora.
+      </p>
 
       <ConfirmDialog
         open={!!buying}
@@ -249,7 +348,14 @@ export function PlayPage() {
         description="Como no hay una copia guardada en este dispositivo, la partida se cerrará sin oro. El nivel siguiente queda disponible."
         confirmLabel="Cerrar partida"
         onConfirm={() => {
-          if (open) finishRun(open.level, { gold: 0, time: 0, kills: 0, won: false, xpLevel: 0 });
+          if (open)
+            finishRun(open.level, {
+              gold: 0,
+              time: 0,
+              kills: 0,
+              won: false,
+              xpLevel: 0,
+            });
           setClosing(false);
         }}
         onClose={() => setClosing(false)}
@@ -261,6 +367,7 @@ export function PlayPage() {
             level={session.level}
             config={session.config}
             resume={session.resume}
+            test={session.test}
             onFinish={(result) => finish(session.level, result)}
             onExit={() => setSession(null)}
           />

@@ -1,7 +1,7 @@
 import { ENEMY_BY_ID } from '../content/enemies';
 import { emit, hurtPlayer, maxEnemies, near, queryNear, rand, rebuildGrid, ringPoint, spawnEnemy } from './core';
-import { levelDensity } from './difficulty';
-import { RUN_SECONDS, type Enemy, type RunConfig, type RunResult, type World } from './types';
+import { levelDensity, survivalBonus } from './difficulty';
+import { MAX_WEAPONS, RUN_SECONDS, type Enemy, type RunConfig, type RunResult, type World } from './types';
 import { applyChoice, newWeapon, openChest, rollChoices } from './upgrades';
 import { enemyShot, updateProjectiles, updateWeapons } from './weapons';
 
@@ -24,8 +24,11 @@ export function createWorld(config: RunConfig): World {
       xp: 0,
       xpNext: xpForLevel(1),
       stats: { ...config.stats },
-      weapons: [newWeapon(config.startingWeapon)],
+      weapons: [config.startingWeapon, ...(config.bonusWeapons ?? [])].slice(0, MAX_WEAPONS).map(newWeapon),
       passives: [],
+      rerolls: config.stats.rerolls ?? 0,
+      banishes: config.stats.banishes ?? 0,
+      banished: [],
     },
     enemies: [],
     projectiles: [],
@@ -303,6 +306,7 @@ export function step(w: World, dt: number, moveX: number, moveY: number) {
   compact(w.projectiles);
   compact(w.pickups);
 
+  if (p.hp <= 0 && (p.stats.revival ?? 0) > 0) revive(w);
   if (p.hp <= 0) {
     p.hp = 0;
     w.phase = 'dead';
@@ -312,6 +316,27 @@ export function step(w: World, dt: number, moveX: number, moveY: number) {
     w.choices = rollChoices(w);
     w.phase = 'levelup';
   }
+}
+
+/** Segundos de invulnerabilidad al revivir. */
+const REVIVE_GRACE = 3;
+const REVIVE_RADIUS = 160;
+
+/** Revive con media vida, aparta a los enemigos cercanos y da unos segundos de invulnerabilidad. */
+function revive(w: World) {
+  const p = w.player;
+  p.stats.revival -= 1;
+  p.hp = p.stats.maxHp * 0.5;
+  p.hurtTimer = REVIVE_GRACE;
+  for (const e of w.enemies) {
+    const dx = e.x - p.x;
+    const dy = e.y - p.y;
+    const d = Math.hypot(dx, dy);
+    if (d >= REVIVE_RADIUS || d === 0) continue;
+    e.x = p.x + (dx / d) * REVIVE_RADIUS;
+    e.y = p.y + (dy / d) * REVIVE_RADIUS;
+  }
+  w.fx.push({ type: 'ring', x: p.x, y: p.y, radius: REVIVE_RADIUS, color: 0xffe08a }, { type: 'shake', power: 6 });
 }
 
 /** Elige una de las opciones de la subida de nivel y reanuda la partida (o abre la siguiente). */
@@ -329,12 +354,14 @@ export function chooseUpgrade(w: World, index: number) {
 }
 
 export function runResult(w: World): RunResult {
+  const bonus = survivalBonus(w.config.level, w.time, w.player.stats.greed);
   return {
     won: w.phase === 'won',
     time: w.time,
     level: w.player.level,
     kills: w.kills,
-    gold: Math.floor(w.gold),
+    gold: Math.floor(w.gold) + bonus,
+    survivalBonus: bonus,
     weapons: w.player.weapons.map((ws) => ({ id: ws.id, level: ws.level, dealt: ws.dealt })),
   };
 }

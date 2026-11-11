@@ -10,6 +10,8 @@ export interface RunSnapshot {
   savedAt: Timestamp;
   /** Estado completo de la simulación (game/sim World), JSON puro. */
   world: unknown;
+  /** Partida del modo de pruebas (no está en el ledger; nunca se reanuda como partida real). */
+  test?: boolean;
 }
 import type { HabitsRecords } from './sync';
 

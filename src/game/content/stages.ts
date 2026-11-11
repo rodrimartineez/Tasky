@@ -59,7 +59,7 @@ export const WITHERED_WOODS: StageDef = {
 export const GLOOM_BOG: StageDef = {
   id: 'gloom_bog',
   name: 'Pantano Sombrío',
-  price: 5000,
+  price: 4_500,
   ground: 't_bog',
   props: ['d_reed', 'd_puddle', 'd_log', 'd_tuft'],
   spawns: [
@@ -91,7 +91,7 @@ export const GLOOM_BOG: StageDef = {
 export const FORGOTTEN_CRYPT: StageDef = {
   id: 'forgotten_crypt',
   name: 'Cripta Olvidada',
-  price: 15000,
+  price: 25_000,
   ground: 't_crypt',
   props: ['d_tomb', 'd_bones', 'd_pillar', 'd_stone'],
   spawns: [
@@ -124,7 +124,7 @@ export const FORGOTTEN_CRYPT: StageDef = {
 export const CRYSTAL_CAVES: StageDef = {
   id: 'crystal_caves',
   name: 'Cavernas de Cristal',
-  price: 35000,
+  price: 75_000,
   ground: 't_cave',
   props: ['d_crystal', 'd_rock', 'd_stalagmite', 'd_stone'],
   spawns: [
@@ -155,7 +155,7 @@ export const CRYSTAL_CAVES: StageDef = {
 export const ASH_WASTES: StageDef = {
   id: 'ash_wastes',
   name: 'Páramo de Ceniza',
-  price: 70000,
+  price: 150_000,
   ground: 't_ash',
   props: ['d_cinder', 'd_deadtree', 'd_rock', 'd_bones'],
   spawns: [

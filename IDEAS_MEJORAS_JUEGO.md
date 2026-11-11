@@ -127,7 +127,7 @@ validación del usuario y de una decisión: el escudo da al perfil normal un +24
   el usuario antes de cerrar la fase.
 - **Riesgo:** D3 y C4 suavizan el castigo. Si el cociente constante/irregular baja de 6×, se reducen.
 
-### Fase 5c — Builds
+### Fase 5c — Builds ✔️ (pendiente de tu validación)
 
 **Primer paso:** reequilibrar la dificultad y el oro, porque con el contenido de la Fase 5 el juego se ha vuelto
 mucho más fácil para los perfiles constante y normal (`ANALISIS_ECONOMIA.md` §9).
@@ -138,6 +138,20 @@ mucho más fácil para los perfiles constante y normal (`ANALISIS_ECONOMIA.md` �
 | C1 | Revivir, Repetir elección y Descartar como mejoras permanentes **compradas con puntos de hábitos** (revivir con coste muy alto y máximo pequeño, excepción aprobada a «sin máximo») | Tests de economía; el estudio comprueba que revivir no rompe la curva |
 
 - **Encaje con el principio:** C1 refuerza los hábitos, porque son mejoras muy deseables y solo se consiguen con puntos.
+
+**Añadido a la 5c por petición del usuario (11/11/2026):**
+- **Modo de pruebas** (`src/habits/core/release.ts`, `GAME_RELEASE.testMode`): partidas ilimitadas, siempre de nivel 1,
+  todo desbloqueado y el oro no se guarda. Al pasar a producción se desactiva y se abre una temporada nueva
+  (`HABITS_GUIDE.md` §10): la progresión de partidas y el oro empiezan de cero sin tocar hábitos, puntos ni mejoras.
+- **Compatibilidad móvil:** cadena de motores gráficos (WebGL → WebGL ligero → canvas), resolución máxima ×2,
+  recarga automática si tras un despliegue falta un trozo de código antiguo, y mensaje de error con el detalle y
+  «Recargar y reintentar» en lugar del aviso genérico.
+- **Escudo más escaso:** uno cada **60 días** (antes 21) y el día salvado ya no cuenta para el siguiente
+  (`ANALISIS_ECONOMIA.md` §10).
+- **Economía de oro a varios años:** precios de 300 a 400 000 en personajes normales, escenarios hasta 150 000 y
+  4 **legendarios** con habilidades propias (Fénix 750 000, Coleccionista 1,5 M, Cronomante 4 M, Sol Eterno 10 M).
+  Bonificación de oro por sobrevivir más de 10 minutos que crece con el nivel. El oro sigue sin comprar estadísticas.
+  El campamento muestra el próximo objetivo y cuántas partidas faltan.
 
 ### Fase 6 — PWA y rendimiento
 - Lo ya previsto: precarga del juego para jugar sin conexión, rendimiento en móviles de gama media (objetivo:
@@ -202,7 +216,7 @@ mucho más fácil para los perfiles constante y normal (`ANALISIS_ECONOMIA.md` �
 ### D. Economía
 - **D1. Usos del oro** ✅ (Fase 10, antes de ~1 año de uso). El oro sigue sirviendo, sin dar poder permanente.
 - **D2. Racha de hábitos semanales** ✔️ (Fase 5b). +1 punto cada 4 semanas seguidas, con tope.
-- **D3. Escudo de racha** ✔️ (Fase 5b). Uno cada 21 días de racha; protege un día fallado.
+- **D3. Escudo de racha** ✔️ (Fase 5b; ajustado en la 5c). Uno cada 60 días de racha; protege un día fallado y ese día no cuenta para el siguiente.
 - **D4. Límite contra hábitos inflados** ✔️ (Fase 5b). Los diarios a partir del 8.º dan la mitad.
 
 ### E. Calidad de vida

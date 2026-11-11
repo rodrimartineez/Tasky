@@ -2,6 +2,7 @@ import type { LocalDate } from '../../core/model';
 import type { RunRecord } from './economy';
 import { amountsOf, history, live } from './habits';
 import type { HabitsData } from './model';
+import { GAME_RELEASE, type GameRelease } from './release';
 import { addDays, dateInZone, daysBetween, periodEnd, periodStart } from './periods';
 
 /**
@@ -55,8 +56,9 @@ function activeDays(data: HabitsData, timeZone: string, today: LocalDate): Set<L
   return days;
 }
 
-export function comebackFor(data: HabitsData, today: LocalDate, runs: RunRecord[]): Comeback | null {
-  if (!data.profile) return null;
+export function comebackFor(data: HabitsData, today: LocalDate, runs: RunRecord[], release: GameRelease = GAME_RELEASE): Comeback | null {
+  // En el modo de pruebas las partidas son de nivel 1 y no se registran: no hay ayuda que aplicar.
+  if (!data.profile || release.testMode) return null;
   const { timeZone, startedOn } = data.profile;
   const active = activeDays(data, timeZone, today);
 

@@ -17,6 +17,7 @@ import {
 } from './habits';
 import type { HabitsData } from './model';
 import { dateInZone, periodKey, periodsBetween } from './periods';
+import { SHIELD_EVERY } from './rewards';
 import { mergeHabitsRemote, noHabitsRecords, pendingHabitsChanges, rememberHabitsVersions } from './sync';
 
 const pointsBalance = (d: HabitsData) => d.ledger.reduce((sum, e) => sum + e.points, 0);
@@ -208,27 +209,36 @@ describe('puntos por racha', () => {
 describe('escudo de racha, semanales y límite de diarios (Fase 5b)', () => {
   const days = (from: number, n: number) => Array.from({ length: n }, (_, i) => new Date(Date.UTC(2026, 10, from + i)).toISOString().slice(0, 10));
 
-  it('21 días cumplidos dan un escudo que salva un día fallado (sin puntos ese día)', () => {
+  const dayN = (n: number) => days(n, 1)[0];
+  const N = SHIELD_EVERY;
+
+  it(`${SHIELD_EVERY} días cumplidos dan un escudo que salva un día fallado (sin puntos ese día)`, () => {
     const { data, ids } = setup(read);
     let d = data;
-    const met = [...days(2, 21), ...days(24, 3)]; // falla el 23
-    for (const day of met) d = log(d, ids[0], day, 3);
-    d = evaluateRewards(d, '2026-11-27', T0);
+    // Cumple N días desde el 2 de noviembre, falla el siguiente y vuelve a cumplir 3.
+    for (const day of [...days(2, N), ...days(N + 3, 3)]) d = log(d, ids[0], day, 3);
+    const today = dayN(N + 6);
+    d = evaluateRewards(d, today, T0);
     const byDay = new Map(d.ledger.map((e) => [e.period, e]));
-    expect(byDay.has('2026-11-23')).toBe(false);
-    // La racha sigue: el día 24 es el 22.º cumplido.
-    expect(byDay.get('2026-11-24')?.details).toEqual({ streak: 22 });
-    const results = history(d.habits[0], amountsOf(d), TZ, '2026-11-27');
-    expect(results.find((r) => r.key === '2026-11-23')?.shielded).toBe(true);
-    expect(streaks(results, 'build', true)).toMatchObject({ current: 24, shield: false, charge: 3 });
+    expect(byDay.has(dayN(N + 2))).toBe(false);
+    // La racha sigue: el día después del fallo es el (N+1).º cumplido.
+    expect(byDay.get(dayN(N + 3))?.details).toEqual({ streak: N + 1 });
+    const results = history(d.habits[0], amountsOf(d), TZ, today);
+    expect(results.find((r) => r.key === dayN(N + 2))?.shielded).toBe(true);
+    // El día salvado no cuenta para el siguiente escudo: solo los 3 cumplidos después.
+    expect(streaks(results, 'build', true)).toMatchObject({ current: N + 3, shield: false, charge: 3 });
   });
 
-  it('sin escudo (menos de 21 días) un fallo rompe la racha, y el escudo se gasta una sola vez', () => {
+  it('sin escudo (menos días) un fallo rompe la racha, y el escudo se gasta una sola vez', () => {
     const { data, ids } = setup(read);
     let d = data;
-    for (const day of [...days(2, 21), ...days(25, 2)]) d = log(d, ids[0], day, 3); // falla 23 y 24
-    d = evaluateRewards(d, '2026-11-27', T0);
-    expect(d.ledger.find((e) => e.period === '2026-11-25')?.details).toEqual({ streak: 1 });
+    for (const day of [...days(2, N - 1), ...days(N + 2, 2)]) d = log(d, ids[0], day, 3); // falla 1 día antes del escudo
+    d = evaluateRewards(d, dayN(N + 5), T0);
+    expect(d.ledger.find((e) => e.period === dayN(N + 2))?.details).toEqual({ streak: 1 });
+    let e = data;
+    for (const day of [...days(2, N), ...days(N + 4, 2)]) e = log(e, ids[0], day, 3); // falla 2 días seguidos
+    e = evaluateRewards(e, dayN(N + 7), T0);
+    expect(e.ledger.find((x) => x.period === dayN(N + 4))?.details).toEqual({ streak: 1 });
   });
 
   it('los semanales suman +1 cada 4 semanas seguidas, hasta 6 puntos', () => {

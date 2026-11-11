@@ -4,6 +4,9 @@ import { emptyHabitsData } from './data';
 import type { RunRecord } from './economy';
 import { createHabit, ensureProfile, logHabit } from './habits';
 import type { HabitsData } from './model';
+import type { GameRelease } from './release';
+
+const PROD: GameRelease = { testMode: false, season: 1, startsOn: null };
 
 const TZ = 'Europe/Madrid';
 const START = '2026-11-01';
@@ -22,26 +25,26 @@ describe('ayuda de vuelta', () => {
   const back = withDays([1, 2, 3, 4, 5, 26]); // 20 días sin hábitos (6–25) y vuelve el 26
 
   it('no hay ayuda mientras la pausa sigue, ni con pausas cortas', () => {
-    expect(comebackFor(withDays([1, 2, 3]), day(25), [])).toBeNull();
-    expect(comebackFor(withDays([1, 2, 3, 14]), day(14), [])).toBeNull(); // 10 días
+    expect(comebackFor(withDays([1, 2, 3]), day(25), [], PROD)).toBeNull();
+    expect(comebackFor(withDays([1, 2, 3, 14]), day(14), [], PROD)).toBeNull(); // 10 días
   });
 
   it('al volver tras 14 días o más, la ayuda depende de la duración de la pausa', () => {
-    const c = comebackFor(back, day(26), [])!;
+    const c = comebackFor(back, day(26), [], PROD)!;
     expect([c.returnedOn, c.breakDays, c.runsLeft]).toEqual([day(26), 20, 5]);
     expect(c.strength).toBeCloseTo(0.4 + 0.6 * (6 / 46));
     expect(c.xp).toBeLessThan(COMEBACK.xp);
-    const long = comebackFor(withDays([1, 80]), day(80), [])!;
+    const long = comebackFor(withDays([1, 80]), day(80), [], PROD)!;
     expect([long.strength, long.xp, long.hp]).toEqual([1, COMEBACK.xp, COMEBACK.hp]);
   });
 
   it('se retira partida a partida y acaba tras 5 partidas o 7 días', () => {
-    const full = comebackFor(back, day(26), [])!.strength;
-    const afterTwo = comebackFor(back, day(27), [run(1), run(26), run(27)])!; // la del día 1 no cuenta
+    const full = comebackFor(back, day(26), [], PROD)!.strength;
+    const afterTwo = comebackFor(back, day(27), [run(1), run(26), run(27)], PROD)!; // la del día 1 no cuenta
     expect(afterTwo.runsLeft).toBe(3);
     expect(afterTwo.strength).toBeCloseTo(full * 0.6);
-    expect(comebackFor(back, day(28), [26, 26, 27, 27, 28].map(run))).toBeNull();
-    expect(comebackFor(back, day(33), [])).toBeNull();
-    expect(comebackFor(back, day(32), [])).not.toBeNull();
+    expect(comebackFor(back, day(28), [26, 26, 27, 27, 28].map(run), PROD)).toBeNull();
+    expect(comebackFor(back, day(33), [], PROD)).toBeNull();
+    expect(comebackFor(back, day(32), [], PROD)).not.toBeNull();
   });
 });

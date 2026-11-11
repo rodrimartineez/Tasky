@@ -1,3 +1,4 @@
+import { behaviourOf, WEAPON_BY_ID } from '../content/weapons';
 import { damageEnemy, emit, hurtPlayer, near, nearestEnemy, queryNear, rand } from './core';
 import type { Enemy, ProjKind, Projectile, WeaponState, World } from './types';
 
@@ -33,6 +34,10 @@ function spawnProjectile(w: World, kind: ProjKind, sprite: string, weapon: numbe
 
 type Fire = (w: World, ws: WeaponState, index: number) => void;
 
+/** Sprite del proyectil de un arma: el de su evolución si lo tiene, y si no el de siempre. */
+const look = (ws: WeaponState, fallback: string) => WEAPON_BY_ID.get(ws.id)?.proj ?? fallback;
+const tint = (ws: WeaponState, fallback: number) => WEAPON_BY_ID.get(ws.id)?.color ?? fallback;
+
 /** Ángulo hacia el enemigo más cercano en pantalla (la vista mide unos 260 px en su lado corto) o, si no hay, hacia donde mira el jugador. */
 function aimAngle(w: World, range = 150): number {
   const { player } = w;
@@ -48,7 +53,7 @@ const spark: Fire = (w, ws, index) => {
   const speed = ws.stats.speed * player.stats.projSpeed;
   for (let i = 0; i < count; i++) {
     const angle = aim + (i - (count - 1) / 2) * 0.2;
-    const p = spawnProjectile(w, 'bolt', 'x_spark', index, player.x, player.y);
+    const p = spawnProjectile(w, 'bolt', look(ws, 'x_spark'), index, player.x, player.y);
     p.vx = Math.cos(angle) * speed;
     p.vy = Math.sin(angle) * speed;
     p.angle = angle;
@@ -69,7 +74,7 @@ const lance: Fire = (w, ws, index) => {
   for (let i = 0; i < count; i++) {
     // Varias lanzas salen en paralelo, separadas en perpendicular.
     const offset = (i - (count - 1) / 2) * 12;
-    const p = spawnProjectile(w, 'lance', 'x_lance', index, player.x - Math.sin(angle) * offset, player.y + Math.cos(angle) * offset);
+    const p = spawnProjectile(w, 'lance', look(ws, 'x_lance'), index, player.x - Math.sin(angle) * offset, player.y + Math.cos(angle) * offset);
     p.vx = Math.cos(angle) * speed;
     p.vy = Math.sin(angle) * speed;
     p.angle = angle;
@@ -87,7 +92,7 @@ const orbs: Fire = (w, ws, index) => {
   const count = ws.stats.amount + player.stats.amount;
   const life = ws.stats.duration * player.stats.duration;
   for (let i = 0; i < count; i++) {
-    const p = spawnProjectile(w, 'orbit', 'x_orb', index, player.x, player.y);
+    const p = spawnProjectile(w, 'orbit', look(ws, 'x_orb'), index, player.x, player.y);
     p.angle = (i / count) * Math.PI * 2;
     p.orbitR = ws.stats.area * player.stats.area;
     p.vx = ws.stats.speed * player.stats.projSpeed; // velocidad angular
@@ -130,7 +135,7 @@ const storm: Fire = (w, ws, index) => {
     let fromY = current.y - 140; // cae del cielo
     const hit: number[] = [];
     for (let jump = 0; jump <= ws.stats.pierce && current; jump++) {
-      emit(w, { type: 'line', x: fromX, y: fromY, x2: current.x, y2: current.y, color: 0xbfe8ff });
+      emit(w, { type: 'line', x: fromX, y: fromY, x2: current.x, y2: current.y, color: tint(ws, 0xbfe8ff) });
       hit.push(current.uid);
       fromX = current.x;
       fromY = current.y;
@@ -150,7 +155,7 @@ const flask: Fire = (w, ws, index) => {
   for (let i = 0; i < count; i++) {
     const target = scratch.length > 0 ? scratch[Math.floor(rand(w) * scratch.length)] : null;
     const angle = rand(w) * Math.PI * 2;
-    const p = spawnProjectile(w, 'bomb', 'x_flask', index, player.x, player.y);
+    const p = spawnProjectile(w, 'bomb', look(ws, 'x_flask'), index, player.x, player.y);
     p.tx = target ? target.x : player.x + Math.cos(angle) * 70;
     p.ty = target ? target.y : player.y + Math.sin(angle) * 70;
     p.total = ws.stats.duration + i * 0.12;
@@ -181,7 +186,7 @@ const whip: Fire = (w, ws, index) => {
       if ((dx * cx + dy * cy) / d < 0.3) continue; // fuera del sector (unos ±72°)
       damageEnemy(w, e, ws.stats.damage, index, (dx / d) * ws.stats.knockback, (dy / d) * ws.stats.knockback);
     }
-    const p = spawnProjectile(w, 'slash', 'x_slash', index, player.x + cx * reach * 0.55, player.y + cy * reach * 0.55);
+    const p = spawnProjectile(w, 'slash', look(ws, 'x_slash'), index, player.x + cx * reach * 0.55, player.y + cy * reach * 0.55);
     p.angle = angle;
     p.radius = reach;
     p.life = ws.stats.duration;
@@ -197,7 +202,7 @@ const boomerang: Fire = (w, ws, index) => {
   const speed = ws.stats.speed * player.stats.projSpeed;
   for (let i = 0; i < count; i++) {
     const angle = aim + (i - (count - 1) / 2) * 0.4;
-    const p = spawnProjectile(w, 'boomerang', 'x_boomerang', index, player.x, player.y);
+    const p = spawnProjectile(w, 'boomerang', look(ws, 'x_boomerang'), index, player.x, player.y);
     p.vx = Math.cos(angle) * speed;
     p.vy = Math.sin(angle) * speed;
     p.damage = ws.stats.damage;
@@ -219,7 +224,7 @@ const mines: Fire = (w, ws, index) => {
   for (let i = 0; i < count; i++) {
     const angle = rand(w) * Math.PI * 2;
     const dist = 8 + rand(w) * 26;
-    const p = spawnProjectile(w, 'mine', 'x_mine', index, player.x + Math.cos(angle) * dist, player.y + Math.sin(angle) * dist);
+    const p = spawnProjectile(w, 'mine', look(ws, 'x_mine'), index, player.x + Math.cos(angle) * dist, player.y + Math.sin(angle) * dist);
     p.life = ws.stats.duration * player.stats.duration;
     p.total = p.life;
     p.damage = ws.stats.damage;
@@ -236,7 +241,7 @@ const beam: Fire = (w, ws, index) => {
   const life = ws.stats.duration * player.stats.duration;
   const base = rand(w) * Math.PI * 2;
   for (let i = 0; i < count; i++) {
-    const p = spawnProjectile(w, 'beam', 'x_beam', index, player.x, player.y);
+    const p = spawnProjectile(w, 'beam', look(ws, 'x_beam'), index, player.x, player.y);
     p.angle = base + (i / count) * Math.PI * 2;
     p.vx = ws.stats.speed * player.stats.projSpeed; // velocidad angular
     p.orbitR = ws.stats.area * player.stats.area; // largo del haz
@@ -259,7 +264,7 @@ const meteors: Fire = (w, ws, index) => {
   for (let i = 0; i < count; i++) {
     const target = scratch.length > 0 ? scratch[Math.floor(rand(w) * scratch.length)] : null;
     const angle = rand(w) * Math.PI * 2;
-    const p = spawnProjectile(w, 'meteor', 'x_meteor', index, 0, 0);
+    const p = spawnProjectile(w, 'meteor', look(ws, 'x_meteor'), index, 0, 0);
     p.tx = target ? target.x : player.x + Math.cos(angle) * 80;
     p.ty = target ? target.y : player.y + Math.sin(angle) * 80;
     p.sx = p.tx - 40;
@@ -287,7 +292,7 @@ const cloud: Fire = (w, ws, index) => {
     const angle = rand(w) * Math.PI * 2;
     const x = target ? target.x : player.x + Math.cos(angle) * 40;
     const y = target ? target.y : player.y + Math.sin(angle) * 40;
-    const p = spawnProjectile(w, 'cloud', 'x_cloud', index, x, y);
+    const p = spawnProjectile(w, 'cloud', look(ws, 'x_cloud'), index, x, y);
     p.life = ws.stats.duration * player.stats.duration;
     p.total = 0;
     p.damage = ws.stats.damage;
@@ -308,12 +313,80 @@ const nova: Fire = (w, ws, index) => {
     const d = Math.hypot(dx, dy) || 1;
     damageEnemy(w, e, ws.stats.damage, index, (dx / d) * ws.stats.knockback, (dy / d) * ws.stats.knockback);
   }
-  emit(w, { type: 'ring', x: player.x, y: player.y, radius, color: 0x9fe8ff });
+  emit(w, { type: 'ring', x: player.x, y: player.y, radius, color: tint(ws, 0x9fe8ff) });
   emit(w, { type: 'ring', x: player.x, y: player.y, radius: radius * 0.6, color: 0xffffff });
   emit(w, { type: 'shake', power: 1 });
 };
 
-const FIRE: Record<string, Fire> = { spark, lance, orbs, ember, storm, flask, whip, boomerang, mines, beam, meteors, cloud, nova };
+const RICOCHET_RANGE = 120;
+const aimed: number[] = [];
+/** Cuchillas rebotantes: cada una vuela hacia un enemigo distinto y, al golpear, salta al más cercano que aún no ha tocado. */
+const ricochet: Fire = (w, ws, index) => {
+  const { player } = w;
+  const count = ws.stats.amount + player.stats.amount;
+  const speed = ws.stats.speed * player.stats.projSpeed;
+  const facing = Math.atan2(player.dirY, player.dirX);
+  aimed.length = 0;
+  for (let i = 0; i < count; i++) {
+    const target = nearestEnemy(w, player.x, player.y, 150, aimed);
+    if (target) aimed.push(target.uid);
+    const angle = target ? Math.atan2(target.y - player.y, target.x - player.x) : facing + (i - (count - 1) / 2) * 0.5;
+    const p = spawnProjectile(w, 'ricochet', look(ws, 'x_ricochet'), index, player.x, player.y);
+    p.vx = Math.cos(angle) * speed;
+    p.vy = Math.sin(angle) * speed;
+    p.damage = ws.stats.damage;
+    p.radius = ws.stats.area * player.stats.area + 3;
+    p.life = ws.stats.duration * player.stats.duration;
+    p.pierce = ws.stats.pierce; // rebotes que le quedan
+    p.knockback = ws.stats.knockback;
+  }
+};
+
+const DRONE_SPIN = 1.7;
+const DRONE_RANGE = 130;
+const DRONE_BOLT_SPEED = 220;
+/** Dron centinela: orbitan un tiempo alrededor del jugador, disparan al enemigo más cercano y luego descansan. */
+const drone: Fire = (w, ws, index) => {
+  const { player } = w;
+  const count = ws.stats.amount + player.stats.amount;
+  const life = ws.stats.duration * player.stats.duration;
+  for (let i = 0; i < count; i++) {
+    const p = spawnProjectile(w, 'drone', look(ws, 'x_drone'), index, player.x, player.y);
+    p.angle = (i / count) * Math.PI * 2;
+    p.orbitR = ws.stats.area * player.stats.area;
+    p.vx = DRONE_SPIN; // velocidad angular
+    p.vy = (1 / ws.stats.speed) * player.stats.cooldown; // segundos entre disparos
+    p.total = 0.3 + i * 0.2; // cuenta atrás hasta el próximo disparo (escalonada)
+    p.damage = ws.stats.damage;
+    p.pierce = ws.stats.pierce; // enemigos que atraviesa cada disparo
+    p.knockback = ws.stats.knockback;
+    p.life = life;
+  }
+  ws.timer += life;
+};
+
+const FLAME_TICK = 0.4;
+/** Estela de fuego: deja llamas donde pasa el jugador (sin apilarlas en el mismo sitio). */
+const trail: Fire = (w, ws, index) => {
+  const { player } = w;
+  const count = ws.stats.amount + player.stats.amount;
+  const radius = ws.stats.area * player.stats.area;
+  for (let i = 0; i < count; i++) {
+    // Las llamas extra se reparten a los lados de la trayectoria.
+    const offset = (i - (count - 1) / 2) * radius * 1.2;
+    const x = player.x - player.dirY * offset;
+    const y = player.y + player.dirX * offset;
+    const taken = w.projectiles.some((q) => q.kind === 'flame' && q.weapon === index && !q.dead && Math.abs(q.x - x) < radius * 0.5 && Math.abs(q.y - y) < radius * 0.5);
+    if (taken) continue;
+    const p = spawnProjectile(w, 'flame', look(ws, 'x_flame'), index, x, y);
+    p.life = ws.stats.duration * player.stats.duration;
+    p.total = 0.15;
+    p.damage = ws.stats.damage;
+    p.radius = radius;
+  }
+};
+
+const FIRE: Record<string, Fire> = { spark, lance, orbs, ember, storm, flask, whip, boomerang, mines, beam, meteors, cloud, nova, ricochet, drone, trail };
 
 export function updateWeapons(w: World, dt: number) {
   const weapons = w.player.weapons;
@@ -322,7 +395,7 @@ export function updateWeapons(w: World, dt: number) {
     ws.timer -= dt;
     if (ws.timer > 0) continue;
     ws.timer += ws.stats.cooldown * w.player.stats.cooldown;
-    FIRE[ws.id]?.(w, ws, i);
+    FIRE[behaviourOf(ws.id)]?.(w, ws, i);
   }
 }
 
@@ -451,6 +524,62 @@ export function updateProjectiles(w: World, dt: number) {
         p.total -= dt;
         if (p.total > 0) break;
         p.total += CLOUD_TICK;
+        const count = queryNear(p.x, p.y, p.radius);
+        for (let i = 0; i < count; i++) damageEnemy(w, near[i], p.damage, p.weapon, 0, 0);
+        break;
+      }
+      case 'ricochet': {
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.angle += dt * 18;
+        const count = queryNear(p.x, p.y, p.radius);
+        for (let i = 0; i < count; i++) {
+          const e = near[i];
+          if (p.hit.includes(e.uid)) continue;
+          p.hit.push(e.uid);
+          const speed = Math.hypot(p.vx, p.vy) || 1;
+          damageEnemy(w, e, p.damage, p.weapon, (p.vx / speed) * p.knockback, (p.vy / speed) * p.knockback);
+          // Rebota hacia el enemigo más cercano que aún no ha golpeado; sin rebotes o sin enemigos, se acaba.
+          const next = p.pierce-- > 0 ? nearestEnemy(w, e.x, e.y, RICOCHET_RANGE, p.hit) : null;
+          if (!next) {
+            p.dead = true;
+            break;
+          }
+          const d = Math.hypot(next.x - e.x, next.y - e.y) || 1;
+          p.vx = ((next.x - e.x) / d) * speed;
+          p.vy = ((next.y - e.y) / d) * speed;
+          break;
+        }
+        break;
+      }
+      case 'drone': {
+        p.angle += p.vx * dt;
+        p.x = player.x + Math.cos(p.angle) * p.orbitR;
+        p.y = player.y + Math.sin(p.angle) * p.orbitR;
+        p.total -= dt;
+        if (p.total > 0) break;
+        const target = nearestEnemy(w, p.x, p.y, DRONE_RANGE);
+        if (!target) {
+          p.total = 0.1; // sin objetivo, vuelve a mirar enseguida
+          break;
+        }
+        p.total += p.vy;
+        const aim = Math.atan2(target.y - p.y, target.x - p.x);
+        const shot = spawnProjectile(w, 'bolt', `${p.sprite}bolt`, p.weapon, p.x, p.y);
+        shot.vx = Math.cos(aim) * DRONE_BOLT_SPEED * player.stats.projSpeed;
+        shot.vy = Math.sin(aim) * DRONE_BOLT_SPEED * player.stats.projSpeed;
+        shot.angle = aim;
+        shot.damage = p.damage;
+        shot.radius = 4;
+        shot.life = 0.9;
+        shot.pierce = p.pierce;
+        shot.knockback = p.knockback;
+        break;
+      }
+      case 'flame': {
+        p.total -= dt;
+        if (p.total > 0) break;
+        p.total += FLAME_TICK;
         const count = queryNear(p.x, p.y, p.radius);
         for (let i = 0; i < count; i++) damageEnemy(w, near[i], p.damage, p.weapon, 0, 0);
         break;

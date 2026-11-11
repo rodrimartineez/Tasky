@@ -173,3 +173,70 @@
   height: 20px;
   color: var(--hb-build);
 }
+
+.testBadge {
+  align-self: flex-start;
+  margin: 0;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  background: rgba(107, 197, 255, 0.15);
+  box-shadow: 0 0 0 1px #2f6fd6;
+  font-family: var(--hb-pixel-font);
+  font-size: var(--fs-sm);
+  color: #6bc5ff;
+}
+
+.legendary {
+  background: linear-gradient(180deg, #2e2410, var(--hb-surface-1) 70%);
+  box-shadow: 0 0 0 2px #8a6a1c, inset 0 -3px 0 rgba(0, 0, 0, 0.35);
+}
+.legendaryTag {
+  font-family: var(--hb-pixel-font);
+  font-size: var(--fs-xs);
+  color: var(--hb-gold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.goal {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--space-3) var(--space-4);
+  background: var(--hb-surface-1);
+  border-radius: var(--radius);
+  box-shadow: var(--hb-pixel-edge);
+  font-size: var(--fs-sm);
+}
+.goalHead {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.goalHead b {
+  color: var(--hb-gold);
+}
+.goalPrice {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--hb-pixel-font);
+  color: var(--hb-gold);
+}
+.goalBar {
+  height: 10px;
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.goalBar span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--hb-gold-deep), var(--hb-gold));
+}
+.goalText {
+  margin: 0;
+  color: var(--text-faint);
+  font-size: var(--fs-xs);
+}

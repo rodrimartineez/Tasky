@@ -101,6 +101,26 @@ export const PASSIVES: PassiveDef[] = [
     maxLevel: 2,
     apply: (s, n) => void (s.amount += n),
   },
+  {
+    id: 'eye',
+    name: 'Ojo de águila',
+    icon: 'p_eye',
+    text: '+4 % de crítico y +10 % de daño crítico',
+    maxLevel: 5,
+    apply: (s, n) => {
+      s.critChance = Math.min(1, s.critChance + 0.04 * n);
+      s.critMult += 0.1 * n;
+    },
+  },
+  {
+    id: 'fang',
+    name: 'Colmillo de sangre',
+    icon: 'p_fang',
+    text: 'Recuperas el 0,4 % del daño que causas',
+    maxLevel: 5,
+    // `?? 0`: las partidas guardadas antes de esta pasiva no tienen el campo.
+    apply: (s, n) => void (s.leech = (s.leech ?? 0) + 0.004 * n),
+  },
 ];
 
 export const PASSIVE_BY_ID = new Map(PASSIVES.map((p) => [p.id, p]));

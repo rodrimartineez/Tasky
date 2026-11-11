@@ -126,6 +126,8 @@ Al volver, los puntos vuelven a entrar desde el primer día (con racha corta) y 
 
 ## 7. Oro y desbloqueos
 
+> **Sustituido por §10** (Fase 5c): precios de hasta 10 millones y bonificación por supervivencia.
+
 El oro solo sale de las partidas y solo compra contenido (personajes y escenarios). Ingresos esperados (perfil
 normal, una partida al día): ~200/partida el primer mes, ~500 a los 6–12 meses, ~1.000–3.000 a los 2 años
 → unos **15.000 de oro el primer año** y unos 60.000 en dos.
@@ -176,3 +178,82 @@ Con 13 armas y 12 pasivas (incluido el «Cuerno gemelo», +1 proyectil), el bot 
 1,5–2 años. El perfil irregular no cambia (5–10 min). Hay que reequilibrarlo en la Fase 5c: dificultad por nivel,
 oro por partida o potencia de algunas armas y pasivas, sin tocar los puntos de los hábitos. Es el primer punto de la
 Fase 5c.
+
+## 10. Fase 5c: escudo y economía de oro a muy largo plazo (noviembre de 2026)
+
+### 10.1 Escudo de racha
+
+Estudio solo de puntos, con 20 semillas por perfil (`src/habits/balance/shield.study.test.ts`):
+
+| Escudo cada | Constante 1 año / 3 años | Normal 1 año / 3 años | Irregular 1 año / 3 años | Normal frente a sin escudo | Constante / Irregular |
+|---|---|---|---|---|---|
+| sin escudo | 13.074 / 48.625 | 10.092 / 31.573 | 1.321 / 3.938 | — | 9,9× |
+| 21 días (antes) | 13.074 / 48.625 | 11.869 / 40.036 | 1.321 / 3.938 | +17,6 % | 9,9× |
+| 30 días | = | 11.637 / 39.043 | = | +15,3 % | 9,9× |
+| 45 días | = | 11.428 / 38.133 | = | +13,2 % | 9,9× |
+| **60 días (elegido)** | = | **11.272 / 37.359** | = | **+11,7 %** | 9,9× |
+| 75 días | = | 11.121 / 36.759 | = | +10,2 % | 9,9× |
+| 90 días | = | 10.977 / 36.116 | = | +8,8 % | 9,9× |
+
+- El escudo solo influye en quien cumple a menudo pero no siempre: el constante casi nunca falla y el irregular nunca
+  llega a reunir los días necesarios.
+- **Decisión: un escudo cada 60 días cumplidos** (y el día salvado no cuenta para el siguiente). Reduce el beneficio
+  de +17,6 % a +11,7 % y sigue protegiendo un fallo puntual unas 5–6 veces al año en una racha larga. Ir más lejos
+  apenas cambia nada (cada 15 días más, −1,5 puntos) y lo haría casi inexistente.
+
+### 10.2 Ingresos de oro
+
+Bot con el Errante en el Bosque Marchito, 3 semillas por punto, de 1 a 1.460 días (`gold.study.test.ts`). Oro por
+partida ajustado a una curva `a · día^b` (los datos tienen mucho ruido: ganar o morir cambia el oro ×5):
+
+| Perfil | Oro por partida | Oro acumulado a 1 año | a 2 años | a 3 años | a 4 años |
+|---|---|---|---|---|---|
+| Constante | 53 · día^0,72 | 0,78 M | 2,6 M | 5,1 M | 8,4 M |
+| Normal | 51 · día^0,69 | 0,63 M | 2,0 M | 4,0 M | 6,6 M |
+| Irregular | ~150–250, plano | 55 k | 104 k | 152 k | 199 k |
+
+Con esos ingresos, un objetivo de 10 millones quedaba a más de 6 años incluso para el constante. Para que los
+objetivos grandes sean alcanzables en años **solo para quien es constante**, se añade una **bonificación por
+supervivencia** al acabar cada partida (`sim/difficulty.ts`):
+
+`bonus = (multiplicador de oro del nivel − 1) · 9 · (minutos − 10)^1,5 · codicia`
+
+- En el nivel 1 vale 0 y antes del minuto 10 también: no acelera los primeros desbloqueos.
+- Crece con el nivel (las partidas que se juegan) y sobre todo con los minutos sobrevividos, que dependen de las
+  mejoras permanentes, es decir, de los hábitos. Ejemplos: nivel 365 → 955 (20 min) / 2.700 (30 min); nivel 1.095
+  → 2.300 / 6.500; nivel 1.460 → 2.900 / 8.200.
+- Se probó con 30 en lugar de 9: los ingresos se triplicaban y todo se desbloqueaba en ~3 años; con 9 (≈30 % de
+  aquel efecto) la escalera queda como se busca.
+
+### 10.3 Precios y calendario de desbloqueos
+
+Escalera casi geométrica: los primeros desbloqueos llegan en días; los siguientes, cada vez más separados; y cuatro
+**legendarios** con habilidades únicas (revivir, empezar con varias armas…) como objetivos de años. Día estimado en
+que se puede comprar cada uno **comprándolo todo en orden** (modelo de ingresos con la bonificación):
+
+| Contenido | Precio | Normal | Constante | Irregular |
+|---|---|---|---|---|
+| Guardiana · Mística · Hierbera | 300 · 700 · 1.800 | días 4–12 | días 3–10 | días 1–10 |
+| Pantano Sombrío (escenario) | 4.500 | ~28 | ~25 | ~47 |
+| Cripta Olvidada (escenario) | 25.000 | ~85 | ~76 | ~390 |
+| Cavernas de Cristal (escenario) | 75.000 | ~160 | ~145 | ~3,5 años |
+| Páramo de Ceniza (escenario) | 150.000 | ~270 | ~240 | ~9 años |
+| Archimaga (último normal) | 400.000 | ~480 | ~430 | — |
+| Fénix Renacido (legendario) | 750.000 | ~590 | ~530 | — |
+| Coleccionista (legendario) | 1.500.000 | ~760 | ~685 | — |
+| Cronomante (legendario) | 4.000.000 | ~3 años | ~2,75 años | — |
+| **Sol Eterno (legendario)** | **10.000.000** | **~4,8 años** | **~4,3 años** | — |
+
+Precios intermedios de personajes: 2.600 · 9.000 · 12.000 · 19.000 · 40.000 · 50.000 · 85.000 · 120.000 · 190.000 ·
+230.000 · 300.000.
+
+Lectura:
+- **Siempre hay un objetivo**: el último legendario queda a más de 4 años y, entre medias, cada desbloqueo está a
+  semanas o meses del anterior. El campamento muestra el próximo objetivo, una barra de progreso y cuántas partidas
+  faltan al ritmo de las últimas.
+- **La constancia se nota mucho**: el irregular consigue los primeros personajes y escenarios, pero no los grandes
+  objetivos. Cuanto más fuerte es el personaje (hábitos), más dura la partida y más oro da.
+- **El oro nunca compra estadísticas**: solo contenido. Los legendarios son muy fuertes, pero se juegan con las mismas
+  mejoras permanentes que salen de los hábitos.
+- Los números exactos dependen de cómo juegue una persona (el bot huye y no elige mejoras con criterio): habrá que
+  revisarlos con datos reales tras el lanzamiento. Todo está en `characters.ts`, `stages.ts` y `difficulty.ts`.

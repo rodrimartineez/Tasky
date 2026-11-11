@@ -22,6 +22,11 @@ const HEADS: Record<string, Rows> = {
   centella: ['..oo....oo..', '.kooooooook.', '.kooyyyyook.', '.kottttttok.', '.kotkttktok.', '.kottttttok.', '..koottook..'],
   knight: ['.....bb.....', '...kyyyyk...', '..kyyYYyyk..', '..kYkkkkYk..', '..kyYYYYyk..', '..kyyyyyyk..', '...kYYYYk...'],
   archmage: ['.....kk.....', '....kPPk....', '...kPpyPk...', '.kkkPPPPkkk.', '.kWtkttktWk.', '.kWttttttWk.', '..kWWttWWk..'],
+  // Legendarios.
+  phoenix: ['...o.yy.o...', '..kooyyook..', '.kroooooork.', '..kottttok..', '..kotkktok..', '..kottttok..', '...kooook...'],
+  collector: ['...kkkkkk...', '...kDDDDk...', '..kkDDDDkk..', '.kkkkkkkkkk.', '..ktwkttktk.', '..kttttttk..', '...kttttk...'],
+  chronomancer: ['.....cc.....', '...kSSSSk...', '..kSSccSSk..', '..kSttttSk..', '..kSckkcSk..', '..kSttttSk..', '...kSSSSk...'],
+  sun_avatar: ['.y..y..y..y.', '..kyyyyyyk..', '.kywwyywwyk.', '..kwttttwk..', '..kwtkktwk..', '..kwttttwk..', '...kwwwwk...'],
 };
 
 /** Torsos de plantilla (p = color principal, P = su sombra, y = adorno). */
@@ -67,6 +72,10 @@ const LOOKS: Record<string, Look> = {
   centella: { head: 'centella', torso: 'tunic', colors: ['y', 'Y', 'o'] },
   knight: { head: 'knight', torso: 'armor', colors: ['y', 'Y', 'b'] },
   archmage: { head: 'archmage', torso: 'robe', colors: ['p', 'P', 'y'] },
+  phoenix: { head: 'phoenix', torso: 'robe', colors: ['r', 'R', 'y'] },
+  collector: { head: 'collector', torso: 'tunic', colors: ['D', 'T', 'y'] },
+  chronomancer: { head: 'chronomancer', torso: 'cloak', colors: ['c', 'b', 'W'] },
+  sun_avatar: { head: 'sun_avatar', torso: 'armor', colors: ['y', 'Y', 'w'] },
 };
 
 /** Sustituye los colores de plantilla del cuerpo. */

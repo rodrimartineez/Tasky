@@ -41,11 +41,42 @@ function createSync(): SyncBackend | null {
   return url && key ? createSupabaseSync(url, key) : null;
 }
 
+/**
+ * Tras publicar una versión nueva, una app que siguiera abierta con la anterior pediría archivos que ya no
+ * existen al cargar algo en diferido (p. ej. el motor del juego). En ese caso se recarga una vez para pasar
+ * a la versión nueva, en lugar de fallar.
+ */
+function reloadOnStaleChunks() {
+  window.addEventListener('vite:preloadError', (event) => {
+    try {
+      if (sessionStorage.getItem('tasky-reloaded') === '1') return;
+      sessionStorage.setItem('tasky-reloaded', '1');
+    } catch {
+      return;
+    }
+    event.preventDefault();
+    window.location.reload();
+  });
+  // Si la recarga funcionó, se permite otra en el futuro.
+  window.addEventListener('load', () =>
+    setTimeout(() => {
+      try {
+        sessionStorage.removeItem('tasky-reloaded');
+      } catch {
+        // Sin almacenamiento de sesión no hay nada que limpiar.
+      }
+    }, 10_000),
+  );
+}
+
 /** Único punto donde se decide la plataforma. El resto de la app solo conoce los puertos. */
 export function createPlatform(): Platform {
   const sync = createSync();
   if (isTauri()) return { storage: tauriStorage, fileExport: tauriExport, sync, requireAuth: false };
   // Navegador/PWA: service worker para funcionar sin conexión (solo en el build; en desarrollo no hay).
-  if (import.meta.env.PROD) registerSW({ immediate: true });
+  if (import.meta.env.PROD) {
+    registerSW({ immediate: true });
+    reloadOnStaleChunks();
+  }
   return { storage: webStorage, fileExport: webExport, sync, requireAuth: sync !== null };
 }

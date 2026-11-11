@@ -34,6 +34,14 @@ export interface Stats {
   greed: number;
   critChance: number;
   critMult: number;
+  /** Veces que se puede revivir en la partida (con media vida y unos segundos de invulnerabilidad). */
+  revival: number;
+  /** Veces por partida que se pueden repetir las opciones de una subida de nivel. */
+  rerolls: number;
+  /** Opciones que se pueden descartar para siempre en la partida. */
+  banishes: number;
+  /** Fracción del daño causado que se recupera como vida. */
+  leech: number;
 }
 
 export const BASE_STATS: Stats = {
@@ -53,6 +61,10 @@ export const BASE_STATS: Stats = {
   greed: 1,
   critChance: 0.05,
   critMult: 2,
+  revival: 0,
+  rerolls: 0,
+  banishes: 0,
+  leech: 0,
 };
 
 /** Valores de un arma en su nivel actual (cada comportamiento usa los que necesita). */
@@ -84,8 +96,14 @@ export interface WeaponDef {
   /** Sprite del icono (game/sprites). */
   icon: string;
   base: WeaponStats;
-  /** Niveles 2…8: cada uno suma sus `mods` a los valores anteriores. */
+  /** Niveles 2…8: cada uno suma sus `mods` a los valores anteriores (vacío en las evoluciones). */
   levels: WeaponLevel[];
+  /** Sprite del proyectil, si no es el de siempre del comportamiento. */
+  proj?: string;
+  /** Color (0xRRGGBB) de los destellos de la propia arma. */
+  color?: number;
+  /** Evoluciones: id del arma base, de la que heredan el comportamiento. */
+  evolvedFrom?: string;
 }
 
 export interface PassiveDef {
@@ -156,6 +174,8 @@ export interface RunConfig {
   /** Estadísticas iniciales (personaje + mejoras permanentes). */
   stats: Stats;
   startingWeapon: string;
+  /** Armas adicionales con las que se empieza (personajes especiales). */
+  bonusWeapons?: string[];
   /** Sprite base del personaje elegido (`<sprite>_0` y `<sprite>_1`). */
   sprite: string;
 }
@@ -186,6 +206,11 @@ export interface Player {
   stats: Stats;
   weapons: WeaponState[];
   passives: { id: string; level: number }[];
+  /** Repeticiones y descartes que quedan en la partida (las partidas guardadas antiguas no los tienen). */
+  rerolls: number;
+  banishes: number;
+  /** Ids de armas y pasivas descartadas: no vuelven a ofrecerse. */
+  banished: string[];
 }
 
 export interface Enemy {
@@ -231,7 +256,13 @@ export type ProjKind =
   /** Haz giratorio alrededor del jugador. */
   | 'beam'
   | 'meteor'
-  | 'cloud';
+  | 'cloud'
+  /** Cuchilla que rebota de un enemigo a otro. */
+  | 'ricochet'
+  /** Dron que orbita al jugador y dispara al enemigo más cercano. */
+  | 'drone'
+  /** Llama que queda en el suelo y quema a quien la pisa. */
+  | 'flame';
 
 export interface Projectile {
   kind: ProjKind;
@@ -282,13 +313,15 @@ export type Fx =
   | { type: 'shake'; power: number };
 
 export interface UpgradeChoice {
-  kind: 'weapon' | 'passive' | 'gold' | 'heal';
+  kind: 'weapon' | 'passive' | 'gold' | 'heal' | 'evolution';
   id: string;
   name: string;
   icon: string;
   /** Nivel que tendrá al elegirla (1 = nueva). */
   level: number;
   text: string;
+  /** Si al elegirla se completa una evolución (arma al máximo + pasiva): nombre del arma evolucionada. */
+  evolves?: string;
 }
 
 export type Phase = 'playing' | 'levelup' | 'dead' | 'won';
@@ -323,7 +356,9 @@ export interface RunResult {
   time: number;
   level: number;
   kills: number;
+  /** Oro total, incluida la bonificación por supervivencia. */
   gold: number;
+  survivalBonus: number;
   weapons: { id: string; level: number; dealt: number }[];
 }
 

@@ -187,6 +187,7 @@ export function damageEnemy(w: World, e: Enemy, base: number, weapon: number, kx
   const dmg = Math.max(1, Math.round(base * stats.might * (crit ? stats.critMult : 1)));
   e.hp -= dmg;
   e.flash = 0.1;
+  if (stats.leech > 0) w.player.hp = Math.min(stats.maxHp, w.player.hp + dmg * stats.leech);
   const resist = 1 - e.def.knockResist;
   e.kx += kx * resist;
   e.ky += ky * resist;

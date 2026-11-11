@@ -127,6 +127,25 @@
 .passive .slot {
   box-shadow: inset 0 0 0 2px rgba(181, 140, 255, 0.65);
 }
+.slot.evolved {
+  box-shadow: inset 0 0 0 2px #7ee8e0;
+}
+/* Estrella: arma al máximo con la pasiva de su evolución; se transforma al abrir el próximo cofre */
+.star {
+  position: absolute;
+  left: 1px;
+  top: -1px;
+  color: #f6c945;
+  font-size: 14px;
+  line-height: 14px;
+  text-shadow: 0 1px 0 #07060f;
+  animation: twinkle 0.9s steps(2) infinite;
+}
+@keyframes twinkle {
+  50% {
+    color: #fff;
+  }
+}
 .slot.empty {
   background: rgba(7, 6, 15, 0.22);
   box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.14);
@@ -203,6 +222,10 @@
 }
 .chest p {
   margin: 0;
+}
+.chest .evolution {
+  color: #f6c945;
+  font-weight: 700;
 }
 
 /* ── Paneles (subida de nivel, pausa, fin) ── */
@@ -301,6 +324,69 @@
 }
 .choiceName .new {
   color: #f6c945;
+}
+.choice:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.choice.evolves {
+  box-shadow: inset 0 0 0 2px #7ee8e0;
+}
+.choice.banishing:not(:disabled) {
+  box-shadow: inset 0 0 0 2px #e5484d;
+  background: #2b1624;
+}
+.evoTag {
+  font-size: 13px;
+  font-weight: 700;
+  color: #7ee8e0;
+}
+.evoNote {
+  margin: -4px 0 0;
+  text-align: center;
+  color: #7ee8e0;
+  font-size: 14px;
+  font-weight: 700;
+}
+.tools {
+  display: flex;
+  gap: 8px;
+}
+.tool {
+  display: inline-flex;
+  white-space: nowrap;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 44px;
+  padding: 6px 8px;
+  border: none;
+  border-radius: 6px;
+  background: #1d1938;
+  box-shadow: inset 0 0 0 2px #342c5e;
+  color: #fff;
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.tool svg {
+  width: 18px;
+  height: 18px;
+}
+.tool:hover:not(:disabled),
+.tool:focus-visible {
+  box-shadow: inset 0 0 0 2px #f6c945;
+  outline: none;
+}
+.tool:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.toolOn {
+  background: #2b1624;
+  box-shadow: inset 0 0 0 2px #e5484d;
 }
 .choiceText {
   font-family: var(--font);

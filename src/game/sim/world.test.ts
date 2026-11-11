@@ -96,3 +96,17 @@ describe('simulación', () => {
     for (let level = 1; level < 80; level++) expect(xpForLevel(level + 1)).toBeGreaterThan(xpForLevel(level));
   });
 });
+
+describe('revivir', () => {
+  it('con revivir se vuelve con media vida en lugar de morir, una vez por carga', () => {
+    const w = createWorld(config(3, { ...BASE_STATS, revival: 1 }));
+    w.player.hp = -5;
+    step(w, DT, 0, 0);
+    expect(w.phase).not.toBe('dead');
+    expect(w.player.hp).toBe(BASE_STATS.maxHp * 0.5);
+    expect(w.player.stats.revival).toBe(0);
+    w.player.hp = -5;
+    step(w, DT, 0, 0);
+    expect(w.phase).toBe('dead');
+  });
+});

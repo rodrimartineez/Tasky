@@ -26,3 +26,16 @@ export const levelHp = (level: number) => grow(level, DIFFICULTY.hpA, DIFFICULTY
 export const levelDamage = (level: number) => grow(level, DIFFICULTY.dmgA, DIFFICULTY.exp);
 export const levelDensity = (level: number) => Math.min(DIFFICULTY.densityMax, 1 + DIFFICULTY.densityA * (level - 1));
 export const levelGold = (level: number) => grow(level, DIFFICULTY.goldA, DIFFICULTY.goldExp);
+
+/**
+ * Bonificación de oro por supervivencia al acabar la partida (ANALISIS_ECONOMIA.md §10). Solo existe en niveles
+ * altos (en el nivel 1 vale 0) y crece mucho con los minutos sobrevividos a partir del 10: la pagan las partidas
+ * largas de un personaje fuerte, es decir, la constancia en los hábitos. Así los objetivos de millones de oro
+ * son alcanzables en años para quien cumple, sin acelerar los primeros desbloqueos.
+ */
+export const SURVIVAL_BONUS = { perMinute: 9, fromMinute: 10, exp: 1.5 };
+
+export function survivalBonus(level: number, seconds: number, greed: number): number {
+  const minutes = Math.max(0, seconds / 60 - SURVIVAL_BONUS.fromMinute);
+  return Math.floor((levelGold(level) - 1) * SURVIVAL_BONUS.perMinute * Math.pow(minutes, SURVIVAL_BONUS.exp) * greed);
+}

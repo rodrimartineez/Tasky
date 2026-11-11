@@ -334,6 +334,10 @@ export const SPRITES: Record<string, string[]> = {
     'oo.okkDDDDk.',
     '..o...kkkk..',
   ],
+  x_ricochet: ['....k....', '...kWk...', '...kWk...', '.kkkWkkk.', 'kWWWwsssk', '.kkkskkk.', '...ksk...', '...ksk...', '....k....'],
+  x_drone: ['..k..k..', '.kWkkWk.', 'kWWbbWWk', 'kWwcbsWk', '.kSSSSk.', '..k..k..'],
+  x_dronebolt: ['.cc.', 'cwwc', '.cc.'],
+  x_flame: ['...o...', '..ooo..', '.oooyo.', '.ooyyo.', 'ooyyyoo', 'oyywyyo', '.oyyyo.', '..ooo..'],
   x_cloud: ['..gggg....', '.gGggggGg.', 'gggGggggGg', 'gGggggGggg', '.gggGggGg.', '..gggggg..'],
 
   // ── Iconos de armas y objetos (interfaz) ──
@@ -352,6 +356,8 @@ export const SPRITES: Record<string, string[]> = {
   p_scales: ['kkkkkkkkk', 'kbcbcbcbk', 'kcbcbcbck', 'kbcbcbcbk', '.kcbcbck.', '..kbcbk..', '...kck...', '....k....'],
   p_feather: ['......kk.', '.....kWWk', '....kWWWk', '...kWWWk.', '..kWWWk..', '.kWWsk...', 'kTWsk....', 'kTk......', 'kk.......'],
   p_candle: ['....y....', '...yoy...', '...kok...', '..kWWWk..', '..kWWWk..', '..kWWWk..', '..kWWsk..', '.kkkkkkk.'],
+  p_eye: ['...kkk...', '.kkwwwkk.', 'kwwyyyywk', 'kwyykyywk', 'kwwyyyywk', '.kkwwwkk.', '...kkk...'],
+  p_fang: ['kkkkkkk', 'kWWWWWk', 'kWwWWsk', '.kWWsk.', '.kWsk..', '..kWk..', '..krk..', '...k...'],
   p_horn: ['......kk.', '....kkWWk', '..kkWWWWk', '.kWWWWWk.', 'kWWWWWk..', 'kWWWWk...', 'kTTWk....', '.kkk.....'],
   // Mejoras permanentes (tienda).
   u_armor: ['.kkkkkkk.', 'kWWWWWWsk', 'kWwwWWWsk', 'kWwWWWssk', 'kWWWWWssk', '.kWWWssk.', '.kWWsssk.', '..kWssk..', '...kkk...'],
@@ -361,6 +367,9 @@ export const SPRITES: Record<string, string[]> = {
   u_crit: ['...kkk...', '..krrrk..', '.krkkkrk.', 'krk.r.krk', 'krkrwrkrk', 'krk.r.krk', '.krkkkrk.', '..krrrk..', '...kkk...'],
   u_critmult: ['....k....', '...kyk...', 'k.kyyyk.k', 'kykywykyk', '.kyywyyk.', 'kykyyykyk', 'k.kyyyk.k', '...kyk...', '....k....'],
   u_luck: ['.kk...kk.', 'kggk.kggk', 'kgwgkgwgk', '.kgggggk.', '..kgGgk..', '.kgggggk.', 'kggkGkggk', '.kk.Gk.kk', '....kGk..'],
+  u_revive: ['...kkk...', '..kyyyk..', '..ky.yk..', '..kyyyk..', 'kkkkykkkk', 'kyyyyyyyk', 'kkkkykkkk', '...kyk...', '...kyk...', '...kkk...'],
+  u_reroll: ['kkkkkkkkk', 'kWWWWWWWk', 'kWkWWWkWk', 'kWWWWWWWk', 'kWWWkWWWk', 'kWWWWWWsk', 'kWkWWWksk', 'kWWWWWsSk', 'kkkkkkkkk'],
+  u_banish: ['kk.....kk', 'krk...krk', '.krk.krk.', '..krkrk..', '...krk...', '..krkrk..', '.krk.krk.', 'krk...krk', 'kk.....kk'],
   u_amount: ['.kk.kk.kk', 'kyykyykyy', 'kywkywkyw', 'kyykyykyy', '.kk.kk.kk', '.........', 'kkkkkkkkk', 'kyyyyyyYk', 'kkkkkkkkk'],
 
   // ── Decoración del Bosque Marchito ──
@@ -402,6 +411,31 @@ SPRITES.e_bog_king = recolor(SPRITES.e_elder, { G: 'P', g: 'p', d: 'k', T: 'G', 
 SPRITES.e_bone_lord = recolor(SPRITES.e_elder, { G: 'W', g: 'w', d: 'S', T: 's', D: 'S' });
 SPRITES.e_crystal_titan = recolor(SPRITES.e_elder, { G: 'B', g: 'c', d: 'k', T: 'S', D: 'k' });
 SPRITES.e_cinder_lord = recolor(SPRITES.e_elder, { G: 'R', g: 'o', d: 'k', T: 'D', D: 'k', r: 'y' });
+
+/** Evoluciones de armas: el dibujo de la base con otros colores (nombre, sprite de origen, cambio de colores). */
+const EVOLVED: [string, string, Record<string, string>][] = [
+  ['x_constellation', 'x_spark', { y: 'p', w: 'c' }],
+  ['x_dawnlance', 'x_lance', { o: 'P', y: 'm', w: 'w' }],
+  ['x_eclipse', 'x_orb', { W: 'P', w: 'p', s: 'S', S: 'k' }],
+  ['w_pyre', 'w_ember', { o: 'r', y: 'o', w: 'y' }],
+  ['w_tempest', 'w_storm', { y: 'p' }],
+  ['x_elixir', 'x_flask', { c: 'p', g: 'm', G: 'M', T: 'Y' }],
+  ['w_galewhip', 'w_whip', { T: 'c', y: 'b', Y: 'B' }],
+  ['x_galewhip', 'x_slash', { w: 'c', W: 'b' }],
+  ['w_scythe', 'w_boomerang', { W: 'p' }],
+  ['x_scythe', 'x_boomerang', { W: 'p', s: 'P' }],
+  ['x_magnetmines', 'x_mine', { S: 'B', s: 'b', r: 'y' }],
+  ['w_prism', 'w_beam', { c: 'm' }],
+  ['x_prism', 'x_beam', { c: 'm' }],
+  ['x_comets', 'x_meteor', { o: 'c', y: 'w', D: 'B', s: 'b' }],
+  ['x_plague', 'x_cloud', { g: 'r', G: 'R' }],
+  ['w_quake', 'w_nova', { b: 'o', w: 'y' }],
+  ['x_luckyblades', 'x_ricochet', { W: 'y', s: 'Y' }],
+  ['x_gunship', 'x_drone', { W: 'R', w: 'o', s: 'O', b: 'y', c: 'y', S: 'k' }],
+  ['x_gunshipbolt', 'x_dronebolt', { c: 'o' }],
+  ['x_inferno', 'x_flame', { o: 'B', y: 'c' }],
+];
+for (const [name, source, map] of EVOLVED) SPRITES[name] = recolor(SPRITES[source], map);
 
 /** Nombres que reutilizan otro sprite (iconos de interfaz que coinciden con el objeto del juego). */
 export const ALIASES: Record<string, string> = {

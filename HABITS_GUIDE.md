@@ -239,6 +239,7 @@ La dificultad depende del **minuto de partida** y del **nivel** (la partida n-é
 | Fase 4 — Partidas diarias acumulables (una por día desde el inicio), niveles infinitos por orden de partida, dificultad por nivel, puntos por hitos de racha, 16 mejoras permanentes sin máximo (pestaña «Mejoras»), oro y desbloqueo de personajes/escenarios (campamento en «Jugar»), saldos en la cabecera, guardado de la partida cada 10 s y al ocultar la app con reanudación, cierre de partidas sin copia | ✅ 32 tests de `habits/core` (rachas, economía, compras y partidas simultáneas en dos dispositivos) + test de reanudación exacta de la simulación. Navegador: jugar, guardar y salir, recargar, continuar desde el mismo segundo, terminar, nivel 2 sin partidas restantes; móvil 375 px. **Sync pendiente:** volver a ejecutar `supabase/schema.sql` (columnas `character`, `stage`, `details` y tipos de asiento nuevos) |
 | Fase 5 — Contenido del juego: 16 personajes (arte propio de 12×14 con 2 fotogramas de paso, 13 armas iniciales distintas, un rasgo con virtud y defecto cada uno; precios 0 → 65 000), 13 armas con 8 niveles (6 nuevas: látigo, búmeran, minas, haz giratorio, meteoritos, nube venenosa y onda de choque, con comportamiento y dibujo propios; estelas en proyectiles) y 12 pasivas (6 nuevas), 5 escenarios (Bosque Marchito 0, Pantano Sombrío 5 000 con enemigos a distancia, Cripta Olvidada 15 000 con enjambres, Cavernas de Cristal 35 000 con enemigos resistentes, Páramo de Ceniza 70 000 con mezcla; cada uno con suelo, decoración, reglas de aparición, jefe propio a los 10/20/28 min y élites), 6 enemigos y 4 jefes nuevos (nuevo comportamiento «volley»: tres flechas en abanico), 5 huecos de armas + 5 de pasivas en la partida, mostrados arriba a la izquierda en dos filas con los vacíos como marcos tenues | ✅ 118 tests (`npx vitest run`) incluyendo: 16 personajes con arma y sprites que existen, el sprite elegido llega a la partida, 5 escenarios (precios, enemigos, jefes a 10/20/28 min, decoración), 120 s de bot en cada escenario sin valores inválidos, jefes en cada escenario, todas las armas hacen daño, y ninguna arma pasa del doble de la mejor original en 5 min de bot. `tsc`, `eslint` y `npm run build` limpios. Navegador (escritorio y móvil 375 px): huecos de armas/pasivas, el sprite del personaje, suelo y enemigos de Páramo y Pantano, haz, minas, látigo, búmeran con estela y nube dibujados sin errores de consola. **No probado:** los 16 sprites solo se han revisado a ojo en una hoja de muestras; el equilibrio de las armas se ha medido solo con el bot (el látigo apunta hacia donde mira el jugador y el bot huye, así que sale infravalorado) y no con partidas humanas; las partidas guardadas antes de la Fase 5 se reanudan con el sprite del héroe base |
 | Fase 5b — Motivación: puntos que dará cada hábito hoy (en su tarjeta), resumen «Hoy: +N asegurados · +M si cumples el resto» con la mejora más cercana (en Hábitos y en el campamento), aviso de puntos nuevos al cerrar el día, escudo de racha cada 21 días (también en el historial y el detalle), racha de semanales (+1 cada 4 semanas, máx. 6), mitad de puntos a partir del 8.º diario, ayuda de vuelta gradual y temporal (`core/comeback.ts`) | ✅ 40 tests de `habits/core` (escudo, semanales, límite, lo de hoy, ayuda de vuelta: activación, fuerza, retirada y fin). Navegador con un historial simulado en el perfil de prueba: tarjeta +N, resumen, aviso «+43 puntos», banner de vuelta (+21 % XP, +14 % vida tras 36 días); móvil 375 px. Estudio en `ANALISIS_ECONOMIA.md` §9 |
+| Fase 5c — Builds y economía: 16 evoluciones, armas Rebote/Dron/Estela, pasivas Ojo de águila y Colmillo de sangre, mejoras Segunda vida/Repetir/Descartar (con puntos), 4 personajes legendarios hasta 10 M de oro, bonificación de oro por supervivencia, escudo cada 60 días, modo de pruebas (§10), motor gráfico con alternativas para móvil | ✅ 169 tests (36 de builds, economía con temporadas y modo de pruebas, revivir). WebKit con iPhone 14 (WebGL y canvas) y navegador de escritorio con build sin conexión: campamento de pruebas, partida con legendario, pausa y guardado, sin errores. Pendiente: iPhone real |
 
 Notas de la Fase 3:
 - **Equilibrio provisional** (bot de `sim/bot.ts`, 4 semillas por perfil): sin mejoras 2–12 min; «1 mes» 11–22 min;
@@ -250,3 +251,28 @@ Notas de la Fase 3:
 
 Pruebas locales sin tocar los datos reales: configuración `tasky-web-offline` de `.claude/launch.json`
 (puerto 1430, `vite --mode offline`; necesita un `.env.offline` local con `VITE_SUPABASE_URL=` y `VITE_SUPABASE_KEY=` vacíos).
+
+## 10. Modo de pruebas y paso a producción del juego
+
+Mientras el juego esté en desarrollo, `src/habits/core/release.ts` tiene `testMode: true`:
+
+- Partidas ilimitadas, todas de **nivel 1**, con todos los personajes y escenarios disponibles. Funciona igual en
+  el ordenador y en el móvil, y se mantiene en cada despliegue porque está en el código, no en los datos.
+- Las partidas de prueba **no escriben nada en el ledger**: no dan oro, no gastan partidas y no suben de nivel. La
+  economía definitiva (oro, desbloqueos y niveles) queda intacta.
+- Los hábitos, los puntos y las mejoras permanentes funcionan con normalidad (son definitivos) y se notan en las
+  partidas de prueba.
+- Una partida de prueba interrumpida se puede continuar; su copia local lleva la marca `test` y nunca se confunde
+  con una partida real.
+
+**Paso a producción** (cuando el usuario lo apruebe), un único cambio en `release.ts`:
+
+```ts
+export const GAME_RELEASE: GameRelease = { testMode: false, season: 1, startsOn: 'AAAA-MM-DD' /* día del lanzamiento */ };
+```
+
+- Desde `startsOn` se recibe una partida al día (acumulables), con niveles progresivos desde el 1.
+- Cualquier asiento de partidas, oro o desbloqueos anterior (de las pruebas de la Fase 4, con ids sin temporada como
+  `run:1`) se ignora: la progresión del juego empieza de cero. Si algún día hiciera falta reiniciarla otra vez, basta
+  con subir `season` (los ids llevan la temporada: `run:s1:5`, `result:s1:5`, `unlock:s1:character:warden`).
+- No hace falta tocar Supabase ni borrar datos: los asientos antiguos se quedan, pero el replay los ignora.

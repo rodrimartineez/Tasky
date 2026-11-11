@@ -1,8 +1,12 @@
-import type { WeaponDef } from '../sim/types';
+import type { WeaponDef, WeaponStats } from '../sim/types';
+import { EVOLUTIONS } from './evolutions';
+
+const MIN_COOLDOWN = 0.15;
 
 /**
  * Armas. Cada una tiene un comportamiento propio en sim/weapons.ts (misma clave `id`);
  * aquí solo están sus números y textos. Niveles 2–8: los `mods` se suman a los valores anteriores.
+ * Las evoluciones (content/evolutions.ts) no están en `WEAPONS` (no se ofrecen al subir de nivel), pero sí en `WEAPON_BY_ID`.
  */
 export const WEAPONS: WeaponDef[] = [
   {
@@ -213,6 +217,72 @@ export const WEAPONS: WeaponDef[] = [
       { text: '+15 de daño', mods: { damage: 15 } },
     ],
   },
+  {
+    id: 'ricochet',
+    name: 'Cuchillas rebotantes',
+    description: 'Rebotan de un enemigo a otro.',
+    icon: 'x_ricochet',
+    // `pierce` = rebotes; `duration` = segundos de vida; `speed` = velocidad de vuelo.
+    base: { damage: 11, cooldown: 1.5, amount: 1, pierce: 3, area: 5, speed: 190, duration: 2.5, knockback: 20 },
+    levels: [
+      { text: '+5 de daño', mods: { damage: 5 } },
+      { text: 'Un rebote más', mods: { pierce: 1 } },
+      { text: 'Una cuchilla más', mods: { amount: 1 } },
+      { text: 'Lanza más a menudo', mods: { cooldown: -0.25 } },
+      { text: '+6 de daño', mods: { damage: 6 } },
+      { text: 'Dos rebotes más', mods: { pierce: 2 } },
+      { text: 'Una cuchilla más y +4 de daño', mods: { amount: 1, damage: 4 } },
+    ],
+  },
+  {
+    id: 'drone',
+    name: 'Dron centinela',
+    description: 'Orbita a tu alrededor y dispara al enemigo más cercano.',
+    icon: 'x_drone',
+    // `speed` = disparos por segundo; `area` = distancia a la que orbita; `pierce` = enemigos que atraviesa cada disparo;
+    // `cooldown` = descanso entre una tanda de drones y la siguiente.
+    base: { damage: 11, cooldown: 1.2, amount: 1, pierce: 1, area: 34, speed: 1.2, duration: 6, knockback: 15 },
+    levels: [
+      { text: '+5 de daño', mods: { damage: 5 } },
+      { text: 'Un dron más', mods: { amount: 1 } },
+      { text: 'Dispara más rápido', mods: { speed: 0.5 } },
+      { text: 'Permanecen más tiempo', mods: { duration: 2 } },
+      { text: '+6 de daño', mods: { damage: 6 } },
+      { text: 'Un dron más', mods: { amount: 1 } },
+      { text: 'Dispara más rápido y +4 de daño', mods: { speed: 0.6, damage: 4 } },
+    ],
+  },
+  {
+    id: 'trail',
+    name: 'Estela de fuego',
+    description: 'Dejas llamas tras de ti que queman a quien las pisa.',
+    icon: 'x_flame',
+    // `cooldown` = segundos entre llamas; `area` = radio de cada llama; `duration` = lo que dura encendida.
+    base: { damage: 4, cooldown: 0.3, amount: 1, pierce: 999, area: 15, speed: 0, duration: 2.2, knockback: 0 },
+    levels: [
+      { text: '+2 de daño', mods: { damage: 2 } },
+      { text: 'Llamas más grandes', mods: { area: 4 } },
+      { text: 'Arden más tiempo', mods: { duration: 0.8 } },
+      { text: 'Dos llamas a la vez', mods: { amount: 1 } },
+      { text: '+3 de daño', mods: { damage: 3 } },
+      { text: 'Llamas más grandes', mods: { area: 5 } },
+      { text: '+3 de daño y deja más llamas', mods: { damage: 3, cooldown: -0.08 } },
+    ],
+  },
 ];
 
-export const WEAPON_BY_ID = new Map(WEAPONS.map((w) => [w.id, w]));
+export const WEAPON_BY_ID = new Map([...WEAPONS, ...EVOLUTIONS.map((e) => e.def)].map((w) => [w.id, w]));
+
+/** Comportamiento (clave de `FIRE` en sim/weapons.ts) de un arma: el de su base si es una evolución. */
+export const behaviourOf = (id: string) => WEAPON_BY_ID.get(id)?.evolvedFrom ?? id;
+
+/** Valores de un arma en un nivel: los base más los `mods` de cada nivel anterior. */
+export function weaponStatsAt(def: WeaponDef, level: number): WeaponStats {
+  const stats = { ...def.base };
+  for (let i = 0; i < level - 1 && i < def.levels.length; i++) {
+    const mods = def.levels[i].mods;
+    for (const key in mods) stats[key as keyof WeaponStats] += mods[key as keyof WeaponStats] ?? 0;
+  }
+  stats.cooldown = Math.max(MIN_COOLDOWN, stats.cooldown);
+  return stats;
+}

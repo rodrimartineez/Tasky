@@ -74,7 +74,7 @@ export interface DaySnapshot {
 }
 
 /** Simula `days` días y devuelve una instantánea de cada día. */
-export function simulateEconomy(profile: Profile, rule: StreakRule, days: number, seed = 1): DaySnapshot[] {
+export function simulateEconomy(profile: Profile, rule: StreakRule, days: number, seed = 1, shieldEvery?: number): DaySnapshot[] {
   const rng = mulberry(seed);
   const habits = Array.from({ length: profile.dailyHabits }, () => makeHabit(rng));
   const streaks = Array.from({ length: profile.dailyHabits }, newStreak);
@@ -90,7 +90,7 @@ export function simulateEconomy(profile: Profile, rule: StreakRule, days: number
     const p = profile.daily(day);
     for (let h = 0; h < habits.length; h++) {
       const met = habits[h](p);
-      streaks[h] = stepStreak(streaks[h], met, true).next;
+      streaks[h] = stepStreak(streaks[h], met, shieldEvery !== Infinity, shieldEvery).next;
       if (met) points += rule(streaks[h].streak);
     }
     if (day % 7 === 0)

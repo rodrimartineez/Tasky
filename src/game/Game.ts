@@ -1,6 +1,7 @@
 import { Input } from './input/input';
 import { Renderer } from './render/renderer';
 import type { RunConfig, RunResult, UpgradeChoice, World } from './sim/types';
+import { banishChoice, evolutionReady, rerollChoices } from './sim/upgrades';
 import { chooseUpgrade, createWorld, runResult, step } from './sim/world';
 
 /**
@@ -18,10 +19,16 @@ export interface Hud {
   xpNext: number;
   kills: number;
   gold: number;
-  weapons: { id: string; level: number }[];
+  /** `ready`: al nivel máximo y con la pasiva de su evolución (el próximo cofre la evoluciona). */
+  weapons: { id: string; level: number; ready: boolean }[];
   passives: { id: string; level: number }[];
   bossAlive: boolean;
+  /** Repeticiones y descartes que quedan en la partida. */
+  rerolls: number;
+  banishes: number;
   fps: number;
+  /** Motor gráfico en uso («webgl», «canvas»…). */
+  graphics: string;
 }
 
 export interface GameCallbacks {
@@ -136,10 +143,13 @@ export class Game {
       xpNext: p.xpNext,
       kills: w.kills,
       gold: Math.floor(w.gold),
-      weapons: p.weapons.map((x) => ({ id: x.id, level: x.level })),
+      weapons: p.weapons.map((x) => ({ id: x.id, level: x.level, ready: evolutionReady(w, x) !== null })),
       passives: p.passives.map((x) => ({ id: x.id, level: x.level })),
       bossAlive: w.bossAlive,
+      rerolls: p.rerolls ?? 0,
+      banishes: p.banishes ?? 0,
       fps: Math.round(this.fps),
+      graphics: this.renderer.kind,
     });
   }
 
@@ -149,6 +159,21 @@ export class Game {
     chooseUpgrade(w, index);
     if (w.phase === 'levelup') this.callbacks.onLevelUp(w.choices);
     else this.announced = w.phase;
+    this.sendHud();
+  }
+
+  /** Repite las opciones de la subida de nivel (gasta una repetición). */
+  reroll() {
+    if (rerollChoices(this.world)) this.refreshChoices();
+  }
+
+  /** Descarta la opción `index` para el resto de la partida (gasta un descarte) y saca otras. */
+  banish(index: number) {
+    if (banishChoice(this.world, index)) this.refreshChoices();
+  }
+
+  private refreshChoices() {
+    this.callbacks.onLevelUp(this.world.choices);
     this.sendHud();
   }
 

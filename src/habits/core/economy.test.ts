@@ -5,7 +5,11 @@ import { emptyHabitsData } from './data';
 import { buyUpgrade, economyOf, EconomyError, finishRun, isUnlocked, startRun, unlock } from './economy';
 import { ensureProfile } from './habits';
 import type { HabitsData, LedgerEntry } from './model';
+import type { GameRelease } from './release';
 import { mergeHabitsRemote, noHabitsRecords } from './sync';
+
+/** Las reglas de producción (el modo de pruebas tiene sus propios tests). */
+const PROD: GameRelease = { testMode: false, season: 1, startsOn: null };
 
 const T = (n: number) => new Date(Date.UTC(2026, 10, 10, 10, 0, n)).toISOString();
 const START = '2026-11-10';
@@ -26,44 +30,45 @@ const grant = (data: HabitsData, points: number): HabitsData => {
   };
   return { ...data, ledger: [...data.ledger, reward] };
 };
+const grantEntry = (id: string): LedgerEntry => ({ id, kind: 'habit_reward', points: 0, gold: 0, habitId: null, period: null, details: null, createdAt: T(0), updatedAt: T(0), deletedAt: null });
 const outcome = (gold: number) => ({ gold, time: 600, kills: 100, won: false, xpLevel: 10 });
 
 describe('partidas diarias', () => {
   it('se recibe una partida al día y se acumulan', () => {
-    expect(economyOf(base(), START).available).toBe(1);
-    expect(economyOf(base(), '2026-11-13').available).toBe(4);
+    expect(economyOf(base(), START, PROD).available).toBe(1);
+    expect(economyOf(base(), '2026-11-13', PROD).available).toBe(4);
   });
 
   it('cada partida que se empieza es el nivel siguiente, con independencia de la fecha', () => {
     let d = base();
     const today = '2026-11-12'; // 3 partidas acumuladas
     for (let level = 1; level <= 3; level++) {
-      const started = startRun(d, 'wanderer', 'withered_woods', today, T(level * 2));
+      const started = startRun(d, 'wanderer', 'withered_woods', today, T(level * 2), 0, PROD);
       expect(started.level).toBe(level);
-      d = finishRun(started.data, started.level, outcome(50), T(level * 2 + 1));
+      d = finishRun(started.data, started.level, outcome(50), T(level * 2 + 1), PROD);
     }
-    const eco = economyOf(d, today);
+    const eco = economyOf(d, today, PROD);
     expect([eco.available, eco.nextLevel, eco.gold]).toEqual([0, 4, 150]);
-    expect(() => startRun(d, 'wanderer', 'withered_woods', today, T(9))).toThrow(EconomyError);
+    expect(() => startRun(d, 'wanderer', 'withered_woods', today, T(9), 0, PROD)).toThrow(EconomyError);
   });
 
   it('no se puede empezar otra con una en curso, ni guardar dos resultados de la misma', () => {
-    const { data, level } = startRun(base(), 'wanderer', 'withered_woods', '2026-11-12', T(1));
-    expect(() => startRun(data, 'wanderer', 'withered_woods', '2026-11-12', T(2))).toThrow(EconomyError);
-    expect(economyOf(data, '2026-11-12').openRun?.level).toBe(1);
-    const once = finishRun(data, level, outcome(80), T(3));
-    const twice = finishRun(once, level, outcome(999), T(4));
-    expect(economyOf(twice, '2026-11-12').gold).toBe(80);
+    const { data, level } = startRun(base(), 'wanderer', 'withered_woods', '2026-11-12', T(1), 0, PROD);
+    expect(() => startRun(data, 'wanderer', 'withered_woods', '2026-11-12', T(2), 0, PROD)).toThrow(EconomyError);
+    expect(economyOf(data, '2026-11-12', PROD).openRun?.level).toBe(1);
+    const once = finishRun(data, level, outcome(80), T(3), PROD);
+    const twice = finishRun(once, level, outcome(999), T(4), PROD);
+    expect(economyOf(twice, '2026-11-12', PROD).gold).toBe(80);
   });
 
   it('dos dispositivos que juegan el mismo nivel sin conexión cuentan una sola partida y un solo resultado', () => {
-    const a = startRun(base(), 'wanderer', 'withered_woods', START, T(1));
-    const b = startRun(base(), 'wanderer', 'withered_woods', START, T(5));
-    const doneA = finishRun(a.data, 1, outcome(100), T(2));
-    const doneB = finishRun(b.data, 1, outcome(300), T(6));
+    const a = startRun(base(), 'wanderer', 'withered_woods', START, T(1), 0, PROD);
+    const b = startRun(base(), 'wanderer', 'withered_woods', START, T(5), 0, PROD);
+    const doneA = finishRun(a.data, 1, outcome(100), T(2), PROD);
+    const doneB = finishRun(b.data, 1, outcome(300), T(6), PROD);
     // El servidor se queda con lo que llegó primero (A); B lo recibe al sincronizar.
     const merged = mergeHabitsRemote(doneB, { ...noHabitsRecords(), ledger: doneA.ledger });
-    const eco = economyOf(merged, START);
+    const eco = economyOf(merged, START, PROD);
     expect([eco.runs.length, eco.gold, eco.nextLevel]).toEqual([1, 100, 2]);
   });
 });
@@ -76,7 +81,7 @@ describe('mejoras y desbloqueos', () => {
     let d = grant(base(), cost1 + cost2);
     d = buyUpgrade(d, 'might', START, T(1));
     d = buyUpgrade(d, 'might', START, T(2));
-    const eco = economyOf(d, START);
+    const eco = economyOf(d, START, PROD);
     expect([eco.upgrades.might, eco.points]).toEqual([2, 0]);
     expect(() => buyUpgrade(d, 'might', START, T(3))).toThrow(EconomyError);
   });
@@ -95,7 +100,7 @@ describe('mejoras y desbloqueos', () => {
     const a = buyUpgrade(funded, 'might', START, T(1));
     const b = buyUpgrade(funded, 'maxHp', START, T(2));
     const merged = mergeHabitsRemote(a, { ...noHabitsRecords(), ledger: b.ledger });
-    const eco = economyOf(merged, START);
+    const eco = economyOf(merged, START, PROD);
     expect(eco.points).toBe(0);
     expect(eco.upgrades).toEqual({ might: 1 });
     expect(eco.rejected.size).toBe(1);
@@ -103,14 +108,48 @@ describe('mejoras y desbloqueos', () => {
 
   it('los personajes se desbloquean con oro y el inicial es gratis', () => {
     let d = base();
-    expect(isUnlocked(economyOf(d, START), 'character:wanderer')).toBe(true);
-    expect(() => unlock(d, 'character:warden', START, T(1))).toThrow(EconomyError);
-    const run = startRun(d, 'wanderer', 'withered_woods', START, T(1));
-    d = finishRun(run.data, 1, outcome(700), T(2));
-    d = unlock(d, 'character:warden', START, T(3));
-    const eco = economyOf(d, START);
+    expect(isUnlocked(economyOf(d, START, PROD), 'character:wanderer')).toBe(true);
+    expect(() => unlock(d, 'character:warden', START, T(1), PROD)).toThrow(EconomyError);
+    const run = startRun(d, 'wanderer', 'withered_woods', START, T(1), 0, PROD);
+    d = finishRun(run.data, 1, outcome(700), T(2), PROD);
+    d = unlock(d, 'character:warden', START, T(3), PROD);
+    const eco = economyOf(d, START, PROD);
     expect(isUnlocked(eco, 'character:warden')).toBe(true);
     expect(eco.gold).toBe(700 - CHARACTER_BY_ID.get('warden')!.price);
-    expect(() => startRun(d, 'mystic', 'withered_woods', '2026-11-11', T(4))).toThrow(EconomyError);
+    expect(() => startRun(d, 'mystic', 'withered_woods', '2026-11-11', T(4), 0, PROD)).toThrow(EconomyError);
+  });
+});
+
+describe('modo de pruebas y temporadas', () => {
+  const TEST: GameRelease = { testMode: true, season: 1, startsOn: null };
+
+  it('en pruebas: partidas ilimitadas de nivel 1, todo disponible y nada se registra', () => {
+    const eco = economyOf(base(), START, TEST);
+    expect([eco.available, eco.nextLevel]).toEqual([Infinity, 1]);
+    expect(isUnlocked(eco, 'character:warden') && isUnlocked(eco, 'stage:ash_wastes')).toBe(true);
+    expect(() => startRun(base(), 'wanderer', 'withered_woods', START, T(1), 0, TEST)).toThrow(EconomyError);
+    expect(finishRun(base(), 1, outcome(500), T(2), TEST).ledger).toHaveLength(0);
+  });
+
+  it('las mejoras con puntos de hábitos funcionan igual en pruebas y en producción', () => {
+    const d = buyUpgrade(grant(base(), 100), 'might', START, T(1));
+    expect(economyOf(d, START, TEST).upgrades).toEqual(economyOf(d, START, PROD).upgrades);
+  });
+
+  it('al pasar a producción se ignoran partidas, oro y desbloqueos de otra temporada, pero no los puntos', () => {
+    let d = grant(base(), 50);
+    const run = startRun(d, 'wanderer', 'withered_woods', START, T(1), 0, PROD);
+    d = finishRun(run.data, 1, outcome(900), T(2), PROD);
+    d = unlock(d, 'character:warden', START, T(3), PROD);
+    const next: GameRelease = { testMode: false, season: 2, startsOn: '2026-12-01' };
+    const eco = economyOf(d, '2026-12-03', next);
+    expect([eco.runs.length, eco.gold, eco.nextLevel, eco.available, eco.points, eco.legacy]).toEqual([0, 0, 1, 3, 50, 3]);
+    expect(isUnlocked(eco, 'character:warden')).toBe(false);
+  });
+
+  it('los asientos anteriores a las temporadas (run:1, result:1) se ignoran', () => {
+    const old: LedgerEntry = { ...grantEntry('run:1'), kind: 'run_start' };
+    const eco = economyOf({ ...base(), ledger: [old] }, START, PROD);
+    expect([eco.runs.length, eco.legacy]).toEqual([0, 1]);
   });
 });

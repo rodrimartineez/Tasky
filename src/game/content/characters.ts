@@ -12,6 +12,10 @@ export interface CharacterDef {
   sprite: string;
   price: number;
   weapon: string;
+  /** Armas adicionales con las que empieza (solo los legendarios). */
+  bonusWeapons?: string[];
+  /** Personaje legendario: objetivo a muy largo plazo, con habilidades especiales. */
+  legendary?: boolean;
   /** Rasgo en una frase. */
   trait: string;
   apply(stats: Stats): void;
@@ -31,7 +35,7 @@ export const CHARACTERS: CharacterDef[] = [
     id: 'warden',
     name: 'Guardiana',
     sprite: 'c_warden',
-    price: 400,
+    price: 300,
     weapon: 'lance',
     trait: '+30 % de vida y +1 de armadura, pero un 10 % más lenta.',
     apply: (s) => {
@@ -44,7 +48,7 @@ export const CHARACTERS: CharacterDef[] = [
     id: 'mystic',
     name: 'Mística',
     sprite: 'c_mystic',
-    price: 800,
+    price: 700,
     weapon: 'ember',
     trait: '+20 % de área y de duración, pero −20 % de vida.',
     apply: (s) => {
@@ -57,7 +61,7 @@ export const CHARACTERS: CharacterDef[] = [
     id: 'herbalist',
     name: 'Hierbera',
     sprite: 'c_herbalist',
-    price: 1500,
+    price: 1_800,
     weapon: 'cloud',
     trait: 'Regenera +0,5 de vida por segundo, pero hace un 15 % menos de daño.',
     apply: (s) => {
@@ -69,7 +73,7 @@ export const CHARACTERS: CharacterDef[] = [
     id: 'hunter',
     name: 'Rastreador',
     sprite: 'c_hunter',
-    price: 2500,
+    price: 2_600,
     weapon: 'boomerang',
     trait: '+20 % de velocidad de proyectiles y +10 % de crítico, pero −15 % de vida.',
     apply: (s) => {
@@ -82,7 +86,7 @@ export const CHARACTERS: CharacterDef[] = [
     id: 'gladiator',
     name: 'Gladiadora',
     sprite: 'c_gladiator',
-    price: 4000,
+    price: 9_000,
     weapon: 'whip',
     trait: '+15 % de daño, +10 % de vida y +1 de armadura, pero −10 % de área.',
     apply: (s) => {
@@ -96,7 +100,7 @@ export const CHARACTERS: CharacterDef[] = [
     id: 'alchemist',
     name: 'Alquimista',
     sprite: 'c_alchemist',
-    price: 6000,
+    price: 12_000,
     weapon: 'flask',
     trait: '+25 % de área y +20 % de oro, pero ataca un 10 % más despacio.',
     apply: (s) => {
@@ -109,7 +113,7 @@ export const CHARACTERS: CharacterDef[] = [
     id: 'stormcaller',
     name: 'Tormentista',
     sprite: 'c_stormcaller',
-    price: 8500,
+    price: 19_000,
     weapon: 'storm',
     trait: '+1 proyectil en cada arma, pero −30 % de vida.',
     apply: (s) => {
@@ -121,7 +125,7 @@ export const CHARACTERS: CharacterDef[] = [
     id: 'sapper',
     name: 'Zapador',
     sprite: 'c_sapper',
-    price: 12000,
+    price: 40_000,
     weapon: 'mines',
     trait: '+2 de armadura y +10 % de vida, pero un 15 % más lento.',
     apply: (s) => {
@@ -134,7 +138,7 @@ export const CHARACTERS: CharacterDef[] = [
     id: 'astronomer',
     name: 'Astrónoma',
     sprite: 'c_astronomer',
-    price: 16000,
+    price: 50_000,
     weapon: 'meteors',
     trait: '+25 % de experiencia, pero −25 % de vida.',
     apply: (s) => {
@@ -146,7 +150,7 @@ export const CHARACTERS: CharacterDef[] = [
     id: 'prism',
     name: 'Prismática',
     sprite: 'c_prism',
-    price: 21000,
+    price: 85_000,
     weapon: 'beam',
     trait: '+20 % de duración y de velocidad de proyectiles, pero −10 % de daño.',
     apply: (s) => {
@@ -159,7 +163,7 @@ export const CHARACTERS: CharacterDef[] = [
     id: 'hermit',
     name: 'Ermitaño Lunar',
     sprite: 'c_hermit',
-    price: 27000,
+    price: 120_000,
     weapon: 'orbs',
     trait: '+15 % de área y +1 de armadura, pero −15 % de daño.',
     apply: (s) => {
@@ -172,7 +176,7 @@ export const CHARACTERS: CharacterDef[] = [
     id: 'thief',
     name: 'Saqueatumbas',
     sprite: 'c_thief',
-    price: 34000,
+    price: 190_000,
     weapon: 'nova',
     trait: '+50 % de oro y +30 % de suerte, pero −25 % de vida.',
     apply: (s) => {
@@ -185,7 +189,7 @@ export const CHARACTERS: CharacterDef[] = [
     id: 'centella',
     name: 'Centella',
     sprite: 'c_centella',
-    price: 42000,
+    price: 230_000,
     weapon: 'spark',
     trait: '+1 proyectil en cada arma y +10 % de velocidad, pero −35 % de vida y ataca un 15 % más despacio.',
     apply: (s) => {
@@ -199,7 +203,7 @@ export const CHARACTERS: CharacterDef[] = [
     id: 'knight',
     name: 'Caballero del Alba',
     sprite: 'c_knight',
-    price: 52000,
+    price: 300_000,
     weapon: 'lance',
     trait: '+25 % de daño, +15 % de vida y +2 de armadura, pero un 15 % más lento y ataca un 10 % más despacio.',
     apply: (s) => {
@@ -214,7 +218,7 @@ export const CHARACTERS: CharacterDef[] = [
     id: 'archmage',
     name: 'Archimaga',
     sprite: 'c_archmage',
-    price: 65000,
+    price: 400_000,
     weapon: 'storm',
     trait: '+15 % de daño, de área y de duración y ataca un 10 % más rápido, pero −40 % de vida.',
     apply: (s) => {
@@ -223,6 +227,68 @@ export const CHARACTERS: CharacterDef[] = [
       s.duration *= 1.15;
       s.cooldown *= 0.9;
       s.maxHp *= 0.6;
+    },
+  },
+  // ── Legendarios: objetivos de años. Cada uno rompe una regla del juego (revivir, empezar con varias armas…).
+  {
+    id: 'phoenix',
+    name: 'Fénix Renacido',
+    sprite: 'c_phoenix',
+    price: 750_000,
+    legendary: true,
+    weapon: 'ember',
+    bonusWeapons: ['meteors'],
+    trait: 'Revive una vez por partida y empieza también con Lluvia de meteoritos. +10 % de vida y de daño.',
+    apply: (s) => {
+      s.revival += 1;
+      s.maxHp *= 1.1;
+      s.might *= 1.1;
+    },
+  },
+  {
+    id: 'collector',
+    name: 'Coleccionista',
+    sprite: 'c_collector',
+    price: 1_500_000,
+    legendary: true,
+    weapon: 'spark',
+    bonusWeapons: ['orbs', 'boomerang'],
+    trait: 'Empieza con tres armas, +50 % de oro y +30 % de suerte.',
+    apply: (s) => {
+      s.greed *= 1.5;
+      s.luck *= 1.3;
+    },
+  },
+  {
+    id: 'chronomancer',
+    name: 'Cronomante',
+    sprite: 'c_chronomancer',
+    price: 4_000_000,
+    legendary: true,
+    weapon: 'beam',
+    bonusWeapons: ['storm'],
+    trait: 'Domina el tiempo: ataca un 25 % más rápido, +30 % de duración y +20 % de velocidad de proyectiles. Empieza con dos armas.',
+    apply: (s) => {
+      s.cooldown *= 0.75;
+      s.duration *= 1.3;
+      s.projSpeed *= 1.2;
+    },
+  },
+  {
+    id: 'sun_avatar',
+    name: 'Sol Eterno',
+    sprite: 'c_sun_avatar',
+    price: 10_000_000,
+    legendary: true,
+    weapon: 'storm',
+    bonusWeapons: ['beam', 'nova', 'meteors'],
+    trait: 'El objetivo final: empieza con cuatro armas, revive dos veces, +30 % de daño y de vida, +20 % de área y +1 proyectil.',
+    apply: (s) => {
+      s.revival += 2;
+      s.might *= 1.3;
+      s.maxHp *= 1.3;
+      s.area *= 1.2;
+      s.amount += 1;
     },
   },
 ];

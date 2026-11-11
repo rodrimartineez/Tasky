@@ -158,6 +158,31 @@ export const UPGRADES: UpgradeDef[] = [
     cost: expo(120, 4),
     apply: (s, n) => void (s.amount += n),
   },
+  {
+    id: 'revival',
+    name: 'Segunda vida',
+    icon: 'u_revive',
+    // Muy potente: el coste se multiplica por 5 en cada nivel, así que en la práctica son 2–3 en años.
+    effect: (n) => `Revive ${n === 1 ? 'una vez' : `${n} veces`} por partida con media vida`,
+    cost: expo(500, 5),
+    apply: (s, n) => void (s.revival += n),
+  },
+  {
+    id: 'rerolls',
+    name: 'Repetir elección',
+    icon: 'u_reroll',
+    effect: (n) => `${n} ${n === 1 ? 'repetición' : 'repeticiones'} de las opciones al subir de nivel por partida`,
+    cost: expo(150, 3),
+    apply: (s, n) => void (s.rerolls += n),
+  },
+  {
+    id: 'banishes',
+    name: 'Descartar',
+    icon: 'u_banish',
+    effect: (n) => `${n} ${n === 1 ? 'descarte' : 'descartes'} por partida: la opción elegida no vuelve a salir`,
+    cost: expo(200, 3),
+    apply: (s, n) => void (s.banishes += n),
+  },
 ];
 
 export const UPGRADE_BY_ID = new Map(UPGRADES.map((u) => [u.id, u]));

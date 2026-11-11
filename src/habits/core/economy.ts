@@ -4,6 +4,7 @@ import { STAGE_BY_ID } from '../../game/content/stages';
 import { UPGRADE_BY_ID } from '../../game/content/upgrades';
 import type { HabitsData, LedgerEntry } from './model';
 import { daysBetween } from './periods';
+import { GAME_RELEASE, type GameRelease } from './release';
 
 /**
  * Economía del juego: todo se calcula reproduciendo el ledger (HABITS_GUIDE §4). Nunca se guarda un saldo.
@@ -47,12 +48,24 @@ export interface Economy {
   totalGoldEarned: number;
   bestTime: number;
   rejected: Set<string>;
+  /** Modo de pruebas (release.ts): partidas ilimitadas de nivel 1, todo disponible y nada se guarda. */
+  testMode: boolean;
+  /** Asientos de partidas, resultados y desbloqueos de otra temporada (se ignoran). */
+  legacy: number;
 }
 
 const upgradeId = (upgrade: string, level: number) => `upgrade:${upgrade}:${level}`;
-const unlockId = (key: string) => `unlock:${key}`;
-const runId = (level: number) => `run:${level}`;
-const resultId = (level: number) => `result:${level}`;
+/** Los ids del juego llevan la temporada: `run:s1:5`, `result:s1:5`, `unlock:s1:character:warden`. */
+const seasonTag = (release: GameRelease) => `s${release.season}`;
+const unlockId = (key: string, release: GameRelease) => `unlock:${seasonTag(release)}:${key}`;
+const runId = (level: number, release: GameRelease) => `run:${seasonTag(release)}:${level}`;
+const resultId = (level: number, release: GameRelease) => `result:${seasonTag(release)}:${level}`;
+
+/** Resto del id tras `<tipo>:<temporada>:`, o null si es de otra temporada (o anterior a las temporadas). */
+function inSeason(id: string, release: GameRelease): string | null {
+  const prefix = `${id.slice(0, id.indexOf(':'))}:${seasonTag(release)}:`;
+  return id.startsWith(prefix) ? id.slice(prefix.length) : null;
+}
 
 /** Lo que es gratis no hace falta desbloquearlo. */
 export function isFree(key: string): boolean {
@@ -70,7 +83,8 @@ export function priceOf(key: string): number {
 
 const order = (a: LedgerEntry, b: LedgerEntry) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id);
 
-export function economyOf(data: HabitsData, today: LocalDate): Economy {
+export function economyOf(data: HabitsData, today: LocalDate, release: GameRelease = GAME_RELEASE): Economy {
+  const firstDay = data.profile && release.startsOn && release.startsOn > data.profile.startedOn ? release.startsOn : data.profile?.startedOn;
   const eco: Economy = {
     points: 0,
     gold: 0,
@@ -78,16 +92,24 @@ export function economyOf(data: HabitsData, today: LocalDate): Economy {
     unlocked: new Set(),
     runs: [],
     openRun: null,
-    granted: data.profile ? Math.max(0, daysBetween(data.profile.startedOn, today) + 1) : 0,
+    granted: firstDay ? Math.max(0, daysBetween(firstDay, today) + 1) : 0,
     available: 0,
     nextLevel: 1,
     totalPointsEarned: 0,
     totalGoldEarned: 0,
     bestTime: 0,
     rejected: new Set(),
+    testMode: release.testMode,
+    legacy: 0,
   };
   const byLevel = new Map<number, RunRecord>();
   const reject = (e: LedgerEntry) => eco.rejected.add(e.id);
+  /** Id dentro de la temporada (sin el prefijo), o null si el asiento es de otra y se ignora. */
+  const own = (e: LedgerEntry) => {
+    const rest = inSeason(e.id, release);
+    if (rest === null) eco.legacy += 1;
+    return rest;
+  };
 
   for (const e of [...data.ledger].sort(order)) {
     switch (e.kind) {
@@ -109,7 +131,8 @@ export function economyOf(data: HabitsData, today: LocalDate): Economy {
       }
 
       case 'unlock': {
-        const key = e.id.slice('unlock:'.length);
+        const key = own(e);
+        if (key === null) break;
         const cost = -e.gold;
         if (eco.unlocked.has(key) || cost > eco.gold || cost < 0) reject(e);
         else {
@@ -120,7 +143,9 @@ export function economyOf(data: HabitsData, today: LocalDate): Economy {
       }
 
       case 'run_start': {
-        const level = Number(e.id.slice('run:'.length));
+        const rest = own(e);
+        if (rest === null) break;
+        const level = Number(rest);
         if (level !== byLevel.size + 1) {
           reject(e);
           break;
@@ -138,7 +163,9 @@ export function economyOf(data: HabitsData, today: LocalDate): Economy {
       }
 
       case 'run_result': {
-        const run = byLevel.get(Number(e.id.slice('result:'.length)));
+        const rest = own(e);
+        if (rest === null) break;
+        const run = byLevel.get(Number(rest));
         if (!run || run.result || e.gold < 0) {
           reject(e);
           break;
@@ -156,10 +183,15 @@ export function economyOf(data: HabitsData, today: LocalDate): Economy {
   eco.openRun = eco.runs.find((r) => r.result === null) ?? null;
   eco.available = Math.max(0, eco.granted - eco.runs.length);
   eco.nextLevel = eco.runs.length + 1;
+  if (release.testMode) {
+    eco.available = Infinity;
+    eco.nextLevel = 1;
+    eco.openRun = null;
+  }
   return eco;
 }
 
-export const isUnlocked = (eco: Economy, key: string) => isFree(key) || eco.unlocked.has(key);
+export const isUnlocked = (eco: Economy, key: string) => eco.testMode || isFree(key) || eco.unlocked.has(key);
 
 const entry = (id: string, kind: LedgerEntry['kind'], now: Timestamp, extra: Partial<LedgerEntry>): LedgerEntry => ({
   id,
@@ -191,13 +223,13 @@ export function buyUpgrade(data: HabitsData, upgrade: string, today: LocalDate, 
 }
 
 /** Desbloquea un personaje o escenario (`character:<id>` / `stage:<id>`) con oro. */
-export function unlock(data: HabitsData, key: string, today: LocalDate, now: Timestamp): HabitsData {
-  const eco = economyOf(data, today);
+export function unlock(data: HabitsData, key: string, today: LocalDate, now: Timestamp, release: GameRelease = GAME_RELEASE): HabitsData {
+  const eco = economyOf(data, today, release);
   if (isUnlocked(eco, key)) return data;
   const price = priceOf(key);
   if (!Number.isFinite(price)) throw new EconomyError('Contenido desconocido.');
   if (price > eco.gold) throw new EconomyError('No tienes oro suficiente.');
-  return append(data, entry(unlockId(key), 'unlock', now, { gold: -price }));
+  return append(data, entry(unlockId(key, release), 'unlock', now, { gold: -price }));
 }
 
 /** Empieza la siguiente partida (consume una partida disponible). Devuelve su nivel. */
@@ -209,15 +241,18 @@ export function startRun(
   now: Timestamp,
   /** Ayuda de vuelta aplicada (0 = ninguna), para el historial. */
   comeback = 0,
+  release: GameRelease = GAME_RELEASE,
 ): { data: HabitsData; level: number } {
-  const eco = economyOf(data, today);
+  // Las partidas de prueba no se guardan: no pasan por aquí.
+  if (release.testMode) throw new EconomyError('En el modo de pruebas las partidas no se registran.');
+  const eco = economyOf(data, today, release);
   if (eco.openRun) throw new EconomyError('Ya hay una partida en curso.');
   if (eco.available <= 0) throw new EconomyError('No te quedan partidas: mañana a las 00:00 recibirás otra.');
   if (!isUnlocked(eco, `character:${character}`) || !isUnlocked(eco, `stage:${stage}`)) throw new EconomyError('Ese contenido aún está bloqueado.');
   const level = eco.nextLevel;
   const details: Record<string, string | number> = { character, stage };
   if (comeback > 0) details.comeback = Math.round(comeback * 100) / 100;
-  return { data: append(data, entry(runId(level), 'run_start', now, { details })), level };
+  return { data: append(data, entry(runId(level, release), 'run_start', now, { details })), level };
 }
 
 export interface RunOutcome {
@@ -235,11 +270,11 @@ export function setLoadout(data: HabitsData, character: string, stage: string, n
 }
 
 /** Registra el resultado de la partida en curso (una sola vez por nivel). */
-export function finishRun(data: HabitsData, level: number, outcome: RunOutcome, now: Timestamp): HabitsData {
-  if (data.ledger.some((e) => e.id === resultId(level))) return data;
+export function finishRun(data: HabitsData, level: number, outcome: RunOutcome, now: Timestamp, release: GameRelease = GAME_RELEASE): HabitsData {
+  if (release.testMode || data.ledger.some((e) => e.id === resultId(level, release))) return data;
   return append(
     data,
-    entry(resultId(level), 'run_result', now, {
+    entry(resultId(level, release), 'run_result', now, {
       gold: Math.max(0, Math.floor(outcome.gold)),
       details: { time: Math.round(outcome.time), kills: outcome.kills, won: outcome.won, xpLevel: outcome.xpLevel },
     }),

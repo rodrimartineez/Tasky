@@ -23,5 +23,5 @@ export function buildRunConfig(
   character.apply(stats);
   stats.growth *= 1 + boost.xp;
   stats.maxHp *= 1 + boost.hp;
-  return { seed: (Math.imul(level, 2654435761) ^ 0x5bd1e995) | 0, level, stage, stats, startingWeapon: character.weapon, sprite: character.sprite };
+  return { seed: (Math.imul(level, 2654435761) ^ 0x5bd1e995) | 0, level, stage, stats, startingWeapon: character.weapon, bonusWeapons: character.bonusWeapons, sprite: character.sprite };
 }

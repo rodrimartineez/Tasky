@@ -1,4 +1,5 @@
-import { Application, Container, Rectangle, Sprite, Texture, TilingSprite } from 'pixi.js';
+import { Application, Container, Rectangle, Sprite, Texture, TilingSprite, type ApplicationOptions } from 'pixi.js';
+import { behaviourOf, WEAPON_BY_ID } from '../content/weapons';
 import { emberRadius, MINE_ARM } from '../sim/weapons';
 import type { Fx, Projectile, World } from '../sim/types';
 import { buildAtlas, buildGroundTile, CIRCLE_RADIUS, WHITE } from '../sprites/atlas';
@@ -129,20 +130,56 @@ export class Renderer {
     this.effects = layer();
   }
 
+  /**
+   * Arranca el motor gráfico probando de más a menos exigente: WebGL a la resolución de la pantalla (hasta 2×,
+   * de sobra para pixel art), WebGL a 1× y en bajo consumo, y por último el dibujado con Canvas 2D, que funciona
+   * en cualquier navegador aunque WebGL esté desactivado o falle (iOS en modo de bajo consumo o con el modo de
+   * aislamiento, contextos perdidos…). `localStorage['tasky-game-renderer'] = 'canvas'` fuerza el último (pruebas).
+   */
   static async create(host: HTMLElement): Promise<Renderer> {
-    const app = new Application();
-    await app.init({
-      resizeTo: host,
-      background: 0x12201a,
-      antialias: false,
-      autoStart: false,
-      autoDensity: true,
-      resolution: Math.min(window.devicePixelRatio || 1, 3),
-    });
-    host.appendChild(app.canvas);
-    const renderer = new Renderer(app);
-    renderer.loadTextures();
-    return renderer;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const attempts: Partial<ApplicationOptions>[] = [
+      { preference: 'webgl', resolution: dpr },
+      { preference: 'webgl', resolution: 1, powerPreference: 'low-power' },
+      { preference: 'canvas', resolution: 1 },
+    ];
+    let forced: string | null = null;
+    try {
+      forced = localStorage.getItem('tasky-game-renderer');
+    } catch {
+      // Sin almacenamiento: se usa el orden normal.
+    }
+    const errors: string[] = [];
+    for (const attempt of forced === 'canvas' ? attempts.slice(-1) : attempts) {
+      const app = new Application();
+      try {
+        await app.init({
+          ...attempt,
+          resizeTo: host,
+          background: 0x12201a,
+          antialias: false,
+          autoStart: false,
+          autoDensity: true,
+        });
+        host.appendChild(app.canvas);
+        const renderer = new Renderer(app);
+        renderer.loadTextures();
+        return renderer;
+      } catch (e) {
+        errors.push(`${attempt.preference}@${attempt.resolution}: ${e instanceof Error ? e.message : String(e)}`);
+        try {
+          app.destroy({ removeView: true });
+        } catch {
+          // Si ni siquiera llegó a crearse, no hay nada que liberar.
+        }
+      }
+    }
+    throw new Error(`No se pudo iniciar ningún motor gráfico (${errors.join(' · ')})`);
+  }
+
+  /** Motor gráfico en uso (para el aviso de rendimiento y los diagnósticos). */
+  get kind(): string {
+    return this.app.renderer.name;
   }
 
   private loadTextures() {
@@ -260,12 +297,13 @@ export class Renderer {
 
     // Bajo los personajes: aura de ascuas.
     this.under.begin();
-    const ember = p.weapons.find((ws) => ws.id === 'ember');
+    const ember = p.weapons.find((ws) => behaviourOf(ws.id) === 'ember');
     if (ember) {
+      const emberColor = WEAPON_BY_ID.get(ember.id)?.color ?? 0xff8a3c;
       const s = this.under.next(this.tex('disc'));
       s.position.set(p.x, p.y);
       s.scale.set(emberRadius(w, ember) / CIRCLE_RADIUS);
-      s.tint = 0xff8a3c;
+      s.tint = emberColor;
       s.alpha = 0.13 + Math.sin(this.clock * 6) * 0.03;
       const edge = this.under.next(this.tex('ring'));
       edge.position.set(p.x, p.y);
@@ -371,6 +409,39 @@ export class Renderer {
         const s = pool.next(this.tex(shot.sprite));
         s.position.set(shot.x, shot.y);
         s.rotation = shot.angle;
+        return;
+      }
+      case 'ricochet': {
+        // Cuchilla giratoria con estela corta en la dirección de vuelo.
+        const speed = Math.hypot(shot.vx, shot.vy) || 1;
+        this.trail(shot, shot.vx / speed, shot.vy / speed, shot.angle, 3, 5);
+        const s = pool.next(this.tex(shot.sprite));
+        s.position.set(shot.x, shot.y);
+        s.rotation = shot.angle;
+        return;
+      }
+      case 'drone': {
+        // Dron: flota con un vaivén suave; aparece y se retira encogiéndose.
+        const s = pool.next(this.tex(shot.sprite));
+        s.position.set(shot.x, shot.y + Math.sin(this.clock * 5 + shot.angle * 3) * 1.5);
+        s.scale.set(Math.min(1, shot.life * 3));
+        return;
+      }
+      case 'flame': {
+        // Llama: halo en el suelo y dos lenguas que parpadean; se apaga al final.
+        const fade = Math.min(1, shot.life * 1.5);
+        const halo = pool.next(this.tex('disc'));
+        halo.position.set(shot.x, shot.y);
+        halo.scale.set(shot.radius / CIRCLE_RADIUS);
+        halo.tint = shot.sprite === 'x_flame' ? 0xff7a2c : 0x3f8cff;
+        halo.alpha = 0.1 * fade;
+        for (let i = 0; i < 2; i++) {
+          const flick = Math.sin(this.clock * 14 + shot.x * 0.7 + i * 2.4);
+          const tongue = pool.next(this.tex(shot.sprite));
+          tongue.position.set(shot.x + (i - 0.5) * shot.radius * 0.6, shot.y - Math.abs(flick) * 2);
+          tongue.scale.set(Math.max(0.8, shot.radius / 16) * (0.85 + 0.15 * flick));
+          tongue.alpha = 0.9 * fade;
+        }
         return;
       }
       case 'mine': {
