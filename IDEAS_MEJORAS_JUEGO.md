@@ -67,7 +67,7 @@ conviene dibujar una sola vez sobre un contenido ya cerrado.
 | **5c — Builds** ✔️ | Evoluciones, resto de armas y pasivas, revivir/repetir/descartar | B1, B2 (resto), C1 | 5 | Alta |
 | **5d — Progresión por niveles** ✔️ | Intentos ganados con hábitos, nivel solo al superar 30 min, La Muerte, 10 jefes de ciclo cada 7 niveles, hitos (×1,5/×2, infinito, reflejo) | E1 (adelantada) | 5c | **Máxima** (pedida por el usuario) |
 | **5e — Combate más intenso** ✔️ | Personaje siempre visible, armas y pasivas de 7 niveles (armas hasta el 999), Purga, jefes con ataques propios, oleadas y ~nivel 60 al minuto 30, dos muertes distintas | — | 5d | **Máxima** (pedida por el usuario) |
-| **6 — PWA y rendimiento** | Precarga sin conexión, rendimiento en móvil | — | 5, 5c, 5d, 5e | Alta |
+| **6 — PWA y rendimiento** ✔️ (pendiente de tu validación) | Precarga sin conexión, rendimiento en móvil, calidad automática de efectos | — | 5, 5c, 5d, 5e, 7 | Alta |
 | **7 — Rediseño visual y artístico** (en curso, antes que la 6) | Todo el arte: personajes, enemigos, jefes, armas y sus efectos, proyectiles, pasivas, mejoras, recogidas y mapas; galería de sprites | A1, A2, A3, C3 (ampliadas) | 5e | Alta (pedida por el usuario) |
 | **8 — Validación global** | Estudio de equilibrio completo, prueba en iPhone, regresión de Proyectos | — | 5–7 | Hito: juego completo |
 | **9 — Sonido** | Efectos y música originales | A4 | 7 | Media |
@@ -205,6 +205,22 @@ Pedida por el usuario el 11/11/2026; detalle en `HABITS_GUIDE.md` §12:
   y los jefes de ciclo (muchos proyectiles a la vez).
 - Medido al empezar (11/11/2026): la precarga ya incluye el juego y la simulación cuesta 0,35 ms por paso de media
   con 424 enemigos (5 ms en el peor caso), así que el trabajo pendiente es sobre todo de dibujo en móvil.
+- **Hecho (11/11/2026, después de la Fase 7, pendiente de tu validación).** Medido en Chromium con pantalla de
+  iPhone 14 y la CPU frenada para simular un móvil de gama media, sobre dos partidas de final de nivel (minuto 28–30):
+
+  | Escena | CPU normal | CPU ×4 | CPU ×6 |
+  |---|---|---|---|
+  | 455 enemigos y 134 proyectiles | 60 fps | 60 fps | 56 fps |
+  | 201 enemigos y 6 armas por encima del nivel 25 (efectos a tope) | 60 fps | 60 fps | 60 fps |
+
+  - **Calidad automática:** si el dispositivo baja de ~48 fps durante 2 s, los topes de partículas, impactos, cifras de
+    daño y ambiente se reducen a la mitad, y vuelven tras 8 s por encima de ~57 fps. Probado con la CPU ×14 (21 fps:
+    se activa) y al quitar el freno (vuelve a 60 fps y a la calidad completa). La pausa muestra «efectos reducidos».
+  - **Memoria:** partida de 4 minutos con efectos a tope: 13–14 MB estables, sin fugas.
+  - **Sin conexión:** la precarga incluye el juego y todo el arte; con la red cortada el juego arranca y se dibuja.
+  - **Legibilidad con armas muy subidas:** las nubes venenosas y los latigazos enormes tapaban la escena; ahora se
+    vuelven translúcidos al pasar de cierto tamaño (el área real se sigue viendo).
+  - Pendiente para la validación global (Fase 8): medir en un iPhone real, que no se puede simular aquí.
 
 ### Fase 7 — Rediseño visual y artístico (amplía la antigua «Arte y sensación»)
 

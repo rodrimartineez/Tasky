@@ -157,6 +157,11 @@ const RING_LIFE = 0.3;
 const BOLT_LIFE = 0.18;
 const MAX_NUMBERS = 70;
 const MAX_PARTICLES = 220;
+/**
+ * Calidad automática de los efectos: si el dispositivo se queda por debajo de ~48 fps durante 2 s, los topes de
+ * partículas, impactos, cifras y ambiente bajan a la mitad; vuelven al completo tras 8 s por encima de ~57 fps.
+ */
+const QUALITY = { slowFrame: 1 / 48, fastFrame: 1 / 57, lowAfter: 2, highAfter: 8, low: 0.5 };
 
 /** Azar solo visual (no afecta a la simulación). */
 function hash(a: number, b: number) {
@@ -249,7 +254,28 @@ export class Renderer {
 
   /** Motor gráfico en uso (para el aviso de rendimiento y los diagnósticos). */
   get kind(): string {
-    return this.app.renderer.name;
+    return this.app.renderer.name + (this.quality < 1 ? ' · efectos reducidos' : '');
+  }
+
+  private quality = 1;
+  private frameAvg = 1 / 60;
+  private qualityTimer = 0;
+
+  /** Ajusta `quality` según el tiempo medio de fotograma (ver QUALITY). */
+  private adapt(dt: number) {
+    if (dt <= 0) return;
+    this.frameAvg += (Math.min(dt, 0.1) - this.frameAvg) * 0.1;
+    const wants = this.quality === 1 ? this.frameAvg > QUALITY.slowFrame : this.frameAvg < QUALITY.fastFrame;
+    this.qualityTimer = wants ? this.qualityTimer + dt : 0;
+    if (this.qualityTimer >= (this.quality === 1 ? QUALITY.lowAfter : QUALITY.highAfter)) {
+      this.quality = this.quality === 1 ? QUALITY.low : 1;
+      this.qualityTimer = 0;
+    }
+  }
+
+  /** Tope de efectos según la calidad actual. */
+  private cap(max: number) {
+    return Math.floor(max * this.quality);
   }
 
   private loadTextures() {
@@ -289,7 +315,7 @@ export class Renderer {
   private consume(fx: Fx[]) {
     for (const f of fx) {
       if (f.type === 'number') {
-        if (this.numbers.length >= MAX_NUMBERS) this.numbers.shift();
+        if (this.numbers.length >= this.cap(MAX_NUMBERS)) this.numbers.shift();
         this.numbers.push({
           x: f.x + (Math.random() - 0.5) * 8,
           y: f.y,
@@ -299,7 +325,7 @@ export class Renderer {
           big: f.crit || f.player,
         });
       } else if (f.type === 'puff') {
-        for (let i = 0; i < f.count && this.particles.length < MAX_PARTICLES; i++) {
+        for (let i = 0; i < f.count && this.particles.length < this.cap(MAX_PARTICLES); i++) {
           const angle = Math.random() * Math.PI * 2;
           const speed = 20 + Math.random() * 60;
           this.particles.push({
@@ -312,7 +338,7 @@ export class Renderer {
           });
         }
       } else if (f.type === 'hit') {
-        if (this.hits.length < MAX_HITS) this.hits.push({ x: f.x, y: f.y, sprite: f.sprite, life: HIT_LIFE });
+        if (this.hits.length < this.cap(MAX_HITS)) this.hits.push({ x: f.x, y: f.y, sprite: f.sprite, life: HIT_LIFE });
       } else if (f.type === 'ring') {
         this.rings.push({ x: f.x, y: f.y, radius: f.radius, life: RING_LIFE, color: f.color });
       } else if (f.type === 'line') {
@@ -339,6 +365,7 @@ export class Renderer {
    */
   draw(w: World, dt: number, dying: number | null = null) {
     this.clock += dt;
+    this.adapt(dt);
     if (dying === null) this.deathBurst = false;
     else if (!this.deathBurst) {
       this.deathBurst = true;
@@ -384,7 +411,8 @@ export class Renderer {
     }
     // Ambiente: cuando una partícula sale de la vista reaparece por el borde opuesto.
     const amb = GROUNDS[this.groundKey].ambient;
-    while (this.motes.length < AMBIENT_COUNT) {
+    if (this.motes.length > this.cap(AMBIENT_COUNT)) this.motes.length = this.cap(AMBIENT_COUNT);
+    while (this.motes.length < this.cap(AMBIENT_COUNT)) {
       this.motes.push({
         x: p.x + (Math.random() * 2 - 1) * halfW,
         y: p.y + (Math.random() * 2 - 1) * halfH,
@@ -699,13 +727,15 @@ export class Renderer {
         base.position.set(shot.x, shot.y);
         base.scale.set((shot.radius * pulse) / CIRCLE_RADIUS);
         base.tint = 0x5ee08a;
-        base.alpha = Math.min(0.22, shot.life * 0.4);
+        // Varias nubes grandes se solapan: el disco va tenue para no teñir toda la pantalla.
+        base.alpha = Math.min(shot.radius > 60 ? 0.1 : 0.22, shot.life * 0.4);
         for (let i = 0; i < 3; i++) {
           const a = this.clock * 0.8 + i * 2.1 + shot.x;
           const puff = pool.next(this.tex(shot.sprite));
           puff.position.set(shot.x + Math.cos(a) * shot.radius * 0.5, shot.y + Math.sin(a) * shot.radius * 0.4);
-          puff.scale.set(Math.max(1, shot.radius / 22));
-          puff.alpha = Math.min(0.7, shot.life * 0.8);
+          // Con mucha área, las bocanadas no crecen más (se verían como bloques que tapan a los enemigos).
+          puff.scale.set(Math.min(3, Math.max(1, shot.radius / 22)));
+          puff.alpha = Math.min(0.45, shot.life * 0.8);
         }
         return;
       }
@@ -716,7 +746,8 @@ export class Renderer {
         s.position.set(shot.x, shot.y);
         s.rotation = shot.angle;
         s.scale.set(shot.radius / 20, shot.radius / 14);
-        s.alpha = 1 - t;
+        // Muy ampliado se vuelve translúcido para no tapar la escena.
+        s.alpha = (1 - t) * (shot.radius > 60 ? 0.35 : 1);
         return;
       }
       default: {
@@ -734,7 +765,7 @@ export class Renderer {
   private burstDeath(w: World) {
     const p = w.player;
     const colors = w.completed ? [0xffffff, 0xf6c945, 0xcfe9ff] : [0xe5484d, 0x9b2335, 0x5a5670];
-    for (let i = 0; i < 40 && this.particles.length < MAX_PARTICLES; i++) {
+    for (let i = 0; i < 40 && this.particles.length < this.cap(MAX_PARTICLES); i++) {
       const angle = Math.random() * Math.PI * 2;
       const speed = 25 + Math.random() * 70;
       this.particles.push({

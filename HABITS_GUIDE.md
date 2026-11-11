@@ -416,3 +416,11 @@ saltos, invocaciones, lluvias y anillos, cada jefe tiene ataques propios avisado
   (`fx_<familia>_hit_0..2`, `hitFxOf` en `content/weapons.ts`); las explosiones no lo usan para no saturar.
 - Cada escenario tiene un suelo propio (hierba, pantano, losas, rocas, ceniza; `buildGroundTile`) y partículas de
   ambiente (hojas, luciérnagas, polvo, destellos, brasas) con tope de 28. Nada del arte cambia la simulación.
+
+## 14. Rendimiento (Fase 6)
+
+- El dibujo ajusta solo la calidad de los efectos (`QUALITY` en `game/render/renderer.ts`): por debajo de ~48 fps
+  durante 2 s los topes de partículas, impactos, cifras y ambiente bajan a la mitad; se recuperan tras 8 s fluidos.
+  La pausa muestra los fps y «efectos reducidos» cuando está activo.
+- Medición: 60 fps con 455 enemigos y con una build de efectos a tope en un móvil simulado (CPU ×4); memoria
+  estable en partidas largas; el juego funciona sin conexión. Detalle en `IDEAS_MEJORAS_JUEGO.md` (Fase 6).
