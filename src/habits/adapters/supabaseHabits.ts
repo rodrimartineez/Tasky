@@ -26,6 +26,8 @@ const fromRow: { [K in HabitsTable]: (r: Row) => HabitsRecords[K][number] } = {
       id: PROFILE_ID,
       timeZone: r.time_zone,
       startedOn: r.started_on,
+      character: r.character ?? 'wanderer',
+      stage: r.stage ?? 'withered_woods',
       createdAt: ts(r.created_at),
       updatedAt: ts(r.updated_at),
       deletedAt: null,
@@ -62,6 +64,7 @@ const fromRow: { [K in HabitsTable]: (r: Row) => HabitsRecords[K][number] } = {
       gold: Number(r.gold),
       habitId: r.habit_id ?? null,
       period: r.period ?? null,
+      details: r.details ?? null,
       createdAt: ts(r.created_at),
       updatedAt: ts(r.created_at),
       deletedAt: null,
@@ -69,7 +72,7 @@ const fromRow: { [K in HabitsTable]: (r: Row) => HabitsRecords[K][number] } = {
 };
 
 const toRow: { [K in HabitsTable]: (r: HabitsRecords[K][number]) => Record<string, unknown> } = {
-  profile: (p) => ({ time_zone: p.timeZone, started_on: p.startedOn, created_at: p.createdAt, updated_at: p.updatedAt }),
+  profile: (p) => ({ time_zone: p.timeZone, started_on: p.startedOn, character: p.character, stage: p.stage, created_at: p.createdAt, updated_at: p.updatedAt }),
   habits: (h) => ({
     id: h.id,
     name: h.name,
@@ -91,6 +94,7 @@ const toRow: { [K in HabitsTable]: (r: HabitsRecords[K][number]) => Record<strin
     gold: e.gold,
     habit_id: e.habitId,
     period: e.period,
+    details: e.details,
     created_at: e.createdAt,
   }),
 };

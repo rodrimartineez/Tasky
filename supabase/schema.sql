@@ -204,7 +204,7 @@ create table if not exists public.habit_logs (
 create table if not exists public.habit_ledger (
   id          text primary key,
   user_id     uuid not null default auth.uid() references auth.users (id) on delete cascade,
-  kind        text not null check (kind in ('habit_reward')),
+  kind        text not null,
   points      integer not null default 0,
   gold        integer not null default 0,
   habit_id    uuid,
@@ -212,6 +212,14 @@ create table if not exists public.habit_ledger (
   created_at  timestamptz not null,
   server_seq  bigint not null default nextval('public.tasky_change_seq')
 );
+
+-- Fase 4 (juego): columnas y tipos de asiento nuevos. Idempotente: se puede volver a ejecutar sobre tablas ya creadas.
+alter table public.habit_profile add column if not exists character text not null default 'wanderer';
+alter table public.habit_profile add column if not exists stage text not null default 'withered_woods';
+alter table public.habit_ledger add column if not exists details jsonb;
+alter table public.habit_ledger drop constraint if exists habit_ledger_kind_check;
+alter table public.habit_ledger add constraint habit_ledger_kind_check
+  check (kind in ('habit_reward', 'run_start', 'run_result', 'upgrade', 'unlock'));
 
 do $$
 declare t text;

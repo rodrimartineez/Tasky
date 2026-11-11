@@ -137,6 +137,8 @@ export interface StageEvent {
 export interface StageDef {
   id: string;
   name: string;
+  /** Oro para desbloquearlo (0 = disponible desde el principio). */
+  price: number;
   /** Sprites del suelo y de la decoración. */
   ground: string;
   props: string[];
@@ -146,6 +148,8 @@ export interface StageDef {
 
 export interface RunConfig {
   seed: number;
+  /** Nivel de la partida (1 = la primera que juega el usuario). Ver sim/difficulty.ts. */
+  level: number;
   stage: StageDef;
   /** Estadísticas iniciales (personaje + mejoras permanentes). */
   stats: Stats;

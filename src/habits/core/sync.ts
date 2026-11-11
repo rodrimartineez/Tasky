@@ -23,7 +23,6 @@ const versionKey = (table: HabitsTable, id: string) => `${table}:${id}`;
 
 /**
  * Última escritura gana por registro; en empate se queda la del servidor.
- * Registros y asientos son inmutables: para ellos esto equivale a la unión por id (mismo id = mismo hecho).
  */
 function mergeList<T extends AnyRecord>(local: T[], remote: T[]): T[] {
   if (remote.length === 0) return local;
@@ -37,14 +36,30 @@ function mergeList<T extends AnyRecord>(local: T[], remote: T[]): T[] {
   return [...merged, ...byId.values()];
 }
 
+/**
+ * Registros inmutables con el mismo id (dos dispositivos que generan el mismo asiento sin conexión):
+ * se queda la versión del servidor, la primera que llegó, para que todos los dispositivos coincidan.
+ */
+function mergeImmutable<T extends AnyRecord>(local: T[], remote: T[]): T[] {
+  if (remote.length === 0) return local;
+  const byId = new Map(remote.map((r) => [r.id, r]));
+  const merged = local.map((l) => {
+    const r = byId.get(l.id);
+    if (!r) return l;
+    byId.delete(l.id);
+    return r;
+  });
+  return [...merged, ...byId.values()];
+}
+
 export function mergeHabitsRemote(local: HabitsData, remote: HabitsRecords): HabitsData {
   const profile = mergeList(local.profile ? [local.profile] : [], remote.profile)[0] ?? null;
   return {
     ...local,
     profile,
     habits: mergeList(local.habits, remote.habits),
-    logs: mergeList(local.logs, remote.logs),
-    ledger: mergeList(local.ledger, remote.ledger),
+    logs: mergeImmutable(local.logs, remote.logs),
+    ledger: mergeImmutable(local.ledger, remote.ledger),
   };
 }
 

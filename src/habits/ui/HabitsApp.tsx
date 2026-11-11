@@ -8,6 +8,7 @@ import { HabitsHome } from './HabitsHome';
 import { HabitsLayout } from './HabitsLayout';
 import { PlayPage } from './play/PlayPage';
 import { RewardsPage } from './RewardsPage';
+import { UpgradesPage } from './UpgradesPage';
 
 /** Entrada del modo Hábitos (se carga en diferido desde ui/app/App.tsx). */
 export default function HabitsApp() {
@@ -24,6 +25,7 @@ export default function HabitsApp() {
       <Route element={<HabitsLayout />}>
         <Route index element={<HabitsHome />} />
         <Route path="play" element={<PlayPage />} />
+        <Route path="upgrades" element={<UpgradesPage />} />
         <Route path="rewards" element={<RewardsPage />} />
         <Route path="habit/:habitId" element={<HabitPage />} />
         <Route path="*" element={<Navigate to="/habits" replace />} />

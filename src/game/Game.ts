@@ -55,15 +55,28 @@ export class Game {
     config: RunConfig,
     private renderer: Renderer,
     private callbacks: GameCallbacks,
+    resume: World | null,
   ) {
-    this.world = createWorld(config);
+    this.world = resume ?? createWorld(config);
+    // Una partida reanudada empieza en pausa: el jugador decide cuándo seguir.
+    if (resume && resume.phase === 'playing') this.paused = true;
     this.input = new Input(host, () => this.togglePause());
     document.addEventListener('visibilitychange', this.onVisibility);
     this.frame = requestAnimationFrame(this.loop);
   }
 
-  static async start(host: HTMLElement, config: RunConfig, callbacks: GameCallbacks): Promise<Game> {
-    return new Game(host, config, await Renderer.create(host), callbacks);
+  /** `resume`: estado guardado con `snapshot()` para continuar una partida interrumpida. */
+  static async start(host: HTMLElement, config: RunConfig, callbacks: GameCallbacks, resume: World | null = null): Promise<Game> {
+    const game = new Game(host, config, await Renderer.create(host), callbacks, resume);
+    if (game.paused) callbacks.onPause(true);
+    return game;
+  }
+
+  /** Copia del estado para reanudar la partida más tarde (null si ya ha terminado). Es JSON puro. */
+  snapshot(): World | null {
+    const w = this.world;
+    if (this.ended || w.phase === 'dead' || w.phase === 'won') return null;
+    return JSON.parse(JSON.stringify({ ...w, fx: [] })) as World;
   }
 
   private onVisibility = () => {

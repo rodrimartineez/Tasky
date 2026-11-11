@@ -9,7 +9,6 @@ import {
   evaluateRewards,
   history,
   logHabit,
-  pointsBalance,
   streaks,
   targetFor,
   updateHabit,
@@ -18,6 +17,8 @@ import {
 import type { HabitsData } from './model';
 import { dateInZone, periodKey, periodsBetween } from './periods';
 import { mergeHabitsRemote, noHabitsRecords, pendingHabitsChanges, rememberHabitsVersions } from './sync';
+
+const pointsBalance = (d: HabitsData) => d.ledger.reduce((sum, e) => sum + e.points, 0);
 
 const TZ = 'Europe/Madrid';
 const T0 = '2026-11-02T08:00:00.000Z'; // lunes 2 de noviembre, 09:00 en Madrid
@@ -177,6 +178,29 @@ describe('recompensas', () => {
     const b = log(data, ids[0], '2026-11-02', 1);
     const merged = mergeHabitsRemote(a, { ...noHabitsRecords(), logs: b.logs });
     expect(amountIn(amountsOf(merged), ids[0], '2026-11-02')).toBe(30);
+  });
+});
+
+describe('puntos por racha', () => {
+  it('un hábito diario da más puntos al pasar los hitos de racha', () => {
+    const { data, ids } = setup(read);
+    let d = data;
+    for (let i = 0; i < 8; i++) d = log(d, ids[0], `2026-11-${String(2 + i).padStart(2, '0')}`, 3);
+    d = evaluateRewards(d, '2026-11-10', T0);
+    // Días 1–2: 1 punto · días 3–6: 2 (hito de 3) · días 7–8: 3 (hito de 7).
+    expect(d.ledger.map((e) => e.points)).toEqual([1, 1, 2, 2, 2, 2, 3, 3]);
+    expect(d.ledger[7].details).toEqual({ streak: 8 });
+  });
+
+  it('romper la racha vuelve a 1 punto; los semanales siguen dando 3', () => {
+    const { data, ids } = setup(read, gym);
+    let d = data;
+    for (const day of ['2026-11-02', '2026-11-03', '2026-11-04', '2026-11-06']) d = log(d, ids[0], day, 3);
+    d = log(d, ids[1], '2026-11-03', 3);
+    d = evaluateRewards(d, '2026-11-09', T0);
+    const daily = d.ledger.filter((e) => e.habitId === ids[0]).map((e) => e.points);
+    expect(daily).toEqual([1, 1, 2, 1]);
+    expect(d.ledger.find((e) => e.habitId === ids[1])?.points).toBe(3);
   });
 });
 

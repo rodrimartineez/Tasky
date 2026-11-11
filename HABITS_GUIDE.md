@@ -1,7 +1,7 @@
 # HABITS_GUIDE.md — Modo Hábitos (habit tracker + videojuego)
 
 > Documento de diseño de la Fase 1 (análisis). Complementa a [TASKY_GUIDE.md](TASKY_GUIDE.md), que sigue
-> siendo la referencia del modo Proyectos. **Estado: diseño aprobado; Fases 2 y 3 implementadas (ver §9).**
+> siendo la referencia del modo Proyectos. **Estado: diseño aprobado; Fases 2, 3 y 4 implementadas (ver §9).** Las cifras de economía y equilibrio están en `ANALISIS_ECONOMIA.md`.
 
 ---
 
@@ -104,7 +104,8 @@ se rasterizan a un atlas al cargar y se versionan como texto. Sin assets externo
 - **Evaluación perezosa y determinista:** al abrir la app (y a las 00:00 si está abierta) se evalúan todos los
   periodos cerrados pendientes desde el último evaluado. No hace falta un servidor despierto a medianoche: cerrar
   la app no pierde nada.
-- Diario cumplido = **1 punto**; semanal cumplido = **3 puntos**; sin parciales.
+- Diario cumplido = **1 punto + 1 por cada hito de racha superado** (3, 7, 14, 30, 60, 100, 180, 365 días y luego
+  cada año; `core/rewards.ts`); semanal cumplido = **3 puntos** fijos (sistema propio); sin parciales.
 - Cada recompensa es un asiento del ledger con **id determinista** `reward:<habitId>:<periodKey>`. Si dos
   dispositivos lo evalúan, generan el mismo id → el servidor lo inserta una sola vez (`on conflict do nothing`).
 - Un periodo cerrado y evaluado queda **bloqueado** (sus registros ya no se editan). Margen de gracia: los registros
@@ -117,10 +118,9 @@ se calcula siempre sumándolos:
 
 | Asiento | Id determinista | Efecto |
 |---|---|---|
-| Recompensa de hábito | `reward:<habit>:<period>` | +1 / +3 puntos |
-| Partida diaria | `run-grant:<fecha>` | +1 partida disponible |
-| Inicio de partida | `run-start:<fecha de la partida usada>` | −1 partida (la partida queda consumida) |
-| Resultado de partida | `run-result:<fecha de la partida>` | +oro, récords |
+| Recompensa de hábito | `reward:<habit>:<period>` | +puntos (según racha), `details.streak` |
+| Inicio de partida | `run:<nivel>` | −1 partida (consumida); `details` personaje y escenario |
+| Resultado de partida | `result:<nivel>` | +oro, récords (`details` tiempo, enemigos, victoria) |
 | Compra de mejora | `upgrade:<stat>:<nivel>` | −puntos, +1 nivel |
 | Desbloqueo | `unlock:<character\|stage>:<id>` | −oro, contenido desbloqueado |
 
@@ -128,8 +128,11 @@ se calcula siempre sumándolos:
 - Saldo, nivel de cada mejora, desbloqueos y partidas disponibles = *replay* ordenado del ledger. Una compra que
   dejaría el saldo en negativo (p. ej. dos dispositivos sin conexión gastando lo mismo) se ignora al reproducir y
   la UI la marca como «no aplicada».
-- Las partidas se generan desde el día de activación del modo, una por día de calendario, con id por fecha:
-  imposible duplicarlas o perderlas. Se acumulan sin límite (según requisito).
+- Las partidas no son asientos: disponibles = días desde `profile.startedOn` (incluido hoy) − partidas empezadas.
+  Imposible duplicarlas o perderlas; se acumulan sin límite. La n-ésima partida empezada es el **nivel n**
+  (ganes o pierdas), así dos dispositivos que juegan a la vez sin conexión generan el mismo `run:<nivel>`.
+- Implementación: `habits/core/economy.ts` (`economyOf` reproduce el ledger; acciones `buyUpgrade`, `unlock`,
+  `startRun`, `finishRun`).
 - «Manipulación accidental»: la app es personal, así que el cliente es de confianza; aun así, ids deterministas +
   solo-inserción + validación en el replay evitan duplicados, dobles cobros y saldos negativos.
 
@@ -137,9 +140,11 @@ se calcula siempre sumándolos:
 - Al empezar se escribe `run-start` (la partida queda consumida) y el estado de la simulación se guarda en local
   cada ~10 s (la simulación es datos puros: serializable).
 - Si la app se cierra o el móvil la mata: al volver se ofrece **reanudar** exactamente desde el último guardado.
-- Si se descarta, o pasan 24 h, o se abre en otro dispositivo: la partida se **cierra con el oro del último guardado**
-  (`run-result` con el mismo id → nunca dos resultados para la misma partida). No se puede reiniciar para «repetir
-  la tirada» porque la partida ya está consumida. *(Ver D-G2.)*
+- «Terminar partida» la cierra con el oro conseguido hasta ese momento. Si en este dispositivo no hay copia guardada
+  (se empezó en otro o no llegó a guardarse), solo se puede **cerrar sin oro** para pasar al nivel siguiente.
+  `result:<nivel>` es único → nunca dos resultados para la misma partida. No se puede reiniciar para «repetir la
+  tirada» porque la partida ya está consumida. *(Ver D-G2.)*
+- La copia guardada es local (`habits-run.json` / clave `run` de IndexedDB), no se sincroniza.
 
 ## 5. Juego
 
@@ -171,17 +176,14 @@ Velocidad de proyectil · Proyectiles extra · Enfriamiento · Crítico (prob.) 
 Experiencia · Suerte · Codicia (oro) · Hallazgo de objetos especiales · Revivir · Repetir elección de nivel ·
 Descartar opción.
 
-Fórmulas (a validar con simulación en la Fase 4):
-- **Coste** de un nivel: `round(base · (n+1)^1.6)` — p. ej. Poder: 3, 9, 17, 27, 40… puntos.
-- **Efecto** sin límite pero con rendimientos decrecientes: `efecto(n) = a · ln(1 + n / k)`. Ejemplo Poder
-  (a = 0,6; k = 4): nivel 4 → +42 %, 10 → +75 %, 20 → +107 %, 40 → +144 %. Nunca se «completa», nunca se dispara.
-- Mejoras discretas (proyectiles extra, revivir) con tope pequeño y coste muy alto.
-- Ritmo esperado: con 5 diarios + 2 semanales al 80 % ≈ **33 puntos/semana**: 1–3 niveles por semana, siempre
-  hay algo que comprar al cumplir el día.
+Implementadas 16 (`game/content/upgrades.ts`), **sin nivel máximo**: coste `base · n^1,5` (efecto lineal), con
+rendimientos decrecientes donde haría falta (velocidad, crítico) y coste exponencial en proyectiles extra. Revivir,
+repetir y descartar quedan como propuestas (`IDEAS_MEJORAS_JUEGO.md`). Fórmulas y ritmo: `ANALISIS_ECONOMIA.md` §3.
 
 ### 5.4 Dificultad
-La dificultad depende del **tiempo de partida**, no de las mejoras: los enemigos ganan vida y densidad minuto a
-minuto. Así las mejoras se notan directamente como «sobrevivo más y gano más oro». Objetivo:
+La dificultad depende del **minuto de partida** y del **nivel** (la partida n-ésima jugada), no de las mejoras:
+`game/sim/difficulty.ts`, crecimiento sin techo pero cada vez más lento. Resultados del estudio en
+`ANALISIS_ECONOMIA.md` §4–§6. Objetivo original de la Fase 1 (como referencia):
 | Momento | Supervivencia típica | Oro por partida |
 |---|---|---|
 | Día 1, sin mejoras | 6–10 min | 80–150 |
@@ -191,11 +193,8 @@ minuto. Así las mejoras se notan directamente como «sobrevivo más y gano más
 
 ### 5.5 Oro y desbloqueos
 - Oro: enemigos (poco), élites y cofres (bastante), jefes, bonus por sobrevivir cada 5 min y por victoria.
-- Personajes: de 300 a ~8 000 de oro; escenarios: 0 / 2 000 / 6 000 / 15 000 / 30 000 + condición (p. ej.
-  sobrevivir 15 min en el anterior).
-- Objetivo: el contenido inicial completo en **~5–6 meses** jugando una partida diaria; algo antes si se acumulan y
-  se juegan con buenas mejoras. El simulador sin pantalla (§2.3) estima estas cifras con distintos perfiles
-  (cumplidor, irregular, abandono) y se ajustan las tablas antes de dar la fase por cerrada.
+- Precios revisados tras el estudio (aclaraciones del usuario: lo último debe costar meses): personajes de 0 a
+  65 000 de oro y escenarios 0 / 5 000 / 15 000 / 35 000 / 70 000 → todo en ~1,5–2 años (`ANALISIS_ECONOMIA.md` §7).
 
 ## 6. Datos en Supabase (tablas nuevas, mismo esquema de seguridad)
 - `habits` (LWW con `updated_at`, como `tasks`).
@@ -234,7 +233,7 @@ minuto. Así las mejoras se notan directamente como «sobrevivo más y gano más
 | Fase 2 — Cierre de periodos y recompensas (1/3 puntos, ledger con ids deterministas), recompensas de días sin abrir la app, cambio de día con la app abierta | ✅ Tests (cambios de hora, cruce de año, idempotencia, dos dispositivos) + navegador simulando el paso a mañana |
 | Fase 2 — Persistencia local (`habits.json` en escritorio, IndexedDB `tasky-habits` en web) y sincronización propia con la misma sesión | ✅ Local verificado. **Sync pendiente:** ejecutar `supabase/schema.sql` en el SQL Editor (crea `habit_profile`, `habits`, `habit_logs`, `habit_ledger`); mientras tanto los hábitos funcionan en local y la app avisa de que no se sincronizan |
 | Fase 3 — Núcleo jugable (`src/game/`): simulación pura y determinista a 60 Hz (rejilla espacial, 6 armas con comportamientos distintos y 8 niveles, 6 pasivas, 9 enemigos con 5 comportamientos, élites con cofre, jefe con ráfagas e invocaciones, experiencia, subidas de nivel, objetos, victoria a los 30 min), render con PixiJS v8 (atlas de pixel art definido en código, reservas de sprites, números de daño, partículas, rayos, temblor), joystick flotante + teclado, pantalla de juego (HUD, subida de nivel, pausa automática al ocultar la app, resumen final) en la pestaña «Jugar» como **partida de prueba** | ✅ 10 tests (determinismo, todas las armas, sprites válidos, sin mejoras se muere / muy mejorado sobrevive más y gana más oro). Navegador: partida, subida de nivel, cofre, jefe, pausa, abandonar, reiniciar y salir (sin lienzos huérfanos); vista móvil con joystick táctil simulado. Rendimiento: 1 ms de dibujado por fotograma con 419 enemigos; la simulación completa de 30 min tarda ~7 s sin pantalla. **Pendiente de probar en un iPhone real** |
-| Fase 4 — Progresión y economía | Pendiente |
+| Fase 4 — Partidas diarias acumulables (una por día desde el inicio), niveles infinitos por orden de partida, dificultad por nivel, puntos por hitos de racha, 16 mejoras permanentes sin máximo (pestaña «Mejoras»), oro y desbloqueo de personajes/escenarios (campamento en «Jugar»), saldos en la cabecera, guardado de la partida cada 10 s y al ocultar la app con reanudación, cierre de partidas sin copia | ✅ 32 tests de `habits/core` (rachas, economía, compras y partidas simultáneas en dos dispositivos) + test de reanudación exacta de la simulación. Navegador: jugar, guardar y salir, recargar, continuar desde el mismo segundo, terminar, nivel 2 sin partidas restantes; móvil 375 px. **Sync pendiente:** volver a ejecutar `supabase/schema.sql` (columnas `character`, `stage`, `details` y tipos de asiento nuevos) |
 
 Notas de la Fase 3:
 - **Equilibrio provisional** (bot de `sim/bot.ts`, 4 semillas por perfil): sin mejoras 2–12 min; «1 mes» 11–22 min;

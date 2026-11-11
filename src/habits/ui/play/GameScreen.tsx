@@ -2,12 +2,16 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Pause, Play, Skull } from 'lucide-react';
 import { PASSIVE_BY_ID } from '../../../game/content/passives';
-import { WITHERED_WOODS } from '../../../game/content/stages';
 import { WEAPON_BY_ID } from '../../../game/content/weapons';
 import { Game, type Hud } from '../../../game/Game';
-import { BASE_STATS, type RunResult, type UpgradeChoice } from '../../../game/sim/types';
+import type { RunConfig, RunResult, UpgradeChoice, World } from '../../../game/sim/types';
 import { spriteDataUrl } from '../../../game/sprites/atlas';
+import { now } from '../../../core/clock';
+import { saveRunSnapshot } from '../../state/store';
 import styles from './GameScreen.module.css';
+
+/** Cada cuánto se guarda la partida para poder reanudarla (también al ocultar la app). */
+const SAVE_MS = 10_000;
 
 const clock = (seconds: number) => {
   const s = Math.floor(seconds);
@@ -19,14 +23,22 @@ function Icon({ name, size = 24 }: { name: string; size?: number }) {
 }
 
 interface GameScreenProps {
+  level: number;
+  config: RunConfig;
+  /** Estado guardado para continuar una partida interrumpida. */
+  resume: World | null;
+  /** Fin de la partida (muerte, victoria o abandono): se llama una sola vez. */
+  onFinish: (result: RunResult) => void;
   onExit: () => void;
 }
 
 /** Partida a pantalla completa. Se monta al empezar a jugar (el motor se descarga en ese momento). */
-export default function GameScreen({ onExit }: GameScreenProps) {
+export default function GameScreen({ level, config, resume, onFinish, onExit }: GameScreenProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const gameRef = useRef<Game | null>(null);
-  const [run, setRun] = useState(0);
+  const finishedRef = useRef(false);
+  // La partida se arranca una sola vez con los valores iniciales de las props.
+  const startRef = useRef({ level, config, resume, onFinish });
   const [hud, setHud] = useState<Hud | null>(null);
   const [choices, setChoices] = useState<UpgradeChoice[] | null>(null);
   const [chest, setChest] = useState<UpgradeChoice[] | null>(null);
@@ -39,9 +51,18 @@ export default function GameScreen({ onExit }: GameScreenProps) {
     if (!host) return;
     let cancelled = false;
     let chestTimer: ReturnType<typeof setTimeout> | undefined;
+    const start = startRef.current;
+    const save = () => {
+      const world = finishedRef.current ? null : gameRef.current?.snapshot();
+      if (world) void saveRunSnapshot({ level: start.level, savedAt: now(), world });
+    };
+    const saveTimer = setInterval(save, SAVE_MS);
+    const onHidden = () => document.visibilityState === 'hidden' && save();
+    document.addEventListener('visibilitychange', onHidden);
+    window.addEventListener('pagehide', save);
     Game.start(
       host,
-      { seed: Date.now() % 2147483647, stage: WITHERED_WOODS, stats: BASE_STATS, startingWeapon: 'spark' },
+      start.config,
       {
         onHud: setHud,
         onLevelUp: (c) => setChoices([...c]),
@@ -51,8 +72,13 @@ export default function GameScreen({ onExit }: GameScreenProps) {
           chestTimer = setTimeout(() => setChest(null), 2800);
         },
         onPause: setPaused,
-        onEnd: setResult,
+        onEnd: (r) => {
+          finishedRef.current = true;
+          start.onFinish(r);
+          setResult(r);
+        },
       },
+      start.resume,
     )
       .then((game) => {
         // Si la pantalla se cerró mientras cargaba el motor, se libera en cuanto esté listo.
@@ -66,10 +92,14 @@ export default function GameScreen({ onExit }: GameScreenProps) {
     return () => {
       cancelled = true;
       clearTimeout(chestTimer);
+      clearInterval(saveTimer);
+      document.removeEventListener('visibilitychange', onHidden);
+      window.removeEventListener('pagehide', save);
+      save();
       gameRef.current?.destroy();
       gameRef.current = null;
     };
-  }, [run]);
+  }, []);
 
   const choose = useCallback((index: number) => {
     setChoices(null);
@@ -87,18 +117,18 @@ export default function GameScreen({ onExit }: GameScreenProps) {
     return () => window.removeEventListener('keydown', onKey);
   }, [choices, choose]);
 
-  const restart = () => {
-    setHud(null);
-    setChoices(null);
-    setChest(null);
-    setPaused(false);
-    setResult(null);
-    setRun((n) => n + 1);
+  const abandon = () => {
+    const game = gameRef.current;
+    if (!game || finishedRef.current) return;
+    finishedRef.current = true;
+    const r = game.abandon();
+    onFinish(r);
+    setResult(r);
   };
 
   return createPortal(
     <div className={styles.screen}>
-      <div ref={hostRef} key={run} className={styles.canvas} />
+      <div ref={hostRef} className={styles.canvas} />
 
       {hud && !result && (
         <div className={styles.hud}>
@@ -106,7 +136,9 @@ export default function GameScreen({ onExit }: GameScreenProps) {
             <span style={{ width: `${Math.min(100, (hud.xp / hud.xpNext) * 100)}%` }} />
           </div>
           <div className={styles.top}>
-            <span className={styles.level}>Nv {hud.level}</span>
+            <span className={styles.level}>
+              Nivel {level} · Nv {hud.level}
+            </span>
             <span className={styles.timer}>{clock(hud.time)}</span>
             <span className={styles.counters}>
               <span>
@@ -183,8 +215,11 @@ export default function GameScreen({ onExit }: GameScreenProps) {
             <button type="button" className={styles.primary} onClick={() => gameRef.current?.setPaused(false)}>
               <Play /> Continuar
             </button>
-            <button type="button" className={styles.secondary} onClick={() => setResult(gameRef.current?.abandon() ?? null)}>
-              Abandonar partida
+            <button type="button" className={styles.secondary} onClick={onExit}>
+              Guardar y salir
+            </button>
+            <button type="button" className={styles.secondary} onClick={abandon}>
+              Terminar partida (te quedas el oro)
             </button>
             <p className={styles.note}>
               Muévete con el dedo (o WASD / flechas). El ataque es automático. {hud ? `${hud.fps} fps` : ''}
@@ -228,12 +263,11 @@ export default function GameScreen({ onExit }: GameScreenProps) {
                   </li>
                 ))}
             </ul>
-            <p className={styles.note}>Partida de prueba: el oro aún no se guarda (llegará con las partidas diarias).</p>
-            <button type="button" className={styles.primary} onClick={restart}>
-              Jugar otra vez
-            </button>
-            <button type="button" className={styles.secondary} onClick={onExit}>
-              Salir
+            <p className={styles.note}>
+              El oro ya está guardado. La próxima partida será el nivel {level + 1}.
+            </p>
+            <button type="button" className={styles.primary} onClick={onExit}>
+              Volver al campamento
             </button>
           </div>
         </div>

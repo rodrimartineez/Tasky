@@ -1,9 +1,8 @@
 import type { LocalDate, Timestamp } from '../../core/model';
+import { streakPoints, WEEKLY_REWARD } from './rewards';
 import { PROFILE_ID, type Habit, type HabitKind, type HabitPeriod, type HabitsData, type LedgerEntry } from './model';
 import { dateInZone, isClosed, periodKey, periodStart, periodsBetween, previousPeriod, type PeriodKey } from './periods';
 
-/** Puntos por periodo cumplido (HABITS_GUIDE §3.4): sin parciales. */
-export const REWARD_POINTS: Record<HabitPeriod, number> = { daily: 1, weekly: 3 };
 
 /** Evita restos de coma flotante al sumar pasos como 0,25. */
 const round = (n: number) => Math.round(n * 1e6) / 1e6;
@@ -23,7 +22,10 @@ const DEFAULT_PROFILE_STAMP = '2000-01-01T00:00:00.000Z';
 export function ensureProfile(data: HabitsData, timeZone: string, today: LocalDate): HabitsData {
   if (data.profile) return data;
   const stamp = DEFAULT_PROFILE_STAMP;
-  return { ...data, profile: { id: PROFILE_ID, timeZone, startedOn: today, createdAt: stamp, updatedAt: stamp, deletedAt: null } };
+  return {
+    ...data,
+    profile: { id: PROFILE_ID, timeZone, startedOn: today, character: 'wanderer', stage: 'withered_woods', createdAt: stamp, updatedAt: stamp, deletedAt: null },
+  };
 }
 
 // ── Hábitos ─────────────────────────────────────────────────────────────────────────────────────
@@ -186,16 +188,22 @@ export function evaluateRewards(data: HabitsData, today: LocalDate, now: Timesta
   const rewards: LedgerEntry[] = [];
   for (const habit of data.habits) {
     // También los archivados o borrados: sus periodos anteriores a ese momento siguen contando.
+    let streak = 0;
     for (const key of closedPeriods(habit, timeZone, today)) {
+      const met = isMet(habit.kind, amountIn(amounts, habit.id, key), targetFor(habit, key));
+      streak = met ? streak + 1 : 0;
       const id = rewardId(habit.id, key);
-      if (granted.has(id) || !isMet(habit.kind, amountIn(amounts, habit.id, key), targetFor(habit, key))) continue;
+      if (!met || granted.has(id)) continue;
+      // Diarios: los puntos crecen con la racha (rewards.ts). Semanales: puntos fijos.
+      const points = habit.period === 'daily' ? streakPoints(streak) : WEEKLY_REWARD;
       rewards.push({
         id,
         kind: 'habit_reward',
-        points: REWARD_POINTS[habit.period],
+        points,
         gold: 0,
         habitId: habit.id,
         period: key,
+        details: { streak },
         createdAt: now,
         updatedAt: now,
         deletedAt: null,
@@ -205,7 +213,6 @@ export function evaluateRewards(data: HabitsData, today: LocalDate, now: Timesta
   return rewards.length === 0 ? data : { ...data, ledger: [...data.ledger, ...rewards] };
 }
 
-export const pointsBalance = (data: HabitsData) => data.ledger.reduce((sum, e) => sum + e.points, 0);
 
 // ── Rachas e historial ──────────────────────────────────────────────────────────────────────────
 

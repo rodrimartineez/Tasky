@@ -53,7 +53,19 @@ export const habitLogSchema = z.object({
  * Asiento del ledger (economía). Inmutable y con id determinista (p. ej. `reward:<hábito>:<periodo>`):
  * si dos dispositivos generan el mismo asiento, es el mismo registro y solo cuenta una vez.
  */
-export const ledgerKindSchema = z.enum(['habit_reward']);
+export const ledgerKindSchema = z.enum([
+  /** `reward:<hábito>:<periodo>` — puntos por cumplir un hábito. */
+  'habit_reward',
+  /** `run:<nivel>` — se empieza la partida de ese nivel (la partida queda consumida). */
+  'run_start',
+  /** `result:<nivel>` — resultado de la partida: oro ganado y récords. */
+  'run_result',
+  /** `upgrade:<mejora>:<nivel>` — compra de un nivel de mejora permanente (puntos negativos). */
+  'upgrade',
+  /** `unlock:<tipo>:<id>` — desbloqueo de un personaje o escenario (oro negativo). */
+  'unlock',
+]);
+const detailValue = z.union([z.string(), z.number(), z.boolean()]);
 export const ledgerEntrySchema = z.object({
   ...baseRecord,
   kind: ledgerKindSchema,
@@ -63,6 +75,8 @@ export const ledgerEntrySchema = z.object({
   gold: z.number().int(),
   habitId: z.string().nullable(),
   period: periodKey.nullable(),
+  /** Datos del asiento: racha de la recompensa, personaje y escenario de la partida, tiempo, enemigos… */
+  details: z.record(z.string(), detailValue).nullable().default(null),
 });
 
 /** Ajustes comunes a todos los dispositivos. Un único registro por usuario (id fijo `profile`). */
@@ -70,8 +84,11 @@ export const habitsProfileSchema = z.object({
   ...baseRecord,
   /** Zona horaria IANA con la que se calculan los periodos en todos los dispositivos. */
   timeZone: z.string().min(1),
-  /** Día en que se empezó a usar el modo Hábitos. */
+  /** Día en que se empezó a usar el modo Hábitos: desde él se recibe una partida al día. */
   startedOn: localDate,
+  /** Personaje y escenario elegidos para la próxima partida. */
+  character: z.string().min(1).default('wanderer'),
+  stage: z.string().min(1).default('withered_woods'),
 });
 
 export const habitsDataSchema = z.object({

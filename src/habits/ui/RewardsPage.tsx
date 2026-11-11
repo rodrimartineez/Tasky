@@ -1,8 +1,7 @@
 import { useMemo } from 'react';
 import { Trophy } from 'lucide-react';
-import { pointsBalance } from '../core/habits';
 import { periodEnd, periodOfKey, periodStart } from '../core/periods';
-import { useHabits } from '../state/store';
+import { useEconomy, useHabits } from '../state/store';
 import { GemIcon } from './PointsBadge';
 import styles from './RewardsPage.module.css';
 
@@ -10,10 +9,12 @@ const dayFormat = new Intl.DateTimeFormat('es-ES', { weekday: 'long', day: 'nume
 const shortFormat = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short', timeZone: 'UTC' });
 const asDate = (d: string) => new Date(`${d}T12:00:00Z`);
 
+const streakText = (streak: unknown) => (typeof streak === 'number' && streak > 1 ? `Racha de ${streak} días` : 'Diario');
+
 /** Historial de recompensas (ledger): de dónde sale cada punto. */
 export function RewardsPage() {
   const data = useHabits((s) => s.data);
-  const balance = pointsBalance(data);
+  const balance = useEconomy().points;
 
   const groups = useMemo(() => {
     const names = new Map(data.habits.map((h) => [h.id, h.name]));
@@ -26,7 +27,7 @@ export function RewardsPage() {
           id: e.id,
           points: e.points,
           name: (e.habitId && names.get(e.habitId)) ?? 'Hábito eliminado',
-          detail: weekly ? `Semana del ${shortFormat.format(asDate(periodStart(key)))}` : 'Diario',
+          detail: weekly ? `Semana del ${shortFormat.format(asDate(periodStart(key)))}` : streakText(e.details?.streak),
           // Las recompensas de un día y las de la semana que termina ese domingo se agrupan juntas.
           closedOn: periodEnd(key),
         };
@@ -47,8 +48,9 @@ export function RewardsPage() {
         </div>
       </div>
       <p className={styles.note}>
-        Los puntos se consiguen solo cumpliendo hábitos y servirán para comprar mejoras permanentes del personaje. Se entregan al cerrar
-        cada día a las 00:00 (1 punto por hábito diario) y cada semana el domingo a las 24:00 (3 puntos por hábito semanal), una sola vez.
+        Los puntos se consiguen solo cumpliendo hábitos y se gastan en mejoras permanentes del personaje. Se entregan una sola vez, al
+        cerrar cada día a las 00:00 y cada semana el domingo a las 24:00. Un hábito diario da 1 punto, y uno más al llegar a cada hito de
+        racha (3, 7, 14, 30, 60, 100, 180 y 365 días, y luego cada año). Un hábito semanal da siempre 3 puntos.
       </p>
 
       {groups.length === 0 ? (

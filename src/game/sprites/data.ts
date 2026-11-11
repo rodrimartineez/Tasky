@@ -252,6 +252,15 @@ export const SPRITES: Record<string, string[]> = {
   p_hourglass: ['kkkkkkkk', 'kTTTTTTk', '.kyyyyk.', '..kyyk..', '...kk...', '...kk...', '..kwyk..', '.kwyyyk.', 'kTTTTTTk', 'kkkkkkkk'],
   p_lens: ['..kkkk....', '.kbbbbk...', 'kbwbbbbk..', 'kbwbbbbk..', 'kbbbbbbk..', '.kbbbbkk..', '..kkkkTTk.', '......kTTk', '.......kk.'],
   p_boots: ['.kkkk....', '.kTTk....', '.kTTk....', '.kTTk....', '.kTTkkk..', '.kTTTTTk.', 'kTTTTTTTk', 'kDDDDDDDk', 'kkkkkkkkk'],
+  // Mejoras permanentes (tienda).
+  u_armor: ['.kkkkkkk.', 'kWWWWWWsk', 'kWwwWWWsk', 'kWwWWWssk', 'kWWWWWssk', '.kWWWssk.', '.kWWsssk.', '..kWssk..', '...kkk...'],
+  u_regen: ['...kkk...', '...kgk...', '...kgk...', 'kkkkgkkkk', 'kgggwgggk', 'kkkkgkkkk', '...kgk...', '...kGk...', '...kkk...'],
+  u_duration: ['..kkkkk..', '.kWWWWWk.', 'kWWWkWWWk', 'kWWWkWWWk', 'kWWWkkkWk', 'kWWWWWWWk', 'kWWWWWWsk', '.kWWWWsk.', '..kkkkk..'],
+  u_speed: ['....kk...', '...kbbk..', 'kkkkbwbk.', 'kbbbbbbbk', 'kbwwwwbBk', 'kkkkbbBk.', '...kbBk..', '....kk...'],
+  u_crit: ['...kkk...', '..krrrk..', '.krkkkrk.', 'krk.r.krk', 'krkrwrkrk', 'krk.r.krk', '.krkkkrk.', '..krrrk..', '...kkk...'],
+  u_critmult: ['....k....', '...kyk...', 'k.kyyyk.k', 'kykywykyk', '.kyywyyk.', 'kykyyykyk', 'k.kyyyk.k', '...kyk...', '....k....'],
+  u_luck: ['.kk...kk.', 'kggk.kggk', 'kgwgkgwgk', '.kgggggk.', '..kgGgk..', '.kgggggk.', 'kggkGkggk', '.kk.Gk.kk', '....kGk..'],
+  u_amount: ['.kk.kk.kk', 'kyykyykyy', 'kywkywkyw', 'kyykyykyy', '.kk.kk.kk', '.........', 'kkkkkkkkk', 'kyyyyyyYk', 'kkkkkkkkk'],
 
   // ── Decoración del Bosque Marchito ──
   d_tuft: ['.d...d.', 'd.d.d.d', '.dGdGd.', '..dGd..'],

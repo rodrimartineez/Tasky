@@ -9,6 +9,7 @@ import { chooseUpgrade, createWorld, runResult, step, xpForLevel } from './world
 const DT = 1 / 60;
 const config = (seed: number, stats: Stats = BASE_STATS, weapon = 'spark'): RunConfig => ({
   seed,
+  level: 1,
   stage: WITHERED_WOODS,
   stats,
   startingWeapon: weapon,
@@ -29,6 +30,16 @@ describe('simulación', () => {
     const c = createWorld(config(8));
     play(c, 90);
     expect(runResult(c)).not.toEqual(runResult(a));
+  });
+
+  it('una partida guardada como JSON y reanudada sigue exactamente igual', () => {
+    const original = createWorld(config(11));
+    play(original, 60);
+    const resumed = JSON.parse(JSON.stringify({ ...original, fx: [] })) as World;
+    original.fx = [];
+    play(original, 60);
+    play(resumed, 60);
+    expect(runResult(resumed)).toEqual(runResult(original));
   });
 
   it('aparecen enemigos, se gana experiencia y se sube de nivel', () => {

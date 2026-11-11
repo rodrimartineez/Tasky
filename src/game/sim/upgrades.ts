@@ -1,6 +1,7 @@
 import { PASSIVE_BY_ID, PASSIVES } from '../content/passives';
 import { WEAPON_BY_ID, WEAPONS } from '../content/weapons';
 import { rand } from './core';
+import { levelGold } from './difficulty';
 import { MAX_PASSIVES, MAX_WEAPONS, type UpgradeChoice, type WeaponDef, type WeaponState, type WeaponStats, type World } from './types';
 
 /** Subidas de nivel, cofres y cálculo de estadísticas. */
@@ -125,6 +126,6 @@ export function openChest(w: World) {
     applyChoice(w, choice);
     rewards.push(choice);
   }
-  w.gold += 20 + Math.floor(w.time / 30);
+  w.gold += (20 + Math.floor(w.time / 30)) * levelGold(w.config.level);
   w.chestRewards = rewards;
 }

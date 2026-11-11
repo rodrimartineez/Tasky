@@ -106,3 +106,19 @@
     padding-right: var(--space-4);
   }
 }
+
+/* Móvil: las cuatro pestañas se reparten el ancho, con el icono encima del texto. */
+@media (max-width: 520px) {
+  .tabsInner {
+    gap: 0;
+  }
+  .tab {
+    flex: 1;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+    height: 52px;
+    padding: 0 2px;
+    font-size: var(--fs-xs);
+  }
+}

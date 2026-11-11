@@ -5,7 +5,7 @@ import { TextField } from '../../ui/components/Field';
 import { Segmented, type SegmentedOption } from '../../ui/components/Segmented';
 import { toast } from '../../ui/components/Toaster';
 import formStyles from '../../ui/components/Form.module.css';
-import { REWARD_POINTS } from '../core/habits';
+import { WEEKLY_REWARD } from '../core/rewards';
 import type { Habit, HabitKind, HabitPeriod } from '../core/model';
 import { useHabits } from '../state/store';
 import { formatAmount } from './view';
@@ -119,8 +119,15 @@ function HabitForm({ habit, currentTarget, onDone }: { habit?: Habit; currentTar
         {build
           ? `Se cumple al llegar a ${validTarget ? formatAmount(targetValue) : '…'}${unit ? ` ${unit}` : ''} ${period === 'daily' ? 'en el día' : 'en la semana'}.`
           : `Empiezas con ${validTarget ? formatAmount(targetValue) : '…'} disponibles; cada registro resta. Se cumple si no te pasas del límite.`}{' '}
-        Cumplirlo da <strong>{REWARD_POINTS[period]} {REWARD_POINTS[period] === 1 ? 'punto' : 'puntos'}</strong> al cerrar{' '}
-        {period === 'daily' ? 'el día (00:00)' : 'la semana (domingo a las 24:00)'}.
+        {period === 'daily' ? (
+          <>
+            Cumplirlo da <strong>1 punto</strong> al cerrar el día (00:00), y más cuanto más larga sea la racha (2 a los 3 días, 3 a los 7…).
+          </>
+        ) : (
+          <>
+            Cumplirlo da <strong>{WEEKLY_REWARD} puntos</strong> al cerrar la semana (domingo a las 24:00).
+          </>
+        )}
         {habit && ' Un objetivo nuevo vale desde el periodo actual.'}
       </p>
 

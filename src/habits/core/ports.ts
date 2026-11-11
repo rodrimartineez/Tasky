@@ -1,4 +1,16 @@
+import type { Timestamp } from '../../core/model';
 import type { HabitsData } from './model';
+
+/**
+ * Partida interrumpida guardada en este dispositivo (no se sincroniza: pesa mucho y cambia cada pocos segundos).
+ * Si la partida en curso no tiene copia aquí, se cierra con el oro que se haya guardado (HABITS_GUIDE §8, D-G2).
+ */
+export interface RunSnapshot {
+  level: number;
+  savedAt: Timestamp;
+  /** Estado completo de la simulación (game/sim World), JSON puro. */
+  world: unknown;
+}
 import type { HabitsRecords } from './sync';
 
 /** Almacenamiento local del documento de Hábitos (independiente del de Proyectos). */
@@ -6,6 +18,9 @@ export interface HabitsStorage {
   /** Contenido guardado sin validar, o null si todavía no existe. */
   load(): Promise<unknown | null>;
   save(data: HabitsData): Promise<void>;
+  loadRun(): Promise<RunSnapshot | null>;
+  /** null borra la copia guardada. */
+  saveRun(snapshot: RunSnapshot | null): Promise<void>;
 }
 
 /** Tablas de Hábitos en el servidor. La sesión es la misma que la de Proyectos. */

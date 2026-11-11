@@ -1,11 +1,10 @@
 import { NavLink, useLocation, useOutlet } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { ListChecks, Swords, TriangleAlert, Trophy } from 'lucide-react';
+import { ListChecks, Sparkles, Swords, TriangleAlert, Trophy } from 'lucide-react';
 import { ModeSwitch } from '../../ui/app/ModeSwitch';
 import { Toaster } from '../../ui/components/Toaster';
 import { SyncButton } from '../../ui/sync/SyncButton';
-import { pointsBalance } from '../core/habits';
-import { useHabits } from '../state/store';
+import { useEconomy, useHabits } from '../state/store';
 import { useHabitsSync } from '../state/sync';
 import { PointsBadge } from './PointsBadge';
 import styles from './HabitsLayout.module.css';
@@ -13,6 +12,7 @@ import styles from './HabitsLayout.module.css';
 const TABS = [
   { to: '/habits', label: 'Hábitos', icon: <ListChecks />, end: true },
   { to: '/habits/play', label: 'Jugar', icon: <Swords />, end: false },
+  { to: '/habits/upgrades', label: 'Mejoras', icon: <Sparkles />, end: false },
   { to: '/habits/rewards', label: 'Recompensas', icon: <Trophy />, end: false },
 ];
 
@@ -22,7 +22,7 @@ export function HabitsLayout() {
   const status = useHabits((s) => s.status);
   const loadError = useHabits((s) => s.loadError);
   const saveError = useHabits((s) => s.saveError);
-  const points = useHabits((s) => pointsBalance(s.data));
+  const economy = useEconomy();
   const syncError = useHabitsSync((s) => s.error);
 
   return (
@@ -31,7 +31,8 @@ export function HabitsLayout() {
         <div className={styles.inner}>
           <ModeSwitch />
           <div className={styles.actions}>
-            <PointsBadge points={points} />
+            <PointsBadge value={economy.points} />
+            <PointsBadge value={economy.gold} currency="gold" />
             <SyncButton />
           </div>
         </div>

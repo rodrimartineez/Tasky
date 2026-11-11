@@ -1,5 +1,6 @@
 import { ENEMY_BY_ID } from '../content/enemies';
 import { emit, hurtPlayer, maxEnemies, near, queryNear, rand, rebuildGrid, ringPoint, spawnEnemy } from './core';
+import { levelDensity } from './difficulty';
 import { RUN_SECONDS, type Enemy, type RunConfig, type RunResult, type World } from './types';
 import { applyChoice, newWeapon, openChest, rollChoices } from './upgrades';
 import { enemyShot, updateProjectiles, updateWeapons } from './weapons';
@@ -51,11 +52,12 @@ function updateSpawns(w: World, dt: number) {
   const { stage } = w.config;
   const minute = w.time / 60;
   const cap = maxEnemies(w);
+  const density = levelDensity(w.config.level);
   for (let i = 0; i < stage.spawns.length; i++) {
     const rule = stage.spawns[i];
     if (minute < rule.from || minute >= rule.to) continue;
     const t = (minute - rule.from) / (rule.to - rule.from);
-    w.spawnAcc[i] += (rule.rateStart + (rule.rateEnd - rule.rateStart) * t) * dt;
+    w.spawnAcc[i] += (rule.rateStart + (rule.rateEnd - rule.rateStart) * t) * density * dt;
     const def = ENEMY_BY_ID.get(rule.enemy);
     while (w.spawnAcc[i] >= 1) {
       w.spawnAcc[i] -= 1;

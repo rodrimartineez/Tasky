@@ -5,6 +5,7 @@ import { ConfirmDialog } from '../../ui/components/ConfirmDialog';
 import { Menu, type MenuItem } from '../../ui/components/Menu';
 import type { PeriodResult } from '../core/habits';
 import { addDays, mondayOf, periodKey, periodStart } from '../core/periods';
+import { nextMilestone } from '../core/rewards';
 import { useHabits } from '../state/store';
 import { HabitCard } from './HabitCard';
 import { HabitFormDialog } from './HabitFormDialog';
@@ -68,6 +69,11 @@ export function HabitPage() {
         <Stat label="Cumplidos" value={metCount} unit={`de ${closed.length}`} />
         <Stat label="Puntos ganados" value={earned} unit="" />
       </div>
+      {habit.period === 'daily' && !archived && (
+        <p className={styles.milestone}>
+          <FlameIcon size={14} /> Próximo hito de racha: {nextMilestone(streak).days} días → {nextMilestone(streak).points} puntos por día cumplido.
+        </p>
+      )}
 
       <section className={styles.historySection}>
         <h2 className={styles.sectionTitle}>Historial</h2>

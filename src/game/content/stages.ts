@@ -16,6 +16,7 @@ function elites(): StageEvent[] {
 export const WITHERED_WOODS: StageDef = {
   id: 'withered_woods',
   name: 'Bosque Marchito',
+  price: 0,
   ground: 't_grass',
   props: ['d_tuft', 'd_flower', 'd_stone', 'd_stump', 'd_bush'],
   spawns: [
@@ -31,7 +32,7 @@ export const WITHERED_WOODS: StageDef = {
     { enemy: 'wisp', from: 22, to: 30, rateStart: 1.8, rateEnd: 3 },
   ],
   events: [
-    { at: 2 * MIN, kind: 'ring', enemy: 'bat', count: 24 },
+    { at: 2.5 * MIN, kind: 'ring', enemy: 'bat', count: 16 },
     { at: 5 * MIN, kind: 'ring', enemy: 'slime', count: 40 },
     { at: 8 * MIN, kind: 'ring', enemy: 'bones', count: 30 },
     { at: 10 * MIN, kind: 'boss', enemy: 'elder', count: 1 },
@@ -44,3 +45,7 @@ export const WITHERED_WOODS: StageDef = {
     ...elites(),
   ].sort((a, b) => a.at - b.at) as StageEvent[],
 };
+
+/** Escenarios en orden de desbloqueo (el resto llega en la Fase 5). */
+export const STAGES: StageDef[] = [WITHERED_WOODS];
+export const STAGE_BY_ID = new Map(STAGES.map((s) => [s.id, s]));
