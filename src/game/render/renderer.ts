@@ -402,7 +402,7 @@ export class Renderer {
 
     this.enemies.begin();
     for (const e of w.enemies) {
-      if (!visible(e.x, e.y)) continue;
+      if (!visible(e.x, e.y) || e.def.ai === 'boss') continue;
       const s = this.enemies.next(this.tex(e.def.sprite, e.flash > 0));
       // Sombras y cabezas son copias pequeñas y oscuras de su jefe.
       const copy = e.def.id === 'clone' || e.def.id === 'head';
@@ -416,6 +416,27 @@ export class Renderer {
         s.tint = e.def.id === 'clone' ? 0x6a5a9a : 0x9adf9a;
         s.alpha = 0.85;
       }
+    }
+    // Jefes encima del resto de enemigos, mucho más grandes que el jugador y con un aura de su color.
+    for (const e of w.enemies) {
+      if (!visible(e.x, e.y) || e.def.ai !== 'boss') continue;
+      const color = e.def.color ?? 0xff5a5a;
+      const size = e.def.patterns ? 2.4 : 2;
+      const pulse = 0.5 + 0.5 * Math.sin(this.clock * 4 + e.uid);
+      const aura = this.enemies.next(this.tex('disc'));
+      aura.position.set(e.x, e.y + 4);
+      aura.scale.set(((e.radius + 10) * size * 0.6) / CIRCLE_RADIUS, ((e.radius + 10) * size * 0.3) / CIRCLE_RADIUS);
+      aura.tint = color;
+      aura.alpha = 0.22 + pulse * 0.12;
+      const rim = this.enemies.next(this.tex('ring'));
+      rim.position.copyFrom(aura.position);
+      rim.scale.copyFrom(aura.scale);
+      rim.tint = color;
+      rim.alpha = 0.55 + pulse * 0.3;
+      const s = this.enemies.next(this.tex(e.def.sprite, e.flash > 0));
+      const bounce = 1 + Math.sin(this.clock * 5 + e.uid) * 0.04;
+      s.scale.set((p.x < e.x ? -size : size) * (2 - bounce), size * bounce);
+      s.position.set(e.x, e.y - 4);
     }
     this.enemies.end();
 

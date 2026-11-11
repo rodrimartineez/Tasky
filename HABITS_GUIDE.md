@@ -268,7 +268,9 @@ no es un dato de Hábitos, no se sincroniza y no entra en el ledger. Mientras no
 
 - **Activado:** partidas ilimitadas en **cualquier nivel** (selector de nivel y botón «Próximo jefe»), todas las
   modalidades (infinito y reflejo) y velocidades, todos los personajes y escenarios sin pagar, y el oro de las
-  partidas no se guarda. Las partidas de prueba **no escriben nada en el ledger** (ni partida, ni
+  partidas no se guarda.
+- **Cristales infinitos:** en el modo de pruebas se pueden comprar mejoras sin límite. Se guardan aparte (solo en
+  este dispositivo, `tasky-game-test-upgrades`) y no tocan las reales; al desactivar el modo vuelven a 0. Las partidas de prueba **no escriben nada en el ledger** (ni partida, ni
   resultado, ni compras). Los hábitos, los puntos y las mejoras permanentes funcionan con normalidad.
 - **Desactivado:** progresión real, idéntica a la de producción. Solo el personaje y el escenario iniciales son
   gratis, el resto se ve bloqueado con su precio y sus características, y se compra con oro. Cada partida gasta un

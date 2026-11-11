@@ -18,11 +18,22 @@ import {
 } from '../core/habits';
 import { comebackFor, type Comeback } from '../core/comeback';
 import { GAME_BUILD, releaseFor } from '../core/release';
-import { buyUpgrade, economyOf, finishRun, setLoadout, startRun, unlock, type Economy, type RunOutcome } from '../core/economy';
+import {
+  buyUpgrade,
+  EconomyError,
+  economyOf,
+  finishRun,
+  setLoadout,
+  startRun,
+  unlock,
+  type Economy,
+  type RunOutcome,
+} from '../core/economy';
 import type { HabitsData } from '../core/model';
 import { dateInZone, deviceTimeZone } from '../core/periods';
 import type { HabitsStorage, RunSnapshot } from '../core/ports';
 import { countHabitsRecords, mergeHabitsRemote, type HabitsRecords } from '../core/sync';
+import { UPGRADE_BY_ID } from '../../game/content/upgrades';
 
 type Status = 'loading' | 'ready' | 'error';
 
@@ -35,13 +46,18 @@ interface HabitsState {
   today: LocalDate;
   /** Modo de pruebas del juego en este dispositivo (solo con GAME_BUILD.devTools; release.ts). */
   testMode: boolean;
+  /** Mejoras compradas en el modo de pruebas (con cristales infinitos). Solo en este dispositivo; se borran al salir. */
+  testUpgrades: Record<string, number>;
 
   load(storage: HabitsStorage): Promise<void>;
   /** Comprueba si ha cambiado el día y cierra los periodos pendientes. */
   tick(): void;
   applyRemote(records: HabitsRecords): void;
   clearLocalData(): void;
-  /** Herramienta de desarrollo: activa o desactiva el modo de pruebas en este dispositivo. No toca los datos. */
+  /**
+   * Herramienta de desarrollo: activa o desactiva el modo de pruebas en este dispositivo. No toca los datos reales:
+   * al desactivarlo, las mejoras y los cristales de prueba vuelven a 0.
+   */
   setTestMode(on: boolean): void;
   createHabit(input: HabitInput): string;
   updateHabit(id: string, patch: HabitPatch): void;
@@ -67,6 +83,26 @@ interface HabitsState {
  * Mientras no se elija, el juego en desarrollo empieza en modo de pruebas.
  */
 const TEST_MODE_KEY = 'tasky-game-test-mode';
+const TEST_UPGRADES_KEY = 'tasky-game-test-upgrades';
+
+function readTestUpgrades(): Record<string, number> {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(TEST_UPGRADES_KEY) ?? '{}') as unknown;
+    return parsed && typeof parsed === 'object' ? (parsed as Record<string, number>) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveTestUpgrades(levels: Record<string, number>) {
+  try {
+    if (Object.keys(levels).length === 0) localStorage.removeItem(TEST_UPGRADES_KEY);
+    else localStorage.setItem(TEST_UPGRADES_KEY, JSON.stringify(levels));
+  } catch {
+    // Sin almacenamiento las mejoras de prueba duran hasta recargar.
+  }
+}
+
 function readTestMode(): boolean {
   if (!GAME_BUILD.devTools) return false;
   try {
@@ -128,6 +164,7 @@ export const useHabits = create<HabitsState>()((set, get) => {
     data: emptyHabitsData(),
     today: todayIn(emptyHabitsData()),
     testMode: readTestMode(),
+    testUpgrades: readTestMode() ? readTestUpgrades() : {},
 
     async load(s) {
       storage = s;
@@ -155,7 +192,9 @@ export const useHabits = create<HabitsState>()((set, get) => {
       } catch {
         // Sin almacenamiento el cambio dura hasta recargar.
       }
-      set({ testMode: on });
+      // Las mejoras de prueba empiezan y terminan en 0.
+      saveTestUpgrades({});
+      set({ testMode: on, testUpgrades: {} });
     },
 
     clearLocalData() {
@@ -175,7 +214,17 @@ export const useHabits = create<HabitsState>()((set, get) => {
     deleteHabit: (id) => commit((d) => deleteHabit(d, id, now())),
     log: (id, direction) => commit((d) => logHabit(d, id, direction, newId(), now(), todayIn(d))),
 
-    buyUpgrade: (id) => commit((d) => buyUpgrade(d, id, todayIn(d), now())),
+    buyUpgrade: (id) => {
+      if (get().testMode) {
+        // Modo de pruebas: cristales infinitos y nada se guarda en los datos reales.
+        if (!UPGRADE_BY_ID.has(id)) throw new EconomyError('Mejora desconocida.');
+        const testUpgrades = { ...get().testUpgrades, [id]: (get().testUpgrades[id] ?? 0) + 1 };
+        saveTestUpgrades(testUpgrades);
+        set({ testUpgrades });
+        return;
+      }
+      commit((d) => buyUpgrade(d, id, todayIn(d), now()));
+    },
     unlock: (key) => commit((d) => unlock(d, key, todayIn(d), now(), releaseFor(get().testMode))),
     setLoadout: (character, stage) => commit((d) => setLoadout(d, character, stage, now())),
     startRun(mode, testLevel = 1) {
@@ -212,7 +261,12 @@ export function useEconomy(): Economy {
   const data = useHabits((s) => s.data);
   const today = useHabits((s) => s.today);
   const testMode = useHabits((s) => s.testMode);
-  return useMemo(() => economyOf(data, today, releaseFor(testMode)), [data, today, testMode]);
+  const testUpgrades = useHabits((s) => s.testUpgrades);
+  return useMemo(() => {
+    const eco = economyOf(data, today, releaseFor(testMode));
+    // Modo de pruebas: cristales infinitos y sus propias mejoras (las reales no se tocan).
+    return testMode ? { ...eco, points: Infinity, upgrades: testUpgrades } : eco;
+  }, [data, today, testMode, testUpgrades]);
 }
 
 /**
