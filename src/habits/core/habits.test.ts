@@ -9,6 +9,7 @@ import {
   evaluateRewards,
   history,
   logHabit,
+  outlook,
   streaks,
   targetFor,
   updateHabit,
@@ -204,6 +205,67 @@ describe('puntos por racha', () => {
   });
 });
 
+describe('escudo de racha, semanales y límite de diarios (Fase 5b)', () => {
+  const days = (from: number, n: number) => Array.from({ length: n }, (_, i) => new Date(Date.UTC(2026, 10, from + i)).toISOString().slice(0, 10));
+
+  it('21 días cumplidos dan un escudo que salva un día fallado (sin puntos ese día)', () => {
+    const { data, ids } = setup(read);
+    let d = data;
+    const met = [...days(2, 21), ...days(24, 3)]; // falla el 23
+    for (const day of met) d = log(d, ids[0], day, 3);
+    d = evaluateRewards(d, '2026-11-27', T0);
+    const byDay = new Map(d.ledger.map((e) => [e.period, e]));
+    expect(byDay.has('2026-11-23')).toBe(false);
+    // La racha sigue: el día 24 es el 22.º cumplido.
+    expect(byDay.get('2026-11-24')?.details).toEqual({ streak: 22 });
+    const results = history(d.habits[0], amountsOf(d), TZ, '2026-11-27');
+    expect(results.find((r) => r.key === '2026-11-23')?.shielded).toBe(true);
+    expect(streaks(results, 'build', true)).toMatchObject({ current: 24, shield: false, charge: 3 });
+  });
+
+  it('sin escudo (menos de 21 días) un fallo rompe la racha, y el escudo se gasta una sola vez', () => {
+    const { data, ids } = setup(read);
+    let d = data;
+    for (const day of [...days(2, 21), ...days(25, 2)]) d = log(d, ids[0], day, 3); // falla 23 y 24
+    d = evaluateRewards(d, '2026-11-27', T0);
+    expect(d.ledger.find((e) => e.period === '2026-11-25')?.details).toEqual({ streak: 1 });
+  });
+
+  it('los semanales suman +1 cada 4 semanas seguidas, hasta 6 puntos', () => {
+    const { data, ids } = setup(gym);
+    let d = data;
+    // 17 semanas seguidas desde el lunes 2 de noviembre.
+    for (let w = 0; w < 17; w++) d = log(d, ids[0], new Date(Date.UTC(2026, 10, 2 + 7 * w)).toISOString().slice(0, 10), 3);
+    d = evaluateRewards(d, '2027-03-01', T0);
+    const points = d.ledger.map((e) => e.points);
+    expect(points.slice(0, 5)).toEqual([3, 3, 3, 4, 4]);
+    expect(points[16]).toBe(6);
+    expect(Math.max(...points)).toBe(6);
+  });
+
+  it('a partir del 8.º hábito diario, los más nuevos dan la mitad', () => {
+    const inputs = Array.from({ length: 9 }, (_, i) => ({ ...read, name: `Hábito ${i}` }));
+    const { data, ids } = setup(...inputs);
+    let d = data;
+    for (const id of ids) for (const day of days(2, 3)) d = log(d, id, day, 3);
+    d = evaluateRewards(d, '2026-11-05', T0);
+    const third = (id: string) => d.ledger.find((e) => e.habitId === id && e.period === '2026-11-04')?.points;
+    expect(ids.map(third)).toEqual([2, 2, 2, 2, 2, 2, 2, 1, 1]);
+  });
+
+  it('muestra lo que dará cada hábito hoy', () => {
+    const { data, ids } = setup(read, gym);
+    let d = log(data, ids[0], '2026-11-02', 3);
+    d = log(d, ids[0], '2026-11-03', 3);
+    d = log(d, ids[0], '2026-11-04', 1); // hoy, aún sin cumplir
+    const o = outlook(d, '2026-11-04');
+    expect(o.perHabit.get(ids[0])).toBe(2); // tercer día seguido: hito de 3
+    expect(o.perHabit.get(ids[1])).toBe(3);
+    expect([o.secured, o.pending]).toEqual([0, 5]);
+    expect(outlook(log(d, ids[0], '2026-11-04', 2), '2026-11-04').secured).toBe(2);
+  });
+});
+
 describe('rachas', () => {
   it('cuenta la racha actual y la mejor', () => {
     const { data, ids } = setup(read);
@@ -211,7 +273,7 @@ describe('rachas', () => {
     for (const day of ['2026-11-02', '2026-11-03', '2026-11-04', '2026-11-06', '2026-11-07']) d = log(d, ids[0], day, 3);
     const results = history(d.habits[0], amountsOf(d), TZ, '2026-11-08');
     // Hoy (8) aún sin registrar: no rompe la racha.
-    expect(streaks(results, 'build')).toEqual({ current: 2, best: 3 });
+    expect(streaks(results, 'build')).toMatchObject({ current: 2, best: 3 });
     const withToday = log(d, ids[0], '2026-11-08', 3);
     expect(streaks(history(withToday.habits[0], amountsOf(withToday), TZ, '2026-11-08'), 'build').current).toBe(3);
   });
@@ -219,7 +281,7 @@ describe('rachas', () => {
   it('en reducción el día en curso solo cuenta al cerrarse', () => {
     const { data } = setup(face);
     const results = history(data.habits[0], amountsOf(data), TZ, '2026-11-04');
-    expect(streaks(results, 'reduce')).toEqual({ current: 2, best: 2 });
+    expect(streaks(results, 'reduce')).toMatchObject({ current: 2, best: 2 });
   });
 });
 

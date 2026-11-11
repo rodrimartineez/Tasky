@@ -1,5 +1,5 @@
 import { UPGRADES } from '../../game/content/upgrades';
-import { streakPoints } from '../core/rewards';
+import { newStreak, stepStreak, streakPoints, weeklyPoints } from '../core/rewards';
 
 /**
  * Modelo de la economía a largo plazo para el estudio de equilibrio (ANALISIS_ECONOMIA.md).
@@ -7,6 +7,7 @@ import { streakPoints } from '../core/rewards';
  *
  * Simula día a día a un usuario con varios hábitos diarios y semanales, sus rachas, los puntos que gana
  * con una fórmula de recompensa y cómo los gasta en mejoras (siempre la más barata de las que quiere).
+ * Incluye las reglas de la Fase 5b: escudo de racha (diarios) y racha de los semanales.
  */
 
 export type StreakRule = (streak: number) => number;
@@ -72,13 +73,12 @@ export interface DaySnapshot {
   avgStreak: number;
 }
 
-export const WEEKLY_POINTS = 3;
-
 /** Simula `days` días y devuelve una instantánea de cada día. */
 export function simulateEconomy(profile: Profile, rule: StreakRule, days: number, seed = 1): DaySnapshot[] {
   const rng = mulberry(seed);
   const habits = Array.from({ length: profile.dailyHabits }, () => makeHabit(rng));
-  const streaks = new Array(profile.dailyHabits).fill(0);
+  const streaks = Array.from({ length: profile.dailyHabits }, newStreak);
+  const weeklyStreaks = new Array(profile.weeklyHabits).fill(0);
   const levels: Record<string, number> = {};
   let wallet = 0;
   let total = 0;
@@ -89,12 +89,15 @@ export function simulateEconomy(profile: Profile, rule: StreakRule, days: number
     let points = 0;
     const p = profile.daily(day);
     for (let h = 0; h < habits.length; h++) {
-      if (habits[h](p)) {
-        streaks[h] += 1;
-        points += rule(streaks[h]);
-      } else streaks[h] = 0;
+      const met = habits[h](p);
+      streaks[h] = stepStreak(streaks[h], met, true).next;
+      if (met) points += rule(streaks[h].streak);
     }
-    if (day % 7 === 0) for (let h = 0; h < profile.weeklyHabits; h++) if (rng() < profile.weekly(day / 7)) points += WEEKLY_POINTS;
+    if (day % 7 === 0)
+      for (let h = 0; h < profile.weeklyHabits; h++) {
+        weeklyStreaks[h] = rng() < profile.weekly(day / 7) ? weeklyStreaks[h] + 1 : 0;
+        if (weeklyStreaks[h] > 0) points += weeklyPoints(weeklyStreaks[h]);
+      }
     wallet += points;
     total += points;
 
@@ -121,7 +124,7 @@ export function simulateEconomy(profile: Profile, rule: StreakRule, days: number
       totalPoints: total,
       levels: { ...levels },
       runs,
-      avgStreak: streaks.reduce((a, b) => a + b, 0) / streaks.length,
+      avgStreak: streaks.reduce((a, b) => a + b.streak, 0) / streaks.length,
     });
   }
   return out;

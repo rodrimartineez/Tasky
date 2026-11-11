@@ -201,13 +201,23 @@ export function unlock(data: HabitsData, key: string, today: LocalDate, now: Tim
 }
 
 /** Empieza la siguiente partida (consume una partida disponible). Devuelve su nivel. */
-export function startRun(data: HabitsData, character: string, stage: string, today: LocalDate, now: Timestamp): { data: HabitsData; level: number } {
+export function startRun(
+  data: HabitsData,
+  character: string,
+  stage: string,
+  today: LocalDate,
+  now: Timestamp,
+  /** Ayuda de vuelta aplicada (0 = ninguna), para el historial. */
+  comeback = 0,
+): { data: HabitsData; level: number } {
   const eco = economyOf(data, today);
   if (eco.openRun) throw new EconomyError('Ya hay una partida en curso.');
   if (eco.available <= 0) throw new EconomyError('No te quedan partidas: mañana a las 00:00 recibirás otra.');
   if (!isUnlocked(eco, `character:${character}`) || !isUnlocked(eco, `stage:${stage}`)) throw new EconomyError('Ese contenido aún está bloqueado.');
   const level = eco.nextLevel;
-  return { data: append(data, entry(runId(level), 'run_start', now, { details: { character, stage } })), level };
+  const details: Record<string, string | number> = { character, stage };
+  if (comeback > 0) details.comeback = Math.round(comeback * 100) / 100;
+  return { data: append(data, entry(runId(level), 'run_start', now, { details })), level };
 }
 
 export interface RunOutcome {

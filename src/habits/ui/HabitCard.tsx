@@ -4,13 +4,14 @@ import { motion } from 'motion/react';
 import { Check, Minus, Plus, Undo2 } from 'lucide-react';
 import { useHabits } from '../state/store';
 import { FlameIcon } from './icons';
+import { GemIcon } from './PointsBadge';
 import { formatAmount, withUnit, type HabitView } from './view';
 import styles from './HabitCard.module.css';
 
 /** Tarjeta de un hábito con su registro rápido. Tocar el nombre abre el detalle. */
 export function HabitCard({ view }: { view: HabitView }) {
   const log = useHabits((s) => s.log);
-  const { habit, amount, target, met, remaining, over, fill, streak } = view;
+  const { habit, amount, target, met, remaining, over, fill, streak, reward } = view;
   const build = habit.kind === 'build';
   const single = build && target === habit.step; // un solo toque completa el periodo
   const archived = habit.archivedAt !== null;
@@ -35,6 +36,14 @@ export function HabitCard({ view }: { view: HabitView }) {
           {streak > 0 && (
             <span className={styles.streak} title={`Racha: ${streak} ${habit.period === 'daily' ? 'días' : 'semanas'}`}>
               <FlameIcon /> {streak}
+            </span>
+          )}
+          {!archived && reward > 0 && (
+            <span
+              className={`${styles.reward} ${met ? styles.rewardSecured : ''}`}
+              title={met ? `Asegurado: +${reward} al cerrar el periodo` : `Cumplirlo da +${reward}`}
+            >
+              +{reward} <GemIcon size={12} />
             </span>
           )}
         </div>

@@ -1,5 +1,5 @@
-import { lazy, Suspense, useEffect, useState } from 'react';
-import { Lock, Play, Swords } from 'lucide-react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { HeartHandshake, Lock, Play, Swords } from 'lucide-react';
 import { CHARACTERS } from '../../../game/content/characters';
 import { buildRunConfig } from '../../../game/content/run';
 import { STAGES } from '../../../game/content/stages';
@@ -11,6 +11,8 @@ import { toast } from '../../../ui/components/Toaster';
 import { EconomyError, isUnlocked, priceOf } from '../../core/economy';
 import type { RunSnapshot } from '../../core/ports';
 import { loadRunSnapshot, saveRunSnapshot, useEconomy, useHabits } from '../../state/store';
+import { comebackFor } from '../../core/comeback';
+import { HabitBridge } from '../HabitBridge';
 import { CoinIcon } from '../PointsBadge';
 import styles from './PlayPage.module.css';
 
@@ -39,7 +41,10 @@ function attempt(action: () => void) {
 /** Campamento: partidas disponibles, nivel siguiente, personaje y escenario. */
 export function PlayPage() {
   const eco = useEconomy();
-  const profile = useHabits((s) => s.data.profile);
+  const data = useHabits((s) => s.data);
+  const today = useHabits((s) => s.today);
+  const profile = data.profile;
+  const comeback = useMemo(() => comebackFor(data, today, eco.runs), [data, today, eco.runs]);
   const startRun = useHabits((s) => s.startRun);
   const finishRun = useHabits((s) => s.finishRun);
   const unlock = useHabits((s) => s.unlock);
@@ -69,8 +74,8 @@ export function PlayPage() {
 
   const play = () =>
     attempt(() => {
-      const level = startRun();
-      if (level > 0) setSession({ level, config: buildRunConfig(level, character, stage, eco.upgrades), resume: null });
+      const { level, comeback: boost } = startRun();
+      if (level > 0) setSession({ level, config: buildRunConfig(level, character, stage, eco.upgrades, boost ?? undefined), resume: null });
     });
 
   const resume = () => {
@@ -156,6 +161,19 @@ export function PlayPage() {
           </div>
         </dl>
       </section>
+
+      {comeback && !open && (
+        <div className={styles.comeback} role="status">
+          <HeartHandshake />
+          <p>
+            <b>¡Has vuelto!</b> Tras {comeback.breakDays} días sin hábitos, tu próxima partida tendrá +{Math.round(comeback.xp * 100)} % de
+            experiencia y +{Math.round(comeback.hp * 100)} % de vida. La ayuda baja en cada partida y dura{' '}
+            {comeback.runsLeft === 1 ? '1 partida más' : `${comeback.runsLeft} partidas más`} como mucho esta semana.
+          </p>
+        </div>
+      )}
+
+      <HabitBridge />
 
       <section className={styles.section}>
         <h2 className={styles.heading}>Personaje</h2>

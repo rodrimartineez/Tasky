@@ -48,6 +48,24 @@
   color: var(--hb-flame);
 }
 
+.reward {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+  margin-left: auto;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  background: rgba(157, 123, 255, 0.12);
+  font-family: var(--hb-pixel-font);
+  font-size: var(--fs-sm);
+  color: #b9a6ff;
+}
+.rewardSecured {
+  background: rgba(157, 123, 255, 0.28);
+  color: #e6ddff;
+}
+
 /* Barra segmentada estilo píxel: se llena (positivo) o se vacía (reducción). */
 .bar {
   position: relative;

@@ -5,7 +5,7 @@ import { ConfirmDialog } from '../../ui/components/ConfirmDialog';
 import { Menu, type MenuItem } from '../../ui/components/Menu';
 import type { PeriodResult } from '../core/habits';
 import { addDays, mondayOf, periodKey, periodStart } from '../core/periods';
-import { nextMilestone } from '../core/rewards';
+import { nextMilestone, SHIELD_EVERY } from '../core/rewards';
 import { useHabits } from '../state/store';
 import { HabitCard } from './HabitCard';
 import { HabitFormDialog } from './HabitFormDialog';
@@ -27,7 +27,7 @@ export function HabitPage() {
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   if (!view) return <Navigate to="/habits" replace />;
-  const { habit, results, streak, best, target } = view;
+  const { habit, results, streak, best, target, shield, charge } = view;
   const build = habit.kind === 'build';
   const archived = habit.archivedAt !== null;
   const closed = results.filter((r) => r.closed);
@@ -71,7 +71,10 @@ export function HabitPage() {
       </div>
       {habit.period === 'daily' && !archived && (
         <p className={styles.milestone}>
-          <FlameIcon size={14} /> Próximo hito de racha: {nextMilestone(streak).days} días → {nextMilestone(streak).points} puntos por día cumplido.
+          <FlameIcon size={14} /> Próximo hito de racha: {nextMilestone(streak).days} días → {nextMilestone(streak).points} puntos por día cumplido.{' '}
+          {shield
+            ? 'Tienes un escudo: si fallas un día, tu racha no se romperá.'
+            : `Escudo de racha en ${SHIELD_EVERY - charge} ${SHIELD_EVERY - charge === 1 ? 'día cumplido' : 'días cumplidos'}.`}
         </p>
       )}
 
@@ -81,6 +84,7 @@ export function HabitPage() {
         <div className={styles.legend}>
           <span><i className={styles.met} /> Cumplido</span>
           <span><i className={styles.missed} /> No cumplido</span>
+          {habit.period === 'daily' && <span><i className={styles.shielded} /> Salvado por un escudo</span>}
           <span><i className={styles.open} /> En curso</span>
         </div>
       </section>
@@ -125,12 +129,12 @@ const formatDay = (d: string) => dayFormat.format(new Date(`${d}T12:00:00Z`));
 function cellClass(r: PeriodResult | undefined) {
   if (!r) return styles.none;
   if (!r.closed) return styles.open;
-  return r.met ? styles.met : styles.missed;
+  return r.met ? styles.met : r.shielded ? styles.shielded : styles.missed;
 }
 
 function cellTitle(r: PeriodResult | undefined, label: string) {
   if (!r) return `${label}: sin hábito`;
-  return `${label}: ${r.amount} de ${r.target}${r.closed ? (r.met ? ' · cumplido' : ' · no cumplido') : ' · en curso'}`;
+  return `${label}: ${r.amount} de ${r.target}${r.closed ? (r.met ? ' · cumplido' : r.shielded ? ' · salvado por un escudo' : ' · no cumplido') : ' · en curso'}`;
 }
 
 /** Calendario de las últimas semanas: columnas = semanas, filas = lunes…domingo. */

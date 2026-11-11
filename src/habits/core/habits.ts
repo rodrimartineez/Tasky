@@ -1,5 +1,5 @@
 import type { LocalDate, Timestamp } from '../../core/model';
-import { streakPoints, WEEKLY_REWARD } from './rewards';
+import { newStreak, stepStreak, streakPoints, weeklyPoints, withDailyLimit, type StreakState } from './rewards';
 import { PROFILE_ID, type Habit, type HabitKind, type HabitPeriod, type HabitsData, type LedgerEntry } from './model';
 import { dateInZone, isClosed, periodKey, periodStart, periodsBetween, previousPeriod, type PeriodKey } from './periods';
 
@@ -176,6 +176,50 @@ function closedPeriods(habit: Habit, timeZone: string, today: LocalDate): Period
 export const rewardId = (habitId: string, key: PeriodKey) => `reward:${habitId}:${key}`;
 
 /**
+ * Antigüedad de cada hábito diario entre los diarios vivos en un periodo (0 = el más antiguo).
+ * Sirve para el límite contra hábitos inflados (rewards.ts, DAILY_FULL_LIMIT).
+ */
+function dailyRanker(data: HabitsData, timeZone: string): (habit: Habit, key: PeriodKey) => number {
+  const daily = data.habits
+    .filter((h) => h.period === 'daily')
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id))
+    .map((h) => ({ id: h.id, ...lifespan(h, timeZone) }));
+  return (habit, key) => {
+    let rank = 0;
+    for (const d of daily) {
+      if (d.id === habit.id) return rank;
+      if (d.first <= key && (d.lastDay === null || key < d.lastDay)) rank += 1;
+    }
+    return rank;
+  };
+}
+
+/** Puntos de un periodo cumplido, con la racha que alcanza (incluido ese periodo). */
+function pointsFor(habit: Habit, streak: number, rank: number): number {
+  return habit.period === 'daily' ? withDailyLimit(streakPoints(streak), rank) : weeklyPoints(streak);
+}
+
+interface ClosedPeriod {
+  key: PeriodKey;
+  met: boolean;
+  shielded: boolean;
+  /** Racha tras cerrar el periodo. */
+  streak: number;
+}
+
+/** Recorre los periodos cerrados del hábito aplicando rachas y escudos. Devuelve también el estado final. */
+function walkClosed(habit: Habit, amounts: Amounts, timeZone: string, today: LocalDate): { periods: ClosedPeriod[]; state: StreakState } {
+  let state = newStreak();
+  const periods = closedPeriods(habit, timeZone, today).map((key) => {
+    const met = isMet(habit.kind, amountIn(amounts, habit.id, key), targetFor(habit, key));
+    const { next, shielded } = stepStreak(state, met, habit.period === 'daily');
+    state = next;
+    return { key, met, shielded, streak: state.streak };
+  });
+  return { periods, state };
+}
+
+/**
  * Cierre de periodos: concede las recompensas de todos los periodos cerrados y cumplidos que aún no la tienen.
  * Es determinista y se puede ejecutar en cualquier momento y dispositivo (al abrir la app, a medianoche…):
  * el id de cada recompensa es fijo, así que nunca se concede dos veces. Una recompensa concedida es definitiva.
@@ -185,25 +229,21 @@ export function evaluateRewards(data: HabitsData, today: LocalDate, now: Timesta
   const { timeZone } = data.profile;
   const granted = new Set(data.ledger.map((e) => e.id));
   const amounts = amountsOf(data);
+  const rank = dailyRanker(data, timeZone);
   const rewards: LedgerEntry[] = [];
+  // También los archivados o borrados: sus periodos anteriores a ese momento siguen contando.
   for (const habit of data.habits) {
-    // También los archivados o borrados: sus periodos anteriores a ese momento siguen contando.
-    let streak = 0;
-    for (const key of closedPeriods(habit, timeZone, today)) {
-      const met = isMet(habit.kind, amountIn(amounts, habit.id, key), targetFor(habit, key));
-      streak = met ? streak + 1 : 0;
-      const id = rewardId(habit.id, key);
-      if (!met || granted.has(id)) continue;
-      // Diarios: los puntos crecen con la racha (rewards.ts). Semanales: puntos fijos.
-      const points = habit.period === 'daily' ? streakPoints(streak) : WEEKLY_REWARD;
+    for (const p of walkClosed(habit, amounts, timeZone, today).periods) {
+      const id = rewardId(habit.id, p.key);
+      if (!p.met || granted.has(id)) continue;
       rewards.push({
         id,
         kind: 'habit_reward',
-        points,
+        points: pointsFor(habit, p.streak, rank(habit, p.key)),
         gold: 0,
         habitId: habit.id,
-        period: key,
-        details: { streak },
+        period: p.key,
+        details: { streak: p.streak },
         createdAt: now,
         updatedAt: now,
         deletedAt: null,
@@ -213,6 +253,31 @@ export function evaluateRewards(data: HabitsData, today: LocalDate, now: Timesta
   return rewards.length === 0 ? data : { ...data, ledger: [...data.ledger, ...rewards] };
 }
 
+export interface Outlook {
+  /** Puntos que dará cada hábito activo si se cumple en el periodo actual. */
+  perHabit: Map<string, number>;
+  /** Ya cumplidos (positivos alcanzados; reducción aún dentro del límite): se entregan al cerrar el periodo. */
+  secured: number;
+  /** Lo que falta por ganar si se cumple el resto. */
+  pending: number;
+}
+
+/** Lo que darán los hábitos del periodo actual (puente hábito → juego, M1). */
+export function outlook(data: HabitsData, today: LocalDate): Outlook {
+  const result: Outlook = { perHabit: new Map(), secured: 0, pending: 0 };
+  if (!data.profile) return result;
+  const { timeZone } = data.profile;
+  const amounts = amountsOf(data);
+  const rank = dailyRanker(data, timeZone);
+  for (const habit of data.habits.filter(active)) {
+    const key = periodKey(habit.period, today);
+    const points = pointsFor(habit, walkClosed(habit, amounts, timeZone, today).state.streak + 1, rank(habit, key));
+    result.perHabit.set(habit.id, points);
+    if (isMet(habit.kind, amountIn(amounts, habit.id, key), targetFor(habit, key))) result.secured += points;
+    else result.pending += points;
+  }
+  return result;
+}
 
 // ── Rachas e historial ──────────────────────────────────────────────────────────────────────────
 
@@ -223,31 +288,37 @@ export interface PeriodResult {
   met: boolean;
   /** false = periodo en curso (aún puede cambiar). */
   closed: boolean;
+  /** Periodo fallado en el que un escudo salvó la racha. */
+  shielded: boolean;
 }
 
 /** Historial completo del hábito, del periodo más antiguo al actual. */
 export function history(habit: Habit, amounts: Amounts, timeZone: string, today: LocalDate): PeriodResult[] {
   const { first, lastDay } = lifespan(habit, timeZone);
   const last = periodKey(habit.period, lastDay && lastDay < today ? lastDay : today);
+  const shielded = new Set(walkClosed(habit, amounts, timeZone, today).periods.filter((p) => p.shielded).map((p) => p.key));
   return periodsBetween(first, last).map((key) => {
     const amount = amountIn(amounts, habit.id, key);
     const target = targetFor(habit, key);
-    return { key, amount, target, met: isMet(habit.kind, amount, target), closed: isClosed(key, today) };
+    return { key, amount, target, met: isMet(habit.kind, amount, target), closed: isClosed(key, today), shielded: shielded.has(key) };
   });
 }
 
 /**
- * Racha actual: periodos cumplidos seguidos hasta hoy. El periodo en curso suma si ya está cumplido
- * (en reducción solo cuenta al cerrarse, porque aún puede pasarse) y nunca la rompe mientras sigue abierto.
+ * Racha actual: periodos cumplidos seguidos hasta hoy (un día salvado por un escudo no la rompe). El periodo en
+ * curso suma si ya está cumplido (en reducción solo cuenta al cerrarse, porque aún puede pasarse) y nunca la
+ * rompe mientras sigue abierto. `shield`: escudo guardado; `charge`: días acumulados hacia el próximo.
  */
-export function streaks(results: PeriodResult[], kind: HabitKind): { current: number; best: number } {
+export function streaks(results: PeriodResult[], kind: HabitKind, shields = false): { current: number; best: number; shield: boolean; charge: number } {
   let best = 0;
-  let run = 0;
+  let state = newStreak();
+  let current = 0;
   for (const r of results) {
-    const counts = r.met && (r.closed || kind === 'build');
-    if (counts) run += 1;
-    else if (r.closed) run = 0;
-    best = Math.max(best, run);
+    if (r.closed) {
+      state = stepStreak(state, r.met, shields).next;
+      current = state.streak;
+    } else if (r.met && kind === 'build') current = state.streak + 1;
+    best = Math.max(best, current);
   }
-  return { current: run, best };
+  return { current, best, shield: state.shield, charge: state.charge };
 }

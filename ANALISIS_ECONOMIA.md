@@ -144,3 +144,35 @@ Total ≈ 420.000 de oro: un jugador normal lo desbloquea todo en ~1,5–2 años
 Todos los números están en `difficulty.ts`, `rewards.ts` y `upgrades.ts`, y el estudio se puede repetir tras
 cualquier cambio. Si con datos reales las partidas resultan demasiado cortas, lo primero es bajar `hpA`; si el oro
 sobra, subir los precios o añadir usos (ver `IDEAS_MEJORAS_JUEGO.md`).
+
+## 9. Fase 5b: reglas de motivación (noviembre de 2026)
+
+Reglas nuevas: escudo de racha cada 21 días, +1 punto por cada 4 semanas seguidas en semanales (máx. 6), mitad de
+puntos a partir del 8.º diario y ayuda de vuelta. Estudio repetido con el contenido de la Fase 5 (3 semillas):
+
+| Perfil | Puntos a 1 año (Fase 4 → 5b) | Puntos a 3 años | Supervivencia a 1 año | Oro por partida a 1 año |
+|---|---|---|---|---|
+| Constante | 12.955 → 13.077 | 48.671 | 30 / 16 / 30 min | ~7.500 |
+| Normal | 9.742 → **12.054** | 42.914 | 30 / 30 / 17 min | ~6.900 |
+| Irregular | 1.342 → 1.352 | 3.951 | 7 / 9 / 8 min | ~130 |
+
+- **Constante frente a irregular: 9,7× a 1 año** (objetivo 6–15×). La diferencia para quien no cumple sigue siendo
+  muy clara: el irregular no pasa de 5–10 minutos y gana poco oro.
+- **El escudo beneficia sobre todo al perfil normal (+24 % de puntos, objetivo era < 10 %).** Con un 80 % de
+  cumplimiento, muchos fallos sueltos dejan de romper rachas largas y el normal se acerca al constante. Con un
+  escudo cada 21 días, como se decidió, es lo esperable. Si se quiere más distancia, se puede hacer el escudo más
+  escaso (p. ej. cada 30 días) o que el día salvado no cuente para el próximo escudo. **Pendiente de decisión del
+  usuario.**
+- **Ayuda de vuelta** («abandona y vuelve», 90 días sin hábitos, ayuda al máximo: +30 % XP y +20 % de vida). Primeras
+  partidas tras volver: 13,7 → 13,7 min de media el primer día y 14,0 → 17,0 min el quinto. El perfil normal, que
+  no lo dejó, sobrevive ~25 min en esos días. La ayuda cubre como mucho ~1/4 de la diferencia (objetivo < 1/2) y
+  desaparece en 5 partidas.
+
+### Aviso para la Fase 5c: el contenido de la Fase 5 ha hecho el juego mucho más fácil
+
+Con 13 armas y 12 pasivas (incluido el «Cuerno gemelo», +1 proyectil), el bot del perfil constante o normal ya
+**sobrevive los 30 minutos casi siempre a partir de los 6–12 meses**, y el oro por partida pasa de ~500 a
+**7.000–25.000**. Con esos ingresos, todo el contenido (~420.000 de oro) se desbloquearía en 2–3 meses en lugar de
+1,5–2 años. El perfil irregular no cambia (5–10 min). Hay que reequilibrarlo en la Fase 5c: dificultad por nivel,
+oro por partida o potencia de algunas armas y pasivas, sin tocar los puntos de los hábitos. Es el primer punto de la
+Fase 5c.

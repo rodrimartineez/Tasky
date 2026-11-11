@@ -15,6 +15,7 @@ import {
   type HabitInput,
   type HabitPatch,
 } from '../core/habits';
+import { comebackFor, type Comeback } from '../core/comeback';
 import { buyUpgrade, economyOf, finishRun, setLoadout, startRun, unlock, type Economy, type RunOutcome } from '../core/economy';
 import type { HabitsData } from '../core/model';
 import { dateInZone, deviceTimeZone } from '../core/periods';
@@ -46,8 +47,8 @@ interface HabitsState {
   buyUpgrade(id: string): void;
   unlock(key: string): void;
   setLoadout(character: string, stage: string): void;
-  /** Consume una partida y devuelve su nivel. */
-  startRun(): number;
+  /** Consume una partida y devuelve su nivel (0 si no se pudo) y la ayuda de vuelta que le corresponde. */
+  startRun(): { level: number; comeback: Comeback | null };
   finishRun(level: number, outcome: RunOutcome): void;
 }
 
@@ -144,12 +145,15 @@ export const useHabits = create<HabitsState>()((set, get) => {
     setLoadout: (character, stage) => commit((d) => setLoadout(d, character, stage, now())),
     startRun() {
       let level = 0;
+      let comeback: Comeback | null = null;
       commit((d) => {
-        const started = startRun(d, d.profile?.character ?? 'wanderer', d.profile?.stage ?? 'withered_woods', todayIn(d), now());
+        const today = todayIn(d);
+        comeback = comebackFor(d, today, economyOf(d, today).runs);
+        const started = startRun(d, d.profile?.character ?? 'wanderer', d.profile?.stage ?? 'withered_woods', today, now(), comeback?.strength ?? 0);
         level = started.level;
         return started.data;
       });
-      return level;
+      return { level, comeback };
     },
     finishRun: (level, outcome) => commit((d) => finishRun(d, level, outcome, now())),
   };

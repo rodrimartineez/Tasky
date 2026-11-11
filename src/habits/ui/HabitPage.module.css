@@ -158,6 +158,10 @@
   background: var(--hb-build);
   box-shadow: inset 0 -2px 0 var(--hb-build-deep);
 }
+.shielded {
+  background: #2a3a6a;
+  box-shadow: inset 0 0 0 2px #6bc5ff;
+}
 .missed {
   background: #3a2240;
   box-shadow: inset 0 0 0 1px #5a2f4a;

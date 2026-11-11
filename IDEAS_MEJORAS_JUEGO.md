@@ -61,8 +61,8 @@ conviene dibujar una sola vez sobre un contenido ya cerrado.
 
 | Fase | Contenido | Propuestas | Depende de | Prioridad |
 |---|---|---|---|---|
-| **5 — Contenido** 🔨 | 16 personajes, 5 escenarios, más armas, pasivas y enemigos, 5+5 huecos | A5, B2 (parte) | Fase 4 | En curso |
-| **5b — Motivación** | Que se note cada día el vínculo hábito → juego; protección y ayudas sin regalar puntos | M1, D2, D3, D4, C4 | Fase 4 | **Máxima** (es el principio de diseño) |
+| **5 — Contenido** ✔️ | 16 personajes, 5 escenarios, más armas, pasivas y enemigos, 5+5 huecos | A5, B2 (parte) | Fase 4 | En curso |
+| **5b — Motivación** ✔️ | Que se note cada día el vínculo hábito → juego; protección y ayudas sin regalar puntos | M1, D2, D3, D4, C4 | Fase 4 | **Máxima** (es el principio de diseño) |
 | **5c — Builds** | Evoluciones, resto de armas y pasivas, revivir/repetir/descartar | B1, B2 (resto), C1 | 5 | Alta |
 | **6 — PWA y rendimiento** | Precarga sin conexión, rendimiento en móvil, velocidad ×2 | E1 | 5, 5c | Alta |
 | **7 — Validación global** | Estudio de equilibrio completo, prueba en iPhone, regresión de Proyectos | — | 5–6 | Hito: juego completo |
@@ -95,14 +95,17 @@ Por qué este orden:
 
 ## 3. Detalle por fase
 
-### Fase 5 — Contenido 🔨
+### Fase 5 — Contenido ✔️
 - **Propuestas:** A5 (5 huecos de arma y 5 de pasiva, arriba a la izquierda, más grandes) y parte de B2.
 - **Validación:** cada personaje con su sprite y su arma inicial, cada escenario jugable 2 minutos con el bot sin
   errores, ninguna arma nueva por encima de ~2× la mejor existente y los huecos legibles en móvil.
 - **Riesgo para el principio:** pasar de 6+6 a 5+5 huecos baja la potencia máxima. Si el perfil normal pierde
   supervivencia, se compensa con la dificultad (nunca regalando puntos).
 
-### Fase 5b — Motivación (prioridad máxima)
+### Fase 5b — Motivación (prioridad máxima) ✔️
+
+Hecha y verificada (tests y navegador); resultados del estudio en `ANALISIS_ECONOMIA.md` §9. Pendiente de la
+validación del usuario y de una decisión: el escudo da al perfil normal un +24 % de puntos (objetivo < 10 %).
 | Id | Qué se hace | Cómo se valida |
 |---|---|---|
 | **M1** | Puente hábito → juego visible (eslabones 1–3 del ciclo): en «Hábitos» y en el campamento se ve lo que dará cumplir hoy (puntos según racha), el próximo hito de racha y la mejora más cercana que se podrá comprar. Al cerrar el día, aviso «+N puntos: ya puedes mejorar X». | Tests de los cálculos y prueba en el navegador simulando el cambio de día |
@@ -125,6 +128,9 @@ Por qué este orden:
 - **Riesgo:** D3 y C4 suavizan el castigo. Si el cociente constante/irregular baja de 6×, se reducen.
 
 ### Fase 5c — Builds
+
+**Primer paso:** reequilibrar la dificultad y el oro, porque con el contenido de la Fase 5 el juego se ha vuelto
+mucho más fácil para los perfiles constante y normal (`ANALISIS_ECONOMIA.md` §9).
 | Id | Qué se hace | Cómo se valida |
 |---|---|---|
 | B1 | Evoluciones: arma al nivel máximo + pasiva concreta → versión evolucionada al abrir un cofre | Test por evolución (se ofrece solo con la combinación correcta); estudio de dificultad repetido, ya que suben la potencia a partir del minuto 10–15 |
@@ -176,13 +182,13 @@ Por qué este orden:
 - **A3. Recogidas muy satisfactorias** ✅ (Fase 8). Gemas que saltan y vuelan en arco, cadenas de recogida y lluvia
   de monedas. Aporta la sensación incremental. Equilibrio: ninguno.
 - **A4. Sonido y música** ✅ (Fase 9). Originales, con control de volumen. Equilibrio: ninguno.
-- **A5. HUD de 5 armas + 5 pasivas** 🔨 (Fase 5). Huecos grandes arriba a la izquierda. Equilibrio: baja un poco
+- **A5. HUD de 5 armas + 5 pasivas** ✔️ (Fase 5). Huecos grandes arriba a la izquierda. Equilibrio: baja un poco
   la potencia máxima de una partida.
 
 ### B. Contenido y builds
 - **B1. Evoluciones de armas** ✅ (Fase 5c). Dan objetivos dentro de la partida. Equilibrio: más potencia a mitad de
   partida, a compensar con la dificultad.
-- **B2. Hasta ~16 armas y ~14 pasivas** 🔨 parte en la Fase 5, resto ✅ en la 5c. Aportan builds variadas.
+- **B2. Hasta ~16 armas y ~14 pasivas** ✔️ parte en la Fase 5 (13 armas, 12 pasivas), resto ✅ en la 5c. Aportan builds variadas.
   Equilibrio: más opciones diluyen la suerte (se compensa con C1).
 - **B3. Arcanos** ✅ (Fase 10). Variedad a largo plazo y sumidero de oro. Afectan solo a la partida.
 
@@ -191,20 +197,20 @@ Por qué este orden:
   máximo pequeño.
 - **C2. Logros** ✅ (Fase 10). Objetivos a medio plazo. Recompensas sin poder permanente.
 - **C3. Tienda incremental** ✅ (Fase 8). Hace satisfactorio gastar puntos.
-- **C4. Ayuda de vuelta tras inactividad** ✅ (Fase 5b). Se activa tras 14 días sin cumplir ningún hábito; es gradual y temporal, solo dentro de la partida y nunca en puntos.
+- **C4. Ayuda de vuelta tras inactividad** ✔️ (Fase 5b). Se activa tras 14 días sin cumplir ningún hábito; es gradual y temporal, solo dentro de la partida y nunca en puntos.
 
 ### D. Economía
 - **D1. Usos del oro** ✅ (Fase 10, antes de ~1 año de uso). El oro sigue sirviendo, sin dar poder permanente.
-- **D2. Racha de hábitos semanales** ✅ (Fase 5b). +1 punto cada 4 semanas seguidas, con tope.
-- **D3. Escudo de racha** ✅ (Fase 5b). Uno cada 21 días de racha; protege un día fallado.
-- **D4. Límite contra hábitos inflados** ✅ (Fase 5b). Los diarios a partir del 8.º dan la mitad.
+- **D2. Racha de hábitos semanales** ✔️ (Fase 5b). +1 punto cada 4 semanas seguidas, con tope.
+- **D3. Escudo de racha** ✔️ (Fase 5b). Uno cada 21 días de racha; protege un día fallado.
+- **D4. Límite contra hábitos inflados** ✔️ (Fase 5b). Los diarios a partir del 8.º dan la mitad.
 
 ### E. Calidad de vida
 - **E1. Velocidad ×2** ✅ (Fase 6). Partidas más ágiles sin cambiar la simulación.
 - **E2. Estadísticas y récords** ✅ (Fase 10). Seguimiento del progreso a largo plazo.
 
 ### M. Motivación
-- **M1. Puente hábito → juego visible** ✅ (Fase 5b, aprobada el 11/11/2026). Cada día muestra lo que dará cumplir los hábitos (puntos según racha,
+- **M1. Puente hábito → juego visible** ✔️ (Fase 5b, aprobada el 11/11/2026). Cada día muestra lo que dará cumplir los hábitos (puntos según racha,
   próximo hito) y qué mejora se podrá comprar con ello, y avisa al cerrar el día. **Problema que resuelve:** hoy
   el vínculo solo se ve en un saldo, y el principio de diseño pide que el jugador piense «necesito cumplir mis
   hábitos para mejorar». **Equilibrio:** ninguno (solo información). **Cuándo:** Fase 5b.

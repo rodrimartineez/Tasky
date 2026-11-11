@@ -15,6 +15,8 @@ const env = (globalThis as { process?: { env: Record<string, string | undefined>
 const OUT = env.BALANCE_OUT;
 const DAYS = (env.BALANCE_DAYS ?? '1,30,90,180,365,730,1095').split(',').map(Number);
 const SEEDS = Number(env.BALANCE_SEEDS ?? 2);
+/** Ayuda temporal para la partida, «xp,vida» (p. ej. la ayuda de vuelta al máximo: 0.3,0.2). */
+const [BOOST_XP, BOOST_HP] = (env.BALANCE_BOOST ?? '0,0').split(',').map(Number);
 
 describe.skipIf(!OUT)('estudio de equilibrio', () => {
   it('partidas simuladas a lo largo de 3 años', async () => {
@@ -26,6 +28,8 @@ describe.skipIf(!OUT)('estudio de equilibrio', () => {
         const snap = days[day - 1];
         const level = Math.max(1, snap.runs);
         const stats = withUpgrades(BASE_STATS, snap.levels);
+        stats.growth *= 1 + BOOST_XP;
+        stats.maxHp *= 1 + BOOST_HP;
         const times: number[] = [];
         const golds: number[] = [];
         for (let seed = 1; seed <= SEEDS; seed++) {

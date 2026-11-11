@@ -4,6 +4,7 @@ import { ChevronRight, Plus } from 'lucide-react';
 import { Button } from '../../ui/components/Button';
 import { Fab } from '../../ui/components/Fab';
 import { useMediaQuery } from '../../ui/components/useMediaQuery';
+import { HabitBridge } from './HabitBridge';
 import { HabitCard } from './HabitCard';
 import { HabitFormDialog } from './HabitFormDialog';
 import { SwordIcon } from './icons';
@@ -43,8 +44,8 @@ export function HabitsHome() {
           <SwordIcon size={40} />
           <p className={styles.emptyTitle}>Empieza tu aventura</p>
           <p className={styles.emptyText}>
-            Crea un hábito para hacer más (leer, caminar…) o uno para hacer menos (mirar el móvil…). Cumplido cada día da 1 punto; cada
-            semana, 3.
+            Crea un hábito para hacer más (leer, caminar…) o uno para hacer menos (mirar el móvil…). Cada día cumplido da puntos para
+            mejorar a tu personaje, y más cuanto más larga sea la racha.
           </p>
           <Button variant="primary" icon={<Plus />} onClick={() => setCreating(true)}>
             Crear el primer hábito
@@ -52,6 +53,7 @@ export function HabitsHome() {
         </div>
       ) : (
         <>
+          <HabitBridge />
           {daily.length > 0 && (
             <Section title="Hoy" meta={`${dailyDone}/${daily.length} cumplidos`} views={daily} />
           )}

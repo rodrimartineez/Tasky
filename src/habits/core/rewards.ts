@@ -1,5 +1,5 @@
 /**
- * Puntos por hábito cumplido (ANALISIS_ECONOMIA.md §2).
+ * Puntos por hábito cumplido (ANALISIS_ECONOMIA.md §2, IDEAS_MEJORAS_JUEGO.md Fase 5b).
  *
  * Diarios: crecen con la racha por hitos, como una curva logarítmica pero con números fáciles de recordar.
  * Mantener un hábito siempre vale más, pero sin dispararse, y una racha rota se recupera deprisa
@@ -21,5 +21,46 @@ export function nextMilestone(streak: number): { days: number; points: number } 
   return { days: next, points: streakPoints(next) };
 }
 
-/** Puntos fijos por hábito semanal cumplido (mantiene su sistema propio, independiente de las rachas diarias). */
+/** Puntos base por hábito semanal cumplido (sistema propio, independiente de las rachas diarias). */
 export const WEEKLY_REWARD = 3;
+/** Semanales: +1 punto por cada 4 semanas seguidas cumplidas, hasta +3 (como mucho 6 puntos por semana). */
+export const WEEKLY_STREAK_STEP = 4;
+export const WEEKLY_STREAK_MAX_BONUS = 3;
+
+export const weeklyPoints = (streak: number) => WEEKLY_REWARD + Math.min(WEEKLY_STREAK_MAX_BONUS, Math.floor(streak / WEEKLY_STREAK_STEP));
+
+/**
+ * Límite contra hábitos inflados: los primeros 7 hábitos diarios (por antigüedad) dan sus puntos completos;
+ * a partir del 8.º, la mitad (redondeando hacia arriba).
+ */
+export const DAILY_FULL_LIMIT = 7;
+export const withDailyLimit = (points: number, rank: number) => (rank < DAILY_FULL_LIMIT ? points : Math.ceil(points / 2));
+
+/**
+ * Escudo de racha (solo hábitos diarios): se gana uno cada 21 días cumplidos seguidos y se guarda como mucho
+ * uno por hábito. Un día fallado con escudo no rompe la racha (aunque no da puntos) y gasta el escudo;
+ * para el siguiente hay que volver a cumplir 21 días.
+ */
+export const SHIELD_EVERY = 21;
+
+export interface StreakState {
+  streak: number;
+  shield: boolean;
+  /** Días cumplidos acumulados hacia el próximo escudo. */
+  charge: number;
+}
+
+export const newStreak = (): StreakState => ({ streak: 0, shield: false, charge: 0 });
+
+/** Avanza la racha un periodo cerrado. `shields` = el hábito usa escudos (diarios). */
+export function stepStreak(state: StreakState, met: boolean, shields: boolean): { next: StreakState; shielded: boolean } {
+  if (met) {
+    const streak = state.streak + 1;
+    if (!shields || state.shield) return { next: { ...state, streak }, shielded: false };
+    const charge = state.charge + 1;
+    const earned = charge >= SHIELD_EVERY;
+    return { next: { streak, shield: earned, charge: earned ? 0 : charge }, shielded: false };
+  }
+  if (shields && state.shield) return { next: { streak: state.streak, shield: false, charge: 0 }, shielded: true };
+  return { next: newStreak(), shielded: false };
+}

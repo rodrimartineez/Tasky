@@ -1,8 +1,10 @@
+import { useEffect } from 'react';
 import { NavLink, useLocation, useOutlet } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { ListChecks, Sparkles, Swords, TriangleAlert, Trophy } from 'lucide-react';
 import { ModeSwitch } from '../../ui/app/ModeSwitch';
-import { Toaster } from '../../ui/components/Toaster';
+import { toast, Toaster } from '../../ui/components/Toaster';
+import { UPGRADES } from '../../game/content/upgrades';
 import { SyncButton } from '../../ui/sync/SyncButton';
 import { useEconomy, useHabits } from '../state/store';
 import { useHabitsSync } from '../state/sync';
@@ -16,6 +18,34 @@ const TABS = [
   { to: '/habits/rewards', label: 'Recompensas', icon: <Trophy />, end: false },
 ];
 
+const SEEN_KEY = 'tasky-habits-seen-points';
+
+/**
+ * Aviso de puntos nuevos (M1): al cerrar el día, o al volver a la app tras cerrarse uno o varios, dice cuántos
+ * puntos se han ganado y si ya alcanzan para una mejora. Lo ya avisado se recuerda en este dispositivo.
+ */
+function usePointsNotice(ready: boolean, earned: number, points: number, upgrades: Record<string, number>) {
+  useEffect(() => {
+    if (!ready) return;
+    let seen: number | null;
+    try {
+      const stored = localStorage.getItem(SEEN_KEY);
+      seen = stored === null ? null : Number(stored);
+      localStorage.setItem(SEEN_KEY, String(earned));
+    } catch {
+      return;
+    }
+    // La primera vez solo se toma la referencia; si el saldo baja (otro perfil, datos borrados) también.
+    if (seen === null || !Number.isFinite(seen) || earned <= seen) return;
+    const affordable = UPGRADES.filter((u) => u.cost((upgrades[u.id] ?? 0) + 1) <= points).map((u) => u.name);
+    const gained = earned - seen;
+    toast(
+      `+${gained} ${gained === 1 ? 'punto' : 'puntos'} por tus hábitos.` +
+        (affordable.length > 0 ? ` Ya puedes mejorar ${affordable.slice(0, 2).join(' o ')}.` : ''),
+    );
+  }, [ready, earned, points, upgrades]);
+}
+
 export function HabitsLayout() {
   const location = useLocation();
   const outlet = useOutlet();
@@ -24,6 +54,7 @@ export function HabitsLayout() {
   const saveError = useHabits((s) => s.saveError);
   const economy = useEconomy();
   const syncError = useHabitsSync((s) => s.error);
+  usePointsNotice(status === 'ready', economy.totalPointsEarned, economy.points, economy.upgrades);
 
   return (
     <div className={styles.shell}>

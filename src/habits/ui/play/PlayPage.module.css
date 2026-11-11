@@ -149,3 +149,27 @@
   height: 12px;
   color: var(--text-faint);
 }
+
+.comeback {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: rgba(94, 224, 138, 0.1);
+  border-radius: var(--radius);
+  box-shadow: 0 0 0 2px var(--hb-build-deep);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+.comeback p {
+  margin: 0;
+}
+.comeback b {
+  color: var(--hb-build);
+}
+.comeback svg {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  color: var(--hb-build);
+}
