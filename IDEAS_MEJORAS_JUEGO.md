@@ -190,7 +190,7 @@ mucho más fácil para los perfiles constante y normal (`ANALISIS_ECONOMIA.md` �
 - Intentos ganados con hábitos, niveles que solo suben al superar los 30 minutos, La Muerte, ciclos de 7 niveles con
   10 jefes en rotación que escalan por vueltas, hitos de los niveles 20, 30 y 60, y modo de pruebas adaptado.
 - Curva de dificultad y oro reajustados con dos estudios nuevos (frontera y progresión) y uno de jefes.
-- **E1** (velocidad ×1,5 y ×2) queda hecha aquí, como hito del nivel 20.
+- **E1** (velocidad ×1,5 y ×2) queda hecha aquí, como hito del nivel 20 (desde el 12/11/2026, disponible desde el nivel 1).
 
 ### Fase 5e — Combate más intenso ✔️ (pendiente de tu validación)
 Pedida por el usuario el 11/11/2026; detalle en `HABITS_GUIDE.md` §12:
@@ -394,7 +394,7 @@ cerrado tras la 5c, así que el arte se dibuja una sola vez.
 - **D4. Límite contra hábitos inflados** ✔️ (Fase 5b). Los diarios a partir del 8.º dan la mitad.
 
 ### E. Calidad de vida
-- **E1. Velocidad ×1,5 y ×2** ✔️ (Fase 5d, hito del nivel 20). Partidas más ágiles sin cambiar la simulación.
+- **E1. Velocidad ×1,5 y ×2** ✔️ (Fase 5d; desde el 12/11/2026, disponible desde el nivel 1). Partidas más ágiles sin cambiar la simulación.
 - **E2. Estadísticas y récords** ✔️ (Fase 10, pendiente de tu validación). Seguimiento del progreso a largo plazo.
 
 ### M. Motivación

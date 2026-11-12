@@ -369,7 +369,6 @@ export function PlayPage() {
         )}
         {!eco.testMode && (
           <ul className={styles.milestones} aria-label="Hitos">
-            <li className={eco.unlocks.speed ? styles.done : ''}>Nivel {MILESTONES.speed}: velocidad ×1,5 y ×2</li>
             <li className={eco.unlocks.infinite ? styles.done : ''}>Nivel {MILESTONES.infinite}: modo infinito</li>
             <li className={eco.unlocks.mirror ? styles.done : ''}>Nivel {MILESTONES.mirror}: modo reflejo</li>
           </ul>
@@ -620,7 +619,6 @@ export function PlayPage() {
             config={session.config}
             resume={session.resume}
             test={session.test}
-            speeds={eco.unlocks.speed}
             onFinish={(result) => finish(session.attempt, result, session.test)}
             onExit={() => setSession(null)}
           />

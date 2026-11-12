@@ -339,7 +339,7 @@ Reglas pedidas por el usuario el 11/11/2026. Todas las fases posteriores deben r
   (`advanced`) y se enfurecen por debajo de la mitad de vida. No es solo multiplicar estadísticas.
 
 **Hitos (al superar el nivel, no al alcanzarlo).**
-- Nivel 20: velocidades **×1,5 y ×2** (botón en la partida; la simulación es la misma, solo se dan más pasos por
+- Velocidades **×1,5 y ×2** desde el nivel 1 (antes, hito del nivel 20; quitado el 12/11/2026 a petición del usuario) (botón en la partida; la simulación es la misma, solo se dan más pasos por
   fotograma, así que no cambia el equilibrio).
 - Nivel 30: **modo infinito**. Sin La Muerte ni final; la dureza sigue subiendo con los minutos y se repiten los
   últimos 10 minutos de apariciones y los eventos del escenario. Gasta un intento, da oro y no cambia el nivel.

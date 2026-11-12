@@ -106,11 +106,10 @@ describe('niveles', () => {
     let d = attempts(base(), 62);
     expect(() => startRun(d, 'wanderer', 'withered_woods', 'infinite', START, T(1), 0, PROD)).toThrow(EconomyError);
     for (let i = 1; i <= 19; i++) d = play(d, won(0), 'normal', i * 2).data;
-    expect(economyOf(d, START, PROD).unlocks).toEqual({ speed: false, infinite: false, mirror: false });
+    expect(economyOf(d, START, PROD).unlocks).toEqual({ infinite: false, mirror: false });
     d = play(d, won(0), 'normal', 40).data;
-    expect(economyOf(d, START, PROD).unlocks.speed).toBe(true);
     for (let i = 21; i <= 30; i++) d = play(d, won(0), 'normal', i * 2).data;
-    expect(economyOf(d, START, PROD).unlocks).toEqual({ speed: true, infinite: true, mirror: false });
+    expect(economyOf(d, START, PROD).unlocks).toEqual({ infinite: true, mirror: false });
     // Una partida infinita o reflejo «ganada» no sube de nivel.
     d = play(d, won(500), 'infinite', 70).data;
     expect(economyOf(d, START, PROD).nextLevel).toBe(31);

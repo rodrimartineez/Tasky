@@ -57,8 +57,8 @@ export interface Economy {
   nextLevel: number;
   /** Último nivel superado (0 = ninguno). */
   passedLevel: number;
-  /** Hitos: velocidad ×1,5 y ×2 (nivel 20), modo infinito (30) y modo reflejo (60). */
-  unlocks: { speed: boolean; infinite: boolean; mirror: boolean };
+  /** Hitos: modo infinito (nivel 30) y modo reflejo (60). Las velocidades ×1,5 y ×2 están siempre disponibles. */
+  unlocks: { infinite: boolean; mirror: boolean };
   totalPointsEarned: number;
   totalGoldEarned: number;
   bestTime: number;
@@ -79,7 +79,7 @@ const resultId = (attempt: number, release: GameRelease) => `result:${seasonTag(
 /** Intentos por cada hábito cumplido. */
 export const ATTEMPTS = { daily: 1, weekly: 3 };
 /** Niveles que hay que superar para cada hito. */
-export const MILESTONES = { speed: 20, infinite: 30, mirror: 60 };
+export const MILESTONES = { infinite: 30, mirror: 60 };
 
 /**
  * Intentos ganados con los hábitos desde `firstDay`:
@@ -155,7 +155,7 @@ export function economyOf(data: HabitsData, today: LocalDate, release: GameRelea
     available: 0,
     nextLevel: 1,
     passedLevel: 0,
-    unlocks: { speed: false, infinite: false, mirror: false },
+    unlocks: { infinite: false, mirror: false },
     totalPointsEarned: 0,
     totalGoldEarned: 0,
     bestTime: 0,
@@ -256,14 +256,13 @@ export function economyOf(data: HabitsData, today: LocalDate, release: GameRelea
   eco.available = Math.max(0, eco.attemptsEarned - eco.attemptsUsed);
   eco.nextLevel = eco.passedLevel + 1;
   eco.unlocks = {
-    speed: eco.passedLevel >= MILESTONES.speed,
     infinite: eco.passedLevel >= MILESTONES.infinite,
     mirror: eco.passedLevel >= MILESTONES.mirror,
   };
   if (release.testMode) {
     eco.available = Infinity;
     eco.openRun = null;
-    eco.unlocks = { speed: true, infinite: true, mirror: true };
+    eco.unlocks = { infinite: true, mirror: true };
   }
   return eco;
 }

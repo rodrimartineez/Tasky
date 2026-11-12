@@ -75,14 +75,11 @@ interface GameScreenProps {
   onExit: () => void;
   /** Partida del modo de pruebas (el resultado no se guarda). */
   test: boolean;
-  /** Velocidades ×1,5 y ×2 desbloqueadas (nivel 20 superado, o modo de pruebas). */
-  speeds: boolean;
 }
 
 const SPEED_KEY = 'tasky-game-speed';
-/** Última velocidad elegida en este dispositivo (solo si está desbloqueada). */
-function savedSpeed(unlocked: boolean): number {
-  if (!unlocked) return 1;
+/** Última velocidad elegida en este dispositivo (×1,5 y ×2 están disponibles desde el nivel 1). */
+function savedSpeed(): number {
   try {
     const value = Number(localStorage.getItem(SPEED_KEY));
     return SPEEDS.includes(value) ? value : 1;
@@ -166,12 +163,12 @@ function PurgePanel({ hud, onConfirm }: { hud: Hud; onConfirm: (weapons: number[
   );
 }
 
-export default function GameScreen({ level, attempt, config, resume, onFinish, onExit, test, speeds }: GameScreenProps) {
+export default function GameScreen({ level, attempt, config, resume, onFinish, onExit, test }: GameScreenProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const gameRef = useRef<Game | null>(null);
   const finishedRef = useRef(false);
   // La partida se arranca una sola vez con los valores iniciales de las props.
-  const startRef = useRef({ level, attempt, config, resume, onFinish, test, speed: savedSpeed(speeds) });
+  const startRef = useRef({ level, attempt, config, resume, onFinish, test, speed: savedSpeed() });
   const [hud, setHud] = useState<Hud | null>(null);
   const [choices, setChoices] = useState<UpgradeChoice[] | null>(null);
   const [chest, setChest] = useState<{ rewards: UpgradeChoice[]; gold: number } | null>(null);
@@ -338,11 +335,9 @@ export default function GameScreen({ level, attempt, config, resume, onFinish, o
               </span>
             </span>
             <span className={styles.buttons}>
-              {speeds && (
-                <button type="button" className={styles.speed} onClick={cycleSpeed} aria-label={`Velocidad ${speedLabel(hud.speed)}`}>
-                  {speedLabel(hud.speed)}
-                </button>
-              )}
+              <button type="button" className={styles.speed} onClick={cycleSpeed} aria-label={`Velocidad ${speedLabel(hud.speed)}`}>
+                {speedLabel(hud.speed)}
+              </button>
               <SoundToggle className={styles.pause} />
               <button type="button" className={styles.pause} onClick={() => gameRef.current?.setPaused(true)} aria-label="Pausa">
                 <Pause />
