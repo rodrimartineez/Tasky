@@ -89,6 +89,8 @@ export function HabitPage() {
         </div>
       </section>
 
+      <Evolution results={results} build={build} daily={habit.period === 'daily'} unit={habit.unit} />
+
       <HabitFormDialog open={editing} onClose={() => setEditing(false)} habit={habit} currentTarget={target} />
       <ConfirmDialog
         open={confirmDelete}
@@ -107,6 +109,50 @@ export function HabitPage() {
         onClose={() => setConfirmDelete(false)}
       />
     </div>
+  );
+}
+
+const monthFormat = new Intl.DateTimeFormat('es-ES', { month: 'short', year: '2-digit', timeZone: 'UTC' });
+const MONTHS_SHOWN = 6;
+
+/**
+ * Evolución mes a mes (últimos 6 meses con datos): porcentaje de periodos cumplidos y media registrada por día o por
+ * semana frente al objetivo (o al límite). Cada periodo cuenta en el mes en que empieza; solo periodos cerrados.
+ */
+function Evolution({ results, build, daily, unit }: { results: PeriodResult[]; build: boolean; daily: boolean; unit: string }) {
+  const byMonth = new Map<string, PeriodResult[]>();
+  for (const r of results) {
+    if (!r.closed) continue;
+    const month = periodStart(r.key).slice(0, 7);
+    byMonth.set(month, [...(byMonth.get(month) ?? []), r]);
+  }
+  const months = [...byMonth.entries()].slice(-MONTHS_SHOWN);
+  if (months.length === 0) return null;
+  const per = daily ? 'día' : 'semana';
+  return (
+    <section className={styles.historySection}>
+      <h2 className={styles.sectionTitle}>Evolución</h2>
+      <ul className={styles.evolution}>
+        {months.map(([month, list]) => {
+          const met = list.filter((r) => r.met).length;
+          const share = met / list.length;
+          const average = list.reduce((sum, r) => sum + r.amount, 0) / list.length;
+          const target = list[list.length - 1].target;
+          return (
+            <li key={month}>
+              <span className={styles.evoMonth}>{monthFormat.format(new Date(`${month}-15T12:00:00Z`))}</span>
+              <span className={styles.evoBar} aria-hidden>
+                <span style={{ width: `${share * 100}%` }} />
+              </span>
+              <span className={styles.evoText}>
+                <b>{Math.round(share * 100)} %</b> cumplido · media {average.toLocaleString('es-ES', { maximumFractionDigits: 1 })}
+                {unit ? ` ${unit}` : ''} por {per} ({build ? 'objetivo' : 'límite'} {target.toLocaleString('es-ES')})
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
 

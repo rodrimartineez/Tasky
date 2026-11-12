@@ -207,3 +207,44 @@
   color: var(--text-muted);
   font-size: var(--fs-sm);
 }
+
+/* Evolución mes a mes. */
+.evolution {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.evolution li {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  grid-template-areas: 'month bar' 'month text';
+  column-gap: var(--space-3);
+  row-gap: 4px;
+  align-items: center;
+}
+.evoMonth {
+  grid-area: month;
+  font-family: var(--hb-pixel-font);
+  color: var(--text-muted);
+  text-transform: capitalize;
+}
+.evoBar {
+  grid-area: bar;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--hb-surface-2);
+  overflow: hidden;
+}
+.evoBar span {
+  display: block;
+  height: 100%;
+  background: var(--hb-build);
+}
+.evoText {
+  grid-area: text;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+}

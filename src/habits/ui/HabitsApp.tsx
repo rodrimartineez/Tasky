@@ -11,7 +11,7 @@ import { HabitsHome } from './HabitsHome';
 import { HabitsLayout } from './HabitsLayout';
 import { PlayPage } from './play/PlayPage';
 import { RecordsPage } from './RecordsPage';
-import { RewardsPage } from './RewardsPage';
+import { ProgressPage } from './ProgressPage';
 import { UpgradesPage } from './UpgradesPage';
 
 /** Fondo de la cabecera (igual que --hb-header-bg en theme.css). */
@@ -38,7 +38,9 @@ export default function HabitsApp() {
         <Route index element={<HabitsHome />} />
         <Route path="play" element={<PlayPage />} />
         <Route path="upgrades" element={<UpgradesPage />} />
-        <Route path="rewards" element={<RewardsPage />} />
+        <Route path="progress" element={<ProgressPage />} />
+        {/* Antes «Recompensas»: los enlaces antiguos llevan a Progreso. */}
+        <Route path="rewards" element={<Navigate to="/habits/progress" replace />} />
         <Route path="records" element={<RecordsPage />} />
         <Route path="catalog" element={<CatalogPage />} />
         {GAME_BUILD.devTools && <Route path="sprites" element={<SpritesPage />} />}

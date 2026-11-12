@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { NavLink, useLocation, useOutlet } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { BookOpen, ListChecks, Medal, Sparkles, Swords, TriangleAlert, Trophy } from 'lucide-react';
+import { BookOpen, ChartColumn, ListChecks, Medal, Sparkles, Swords, TriangleAlert } from 'lucide-react';
 import { ModeSwitch } from '../../ui/app/ModeSwitch';
 import { toast, Toaster } from '../../ui/components/Toaster';
 import { UPGRADES } from '../../game/content/upgrades';
@@ -15,7 +15,7 @@ const TABS = [
   { to: '/habits', label: 'Hábitos', icon: <ListChecks />, end: true },
   { to: '/habits/play', label: 'Jugar', icon: <Swords />, end: false },
   { to: '/habits/upgrades', label: 'Mejoras', icon: <Sparkles />, end: false },
-  { to: '/habits/rewards', label: 'Recompensas', icon: <Trophy />, end: false },
+  { to: '/habits/progress', label: 'Progreso', icon: <ChartColumn />, end: false },
   { to: '/habits/records', label: 'Logros', icon: <Medal />, end: false },
   { to: '/habits/catalog', label: 'Catálogo', icon: <BookOpen />, end: false },
 ];

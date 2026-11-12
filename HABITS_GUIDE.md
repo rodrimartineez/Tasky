@@ -484,3 +484,13 @@ saltos, invocaciones, lluvias y anillos, cada jefe tiene ataques propios avisado
 - **Aspectos:** `game/content/skins.ts`. Con oro (`unlock:…:skin:<id>`) o por un logro (no se pueden comprar). Solo
   visuales: `config.skin` (tinte y aura) lo dibuja el renderizador.
 - La elección de arcano y aspecto se guarda en el dispositivo (`tasky-game-extras`).
+
+## 19. Progreso (antes «Recompensas», 12/11/2026)
+
+- Pestaña «Progreso» (`ui/ProgressPage.tsx`, ruta `/habits/progress`; `/habits/rewards` redirige). Dos vistas:
+  - **Resumen:** puntos e intentos ganados esta semana y este mes, % de días cumplidos en los últimos 30 días, mejor
+    racha actual y cada hábito con su racha, su mejor racha, su cumplimiento y una tira de los últimos 14 días (u 8
+    semanas). Tocar un hábito abre su ficha.
+  - **Movimientos:** el historial de puntos de antes, día a día.
+- La ficha del hábito (`HabitPage.tsx`) añade «Evolución»: los últimos 6 meses con % cumplido y media registrada por
+  día o semana frente al objetivo o límite.
