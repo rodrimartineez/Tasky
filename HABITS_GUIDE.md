@@ -447,3 +447,14 @@ saltos, invocaciones, lluvias y anillos, cada jefe tiene ataques propios avisado
   elegido y miniaturas, dibujadas con su suelo, adornos, enemigos y jefe reales (`sprites/preview.ts`).
 - **Proyectos:** la barra superior usa la misma posición, separación de la zona segura y fondo opaco (sin
   desenfoque) que la de Hábitos.
+
+## 16. Sonido (Fase 9)
+
+- `src/game/audio/`: `engine.ts` (contexto Web Audio, buses de efectos y música, limitador, ajustes guardados en
+  `tasky-game-sound`; silencio por defecto en pantallas táctiles), `sfx.ts` (efectos sintetizados con intervalo
+  mínimo), `music.ts` (música por escenario con 3 intensidades) y `listener.ts` (deduce los sonidos del estado del
+  mundo; la simulación no cambia).
+- La interfaz toca los sonidos de los cofres (`ChestReveal.tsx`) y de elegir mejora. Controles en
+  `SoundControls.tsx`: botón en el HUD y apartado «Sonido» del campamento.
+- iOS: el contexto se desbloquea con el primer toque; si el móvil está en modo silencio, el sistema puede no
+  reproducir Web Audio.

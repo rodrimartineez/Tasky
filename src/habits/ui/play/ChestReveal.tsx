@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { play } from '../../../game/audio/sfx';
 import type { UpgradeChoice } from '../../../game/sim/types';
 import { spriteDataUrl } from '../../../game/sprites/atlas';
 import shared from './GameScreen.module.css';
@@ -25,6 +26,14 @@ export function ChestReveal({ rewards, gold, onClose }: { rewards: UpgradeChoice
   const [shown, setShown] = useState(-1);
   const total = rewards.length + 1;
   const done = shown >= total;
+
+  // Sonido de cada paso: sacudida, apertura, cada mejora (fanfarria si es una evolución) y el oro.
+  useEffect(() => {
+    if (shown < 0) play('chestShake');
+    else if (shown === 0) play('chestOpen');
+    else if (shown <= rewards.length) play(rewards[shown - 1].kind === 'evolution' ? 'evolution' : 'reward');
+    else play('gold');
+  }, [shown, rewards]);
 
   useEffect(() => {
     if (done) return;

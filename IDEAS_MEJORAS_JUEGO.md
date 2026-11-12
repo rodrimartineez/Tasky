@@ -69,7 +69,7 @@ conviene dibujar una sola vez sobre un contenido ya cerrado.
 | **5e — Combate más intenso** ✔️ | Personaje siempre visible, armas y pasivas de 7 niveles (armas hasta el 999), Purga, jefes con ataques propios, oleadas y ~nivel 60 al minuto 30, dos muertes distintas | — | 5d | **Máxima** (pedida por el usuario) |
 | **6 — PWA y rendimiento** ✔️ (pendiente de tu validación) | Precarga sin conexión, rendimiento en móvil, calidad automática de efectos | — | 5, 5c, 5d, 5e, 7 | Alta |
 | **7 — Rediseño visual y artístico** (en curso, antes que la 6) | Todo el arte: personajes, enemigos, jefes, armas y sus efectos, proyectiles, pasivas, mejoras, recogidas y mapas; galería de sprites | A1, A2, A3, C3 (ampliadas) | 5e | Alta (pedida por el usuario) |
-| **9 — Sonido** (siguiente) | Efectos y música originales (incluido el sonido de abrir cofres) | A4 | 7 | Media |
+| **9 — Sonido** ✔️ (pendiente de tu validación) | Efectos y música originales (incluido el sonido de abrir cofres) | A4 | 7 | Media |
 | **8 — Validación global** | Estudio de equilibrio completo, prueba en iPhone, regresión de Proyectos | — | 5–7, 9 | Hito: juego completo |
 | **10 — Largo plazo** | Logros, estadísticas, usos del oro, arcanos | C2, E2, D1, B3 | 8 (D1 antes de ~1 año de uso) | Media-baja |
 
@@ -293,8 +293,22 @@ cerrado tras la 5c, así que el arte se dibuja una sola vez.
   dispositivos (compras, partidas y escudos).
 - Regresión completa del modo Proyectos y del servidor MCP.
 
-### Fase 9 — Sonido
+### Fase 9 — Sonido ✔️ (pendiente de tu validación)
 - **A4:** efectos y música originales por escenario, volumen y silencio. En el móvil, silencio por defecto.
+- **Hecho (12/11/2026):** todo sintetizado con Web Audio (`src/game/audio/`), sin archivos: original, sin conexión y
+  sin tocar la simulación (el sonido se deduce del estado del mundo en cada fotograma).
+  - Efectos: golpes con tono propio de cada familia de armas, rayos, explosiones, bajas, gemas (cada una seguida suena
+    más aguda), monedas, daño recibido, subida de nivel, elección, oleada, jefe, La Muerte, Purga, derrota, victoria
+    y la apertura de cofres (sacudida, apertura, cada mejora, fanfarria de evolución y oro). Cada efecto tiene un
+    intervalo mínimo y hay como mucho 24 voces a la vez, con un limitador para que nunca sature.
+  - Música: una pieza propia por escenario (tonalidad, escala, tempo y melodía distintos) con tres intensidades:
+    tranquila, oleada (entra la percusión y la melodía) y jefe o La Muerte (más rápida y aguda). Baja en pausa, en
+    los menús y durante el cofre.
+  - Controles: botón de silencio en la partida (junto a la pausa; el menú de pausa sigue con sus 4 opciones) y
+    apartado «Sonido» en el campamento con silencio y volumen de efectos y música. Se guarda en el dispositivo; en
+    móviles empieza en silencio.
+  - Comprobado en el navegador: ~19 notas por segundo en plena partida, ninguna en silencio, sin errores. **Falta
+    oírlo en un iPhone real** (Fase 8).
 
 ### Fase 10 — Largo plazo
 | Id | Qué se hace | Regla de diseño |

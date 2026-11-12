@@ -85,6 +85,44 @@
   height: 13px;
 }
 
+/* Velocidad, sonido y pausa, juntos a la derecha. */
+.buttons {
+  display: flex;
+  gap: 6px;
+}
+/* Móvil: dos filas (nivel, tiempo y botones arriba; contadores debajo) para que nada se apriete. */
+@media (max-width: 480px) {
+  .top {
+    grid-template-columns: 1fr auto 1fr;
+    grid-template-areas:
+      'level timer buttons'
+      'counters counters counters';
+    row-gap: 2px;
+  }
+  .level {
+    grid-area: level;
+    font-size: 13px;
+  }
+  .timer {
+    grid-area: timer;
+  }
+  .counters {
+    grid-area: counters;
+    justify-content: flex-start;
+  }
+  .buttons {
+    grid-area: buttons;
+    justify-self: end;
+    gap: 4px;
+  }
+  .buttons .pause,
+  .buttons .speed {
+    width: 34px;
+    min-width: 34px;
+    height: 34px;
+    padding: 0;
+  }
+}
 .pause {
   pointer-events: auto;
   display: grid;

@@ -8,7 +8,9 @@ import { MAX_PASSIVES, MAX_WEAPONS, type RunConfig, type RunResult, type Upgrade
 import { spriteDataUrl } from '../../../game/sprites/atlas';
 import { now } from '../../../core/clock';
 import { saveRunSnapshot } from '../../state/store';
+import { play } from '../../../game/audio/sfx';
 import { ChestReveal } from './ChestReveal';
+import { SoundToggle } from './SoundControls';
 import { PauseMenu } from './PauseMenu';
 import styles from './GameScreen.module.css';
 
@@ -267,6 +269,7 @@ export default function GameScreen({ level, attempt, config, resume, onFinish, o
   };
 
   const choose = useCallback((index: number) => {
+    play('select');
     setChoices(null);
     setBanishing(false);
     gameRef.current?.choose(index);
@@ -329,14 +332,17 @@ export default function GameScreen({ level, attempt, config, resume, onFinish, o
                 <Icon name="i_coin" size={14} /> {hud.gold}
               </span>
             </span>
-            {speeds && (
-              <button type="button" className={styles.speed} onClick={cycleSpeed} aria-label={`Velocidad ${speedLabel(hud.speed)}`}>
-                {speedLabel(hud.speed)}
+            <span className={styles.buttons}>
+              {speeds && (
+                <button type="button" className={styles.speed} onClick={cycleSpeed} aria-label={`Velocidad ${speedLabel(hud.speed)}`}>
+                  {speedLabel(hud.speed)}
+                </button>
+              )}
+              <SoundToggle className={styles.pause} />
+              <button type="button" className={styles.pause} onClick={() => gameRef.current?.setPaused(true)} aria-label="Pausa">
+                <Pause />
               </button>
-            )}
-            <button type="button" className={styles.pause} onClick={() => gameRef.current?.setPaused(true)} aria-label="Pausa">
-              <Pause />
-            </button>
+            </span>
           </div>
           <div className={styles.loadout}>
             <Slots items={hud.weapons} total={MAX_WEAPONS} defs={WEAPON_BY_ID} />

@@ -1,6 +1,7 @@
 import { Input } from './input/input';
 import { Renderer } from './render/renderer';
 import type { RunConfig, RunResult, UpgradeChoice, World } from './sim/types';
+import { GameAudio } from './audio/listener';
 import { inWave } from './sim/core';
 import { banishChoice, evolutionReady, rerollChoices } from './sim/upgrades';
 import { chooseUpgrade, createWorld, purgeItems, runResult, step } from './sim/world';
@@ -82,6 +83,7 @@ export class Game {
   private dying: number | null = null;
   private destroyed = false;
   private ended = false;
+  private sound: GameAudio;
 
   private constructor(
     host: HTMLElement,
@@ -93,6 +95,7 @@ export class Game {
     this.world = resume ?? createWorld(config);
     // Una partida reanudada empieza en pausa: el jugador decide cuándo seguir.
     if (resume && resume.phase === 'playing') this.paused = true;
+    this.sound = new GameAudio(this.world);
     this.input = new Input(host, () => this.togglePause());
     document.addEventListener('visibilitychange', this.onVisibility);
     this.frame = requestAnimationFrame(this.loop);
@@ -167,10 +170,12 @@ export class Game {
       this.hudTimer = HUD_INTERVAL;
       this.sendHud();
     }
+    const held = this.paused || this.chestOpen || w.phase === 'levelup' || w.phase === 'purge';
+    this.sound.frame(w, held);
     // En pausa los efectos se congelan con el resto de la escena.
     this.renderer.draw(
       w,
-      this.paused || this.chestOpen || w.phase === 'levelup' || w.phase === 'purge' ? 0 : dt,
+      held ? 0 : dt,
       this.dying === null ? null : Math.min(1, this.dying / deathDuration(w)),
     );
   };
@@ -264,6 +269,7 @@ export class Game {
     cancelAnimationFrame(this.frame);
     document.removeEventListener('visibilitychange', this.onVisibility);
     this.input.destroy();
+    this.sound.destroy();
     this.renderer.destroy();
   }
 }

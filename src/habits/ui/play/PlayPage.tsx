@@ -16,6 +16,7 @@ import { loadRunSnapshot, saveRunSnapshot, useEconomy, useHabits } from '../../s
 import { comebackFor } from '../../core/comeback';
 import { GAME_BUILD, releaseFor } from '../../core/release';
 import { HabitBridge } from '../HabitBridge';
+import { SoundSettings } from './SoundControls';
 import { CoinIcon } from '../PointsBadge';
 import styles from './PlayPage.module.css';
 
@@ -428,6 +429,11 @@ export function PlayPage() {
             );
           })}
         </div>
+      </section>
+
+      <section className={styles.section}>
+        <h2 className={styles.heading}>Sonido</h2>
+        <SoundSettings />
       </section>
 
       <p className={styles.note}>

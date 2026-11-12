@@ -446,3 +446,35 @@
 .milestones li.done::before {
   content: '✓ ';
 }
+
+/* Ajustes de sonido (SoundControls.tsx). */
+.sound {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius);
+  background: var(--hb-surface-1);
+  box-shadow: var(--hb-pixel-edge);
+}
+.soundRow {
+  display: grid;
+  grid-template-columns: 80px 1fr 72px;
+  align-items: center;
+  gap: var(--space-3);
+}
+.soundRow input[type='range'] {
+  width: 100%;
+  accent-color: var(--hb-gold);
+}
+.soundRow input[type='checkbox'] {
+  justify-self: start;
+  width: 20px;
+  height: 20px;
+  accent-color: var(--hb-gold);
+}
+.soundRow b {
+  text-align: right;
+  font-family: var(--hb-pixel-font);
+  color: var(--hb-gold);
+}
