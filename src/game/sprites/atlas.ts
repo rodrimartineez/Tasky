@@ -20,7 +20,7 @@ export const WHITE = '!';
 /** Radio, en píxeles del atlas, de los círculos `ring` y `disc` (se escalan al dibujarlos). */
 export const CIRCLE_RADIUS = 32;
 
-function drawRows(ctx: CanvasRenderingContext2D, rows: string[], x: number, y: number, white: boolean) {
+export function drawRows(ctx: CanvasRenderingContext2D, rows: string[], x: number, y: number, white: boolean) {
   for (let r = 0; r < rows.length; r++) {
     for (let c = 0; c < rows[r].length; c++) {
       const ch = rows[r][c];

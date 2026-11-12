@@ -69,6 +69,8 @@
 }
 .icon {
   flex-shrink: 0;
+  /* Personajes y jefes no son cuadrados: se encajan sin deformarse. */
+  object-fit: contain;
   image-rendering: pixelated;
 }
 .titles {

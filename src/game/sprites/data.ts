@@ -52,15 +52,15 @@ export const PALETTE: Record<string, string> = {
 export const SPRITES: Record<string, string[]> = {
   ...ART,
 
-  // ── Cifras de los indicadores de daño (3×5) ──
-  n0: ['www', 'w.w', 'w.w', 'w.w', 'www'],
-  n1: ['.w.', 'ww.', '.w.', '.w.', 'www'],
-  n2: ['www', '..w', 'www', 'w..', 'www'],
-  n3: ['www', '..w', '.ww', '..w', 'www'],
-  n4: ['w.w', 'w.w', 'www', '..w', '..w'],
-  n5: ['www', 'w..', 'www', '..w', 'www'],
-  n6: ['www', 'w..', 'www', 'w.w', 'www'],
-  n7: ['www', '..w', '.w.', '.w.', '.w.'],
-  n8: ['www', 'w.w', 'www', 'w.w', 'www'],
-  n9: ['www', 'w.w', 'www', '..w', 'www'],
+  // ── Cifras de los indicadores de daño (4×6 con contorno: 6×8). El blanco se tiñe; el contorno queda oscuro. ──
+  n0: ['.kkkk.', 'kkwwkk', 'kwkkwk', 'kwkwwk', 'kwwkwk', 'kwkkwk', 'kkwwkk', '.kkkk.'],
+  n1: ['..kkk.', '.kkwk.', '.kwwk.', '.kkwk.', '..kwk.', '.kkwkk', '.kwwwk', '.kkkkk'],
+  n2: ['.kkkk.', 'kkwwkk', 'kwkkwk', 'kkkkwk', '.kkwkk', 'kkwkkk', 'kwwwwk', 'kkkkkk'],
+  n3: ['kkkkk.', 'kwwwkk', 'kkkkwk', '.kwwkk', '.kkkwk', 'kkkkwk', 'kwwwkk', 'kkkkk.'],
+  n4: ['..kkkk', '.kkwwk', 'kkwkwk', 'kwkkwk', 'kwwwwk', 'kkkkwk', '...kwk', '...kkk'],
+  n5: ['kkkkkk', 'kwwwwk', 'kwkkkk', 'kwwwkk', 'kkkkwk', 'kkkkwk', 'kwwwkk', 'kkkkk.'],
+  n6: ['.kkkk.', 'kkwwk.', 'kwkkk.', 'kwwwkk', 'kwkkwk', 'kwkkwk', 'kkwwkk', '.kkkk.'],
+  n7: ['kkkkkk', 'kwwwwk', 'kkkkwk', '..kwkk', '.kkwk.', '.kwkk.', '.kwk..', '.kkk..'],
+  n8: ['.kkkk.', 'kkwwkk', 'kwkkwk', 'kkwwkk', 'kwkkwk', 'kwkkwk', 'kkwwkk', '.kkkk.'],
+  n9: ['.kkkk.', 'kkwwkk', 'kwkkwk', 'kwkkwk', 'kkwwwk', '.kkkwk', '.kwwkk', '.kkkk.'],
 };

@@ -50,7 +50,8 @@ export interface GameCallbacks {
   onLevelUp(choices: UpgradeChoice[]): void;
   /** Se eligió la mejora de eliminar: hay que mostrar el inventario para elegir qué quitar. */
   onPurge(): void;
-  onChest(rewards: UpgradeChoice[]): void;
+  /** Cofre abierto: la partida queda detenida hasta llamar a `closeChest()`. */
+  onChest(rewards: UpgradeChoice[], gold: number): void;
   onPause(paused: boolean): void;
   onEnd(result: RunResult): void;
 }
@@ -74,6 +75,8 @@ export class Game {
   private hudTimer = 0;
   private fps = 60;
   private paused = false;
+  /** Presentación de un cofre en curso: la simulación espera sin mostrar la pausa. */
+  private chestOpen = false;
   private announced: World['phase'] = 'playing';
   /** Segundos de la animación de muerte ya mostrados (null mientras se juega). */
   private dying: number | null = null;
@@ -121,7 +124,7 @@ export class Game {
     this.fps += (1 / Math.max(dt, 1e-3) - this.fps) * 0.05;
     const w = this.world;
 
-    if (!this.paused && !this.ended && w.phase === 'playing') {
+    if (!this.paused && !this.chestOpen && !this.ended && w.phase === 'playing') {
       this.acc += dt * this.speed;
       for (let i = 0; i < MAX_STEPS * Math.ceil(this.speed) && this.acc >= STEP && w.phase === 'playing'; i++) {
         step(w, STEP, this.input.x, this.input.y);
@@ -131,7 +134,9 @@ export class Game {
     }
 
     if (w.chestRewards.length > 0) {
-      this.callbacks.onChest(w.chestRewards);
+      this.chestOpen = true;
+      this.input.release();
+      this.callbacks.onChest(w.chestRewards, w.chestGold ?? 0);
       w.chestRewards = [];
     }
     if (w.phase !== this.announced) {
@@ -165,7 +170,7 @@ export class Game {
     // En pausa los efectos se congelan con el resto de la escena.
     this.renderer.draw(
       w,
-      this.paused || w.phase === 'levelup' || w.phase === 'purge' ? 0 : dt,
+      this.paused || this.chestOpen || w.phase === 'levelup' || w.phase === 'purge' ? 0 : dt,
       this.dying === null ? null : Math.min(1, this.dying / deathDuration(w)),
     );
   };
@@ -246,14 +251,12 @@ export class Game {
   }
 
   private togglePause() {
-    if (this.world.phase === 'playing') this.setPaused(!this.paused);
+    if (this.world.phase === 'playing' && !this.chestOpen) this.setPaused(!this.paused);
   }
 
-  /** Abandona la partida: queda detenida y devuelve lo conseguido hasta el momento. */
-  abandon(): RunResult {
-    this.ended = true;
-    this.input.release();
-    return runResult(this.world);
+  /** Cierra la presentación del cofre y la partida continúa. */
+  closeChest() {
+    this.chestOpen = false;
   }
 
   destroy() {

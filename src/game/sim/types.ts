@@ -414,6 +414,8 @@ export interface World {
   choices: UpgradeChoice[];
   /** Últimas mejoras concedidas por un cofre (la interfaz las muestra y las vacía). */
   chestRewards: UpgradeChoice[];
+  /** Oro del último cofre (se muestra con sus mejoras). */
+  chestGold?: number;
   /** Oleadas ya empezadas (cada minuto, sim/core.ts WAVES). */
   waves?: number;
   /** Nivel del personaje desde el que se ofrece una vez la mejora de eliminar (solo en ~1 de cada 5 partidas). */

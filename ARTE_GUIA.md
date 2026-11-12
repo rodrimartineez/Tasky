@@ -31,14 +31,14 @@ contraste), sin copiar personajes, enemigos ni arte de ningún juego existente.
 
 | Grupo | Tamaño | Notas |
 |---|---|---|
-| Personajes (`hero_0/1`, `c_<id>_0/1`) | 16×20 | 2 fotogramas de paso: piernas y brazos alternos y 1 px de rebote |
+| Personajes (`hero_0/1`, `c_<id>_0/1`) | 14×18 a 22×22 | Cada uno con su silueta (animales, criaturas, seres fantásticos; solo el Errante es humano) y 2 fotogramas con un movimiento propio (saltar, aletear, flotar…) |
 | Enemigos normales (`e_*`) | 12–18 de alto | Pequeños rápidos ~12, normales ~16, grandes ~18–20 |
 | Jefes de escenario | 28×28 | |
 | Jefes de ciclo | 32×32 | Diseño propio cada uno, sin recolorear a otro |
 | La Muerte (`e_reaper`) | 24×32 | Encapuchada, manto rojo y guadaña grande |
 | Iconos de armas (`w_*`) | 16×16 | Sin marco |
 | Iconos de evoluciones | 16×16 | Marco dorado: borde `k`, `y` arriba e izquierda, `Y` abajo y derecha |
-| Pasivas (`p_*`) y mejoras (`u_*`) | 16×16 | Pasivas con marco plateado (`W`/`s`); mejoras sin marco |
+| Pasivas (`p_*`) y mejoras (`u_*`) | 16×16 | Sin marco, como las armas: el objeto suelto con contorno `k` |
 | Proyectiles (`x_*`) | 6–12 | |
 | Impactos (`fx_<familia>_hit_0/1/2`) | 12×12 | Anticipación (pequeño) → impacto (estallido) → disipación (chispas sueltas) |
 | Recogidas (`i_*`) | 8–16 | Gemas de experiencia 8×10 (azul, verde, roja) |

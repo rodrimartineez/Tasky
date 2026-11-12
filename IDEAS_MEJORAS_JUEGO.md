@@ -69,9 +69,13 @@ conviene dibujar una sola vez sobre un contenido ya cerrado.
 | **5e — Combate más intenso** ✔️ | Personaje siempre visible, armas y pasivas de 7 niveles (armas hasta el 999), Purga, jefes con ataques propios, oleadas y ~nivel 60 al minuto 30, dos muertes distintas | — | 5d | **Máxima** (pedida por el usuario) |
 | **6 — PWA y rendimiento** ✔️ (pendiente de tu validación) | Precarga sin conexión, rendimiento en móvil, calidad automática de efectos | — | 5, 5c, 5d, 5e, 7 | Alta |
 | **7 — Rediseño visual y artístico** (en curso, antes que la 6) | Todo el arte: personajes, enemigos, jefes, armas y sus efectos, proyectiles, pasivas, mejoras, recogidas y mapas; galería de sprites | A1, A2, A3, C3 (ampliadas) | 5e | Alta (pedida por el usuario) |
-| **8 — Validación global** | Estudio de equilibrio completo, prueba en iPhone, regresión de Proyectos | — | 5–7 | Hito: juego completo |
-| **9 — Sonido** | Efectos y música originales | A4 | 7 | Media |
+| **9 — Sonido** (siguiente) | Efectos y música originales (incluido el sonido de abrir cofres) | A4 | 7 | Media |
+| **8 — Validación global** | Estudio de equilibrio completo, prueba en iPhone, regresión de Proyectos | — | 5–7, 9 | Hito: juego completo |
 | **10 — Largo plazo** | Logros, estadísticas, usos del oro, arcanos | C2, E2, D1, B3 | 8 (D1 antes de ~1 año de uso) | Media-baja |
+
+**Cambio de orden pedido por el usuario el 12/11/2026:** después de la 6 va la **9 (Sonido)**, luego la **8
+(Validación global)** y por último la **10 (Largo plazo)**. Así la validación final, con iPhone real, se hace ya con
+el sonido incluido.
 
 Por qué este orden:
 

@@ -122,9 +122,46 @@
 }
 
 .sprite {
-  width: 48px;
-  height: 48px;
+  /* Los personajes tienen tamaños distintos: se encajan sin deformarse, apoyados abajo. */
+  width: 66px;
+  height: 66px;
+  object-fit: contain;
+  object-position: center bottom;
   image-rendering: pixelated;
+}
+
+/* Vista previa del escenario elegido (arte real del escenario, sprites/preview.ts) y miniaturas. */
+.preview {
+  position: relative;
+  margin: 0 0 var(--space-2);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--hb-pixel-edge);
+}
+.preview img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  image-rendering: pixelated;
+}
+.preview figcaption {
+  position: absolute;
+  left: var(--space-2);
+  bottom: var(--space-2);
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(7, 6, 15, 0.75);
+  font-family: var(--hb-pixel-font);
+  color: var(--hb-gold);
+}
+.thumb {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 4px;
+  image-rendering: pixelated;
+}
+.locked .thumb {
+  filter: grayscale(1) brightness(0.45);
 }
 .optionName {
   font-family: var(--hb-pixel-font);
@@ -189,6 +226,12 @@
 .legendary {
   background: linear-gradient(180deg, #2e2410, var(--hb-surface-1) 70%);
   box-shadow: 0 0 0 2px #8a6a1c, inset 0 -3px 0 rgba(0, 0, 0, 0.35);
+}
+.legendary.selected {
+  box-shadow:
+    0 0 0 2px var(--hb-gold),
+    0 0 12px 2px rgba(246, 201, 69, 0.45),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.35);
 }
 .legendaryTag {
   font-family: var(--hb-pixel-font);

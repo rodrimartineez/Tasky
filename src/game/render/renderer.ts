@@ -4,7 +4,8 @@ import { Application, Container, Rectangle, Sprite, Texture, TilingSprite, type 
 import { behaviourOf, WEAPON_BY_ID } from '../content/weapons';
 import { emberRadius, MINE_ARM } from '../sim/weapons';
 import type { Fx, Projectile, World } from '../sim/types';
-import { buildAtlas, buildGroundTile, CIRCLE_RADIUS, WHITE, type GroundStyle } from '../sprites/atlas';
+import { buildAtlas, buildGroundTile, CIRCLE_RADIUS, WHITE } from '../sprites/atlas';
+import { GROUNDS } from '../sprites/grounds';
 
 /**
  * Dibuja el estado de la simulación con PixiJS. No contiene reglas del juego: solo lee el mundo
@@ -16,68 +17,8 @@ const VIEW_SHORT = 260;
 /** Lado largo máximo: más allá aparecerían los enemigos dentro de la pantalla. */
 const VIEW_LONG = 580;
 const PROP_CELL = 56;
-
-/** Partículas de ambiente del escenario (hojas, luciérnagas, polvo, destellos, brasas). */
-interface Ambient {
-  colors: number[];
-  vx: number;
-  vy: number;
-  /** Amplitud del vaivén lateral. */
-  sway: number;
-  alpha: number;
-  /** Parpadeo (luces) en vez de brillo fijo. */
-  twinkle?: boolean;
-}
+/** Partículas de ambiente en pantalla (estilos en sprites/grounds.ts). */
 const AMBIENT_COUNT = 28;
-
-/** Suelo de cada escenario (`StageDef.ground`): dibujo de la baldosa, fondo y partículas de ambiente. */
-const GROUNDS: Record<string, GroundStyle & { background: number; ambient: Ambient }> = {
-  t_grass: {
-    base: '#1b2f24',
-    light: '#26442f',
-    dark: '#14231a',
-    accent: '#c9a74a',
-    pattern: 'grass',
-    background: 0x12201a,
-    ambient: { colors: [0x8fbf5a, 0xc9a74a], vx: 6, vy: 9, sway: 10, alpha: 0.55 },
-  },
-  t_bog: {
-    base: '#1c2a2b',
-    light: '#2b403c',
-    dark: '#111b1d',
-    accent: '#6f9a4a',
-    pattern: 'bog',
-    background: 0x101a1b,
-    ambient: { colors: [0xd7ff8a], vx: 0, vy: -2, sway: 8, alpha: 0.75, twinkle: true },
-  },
-  t_crypt: {
-    base: '#2a2630',
-    light: '#3a3444',
-    dark: '#18151e',
-    accent: '#4c5a3c',
-    pattern: 'slabs',
-    background: 0x16131c,
-    ambient: { colors: [0xb8b0c8], vx: -3, vy: -2, sway: 3, alpha: 0.3 },
-  },
-  t_cave: {
-    base: '#1f2338',
-    light: '#2e3452',
-    dark: '#141729',
-    accent: '#5fb7e8',
-    pattern: 'rocks',
-    background: 0x111424,
-    ambient: { colors: [0x8fd8ff, 0xd0b8ff], vx: 0, vy: 0, sway: 2, alpha: 0.8, twinkle: true },
-  },
-  t_ash: {
-    base: '#32231e',
-    light: '#3b2b23',
-    dark: '#1f1512',
-    accent: '#ff7a2e',
-    pattern: 'ash',
-    background: 0x1c130f,
-    ambient: { colors: [0xff8a3c, 0xffc35e], vx: 2, vy: -16, sway: 6, alpha: 0.8, twinkle: true },
-  },
-};
 
 /** Reserva de sprites: se piden en orden cada fotograma y los que sobran se ocultan. */
 class Pool {
@@ -99,6 +40,7 @@ class Pool {
     }
     this.used += 1;
     s.texture = texture;
+    s.anchor.set(0.5);
     s.visible = true;
     s.alpha = 1;
     s.tint = 0xffffff;
@@ -676,7 +618,7 @@ export class Renderer {
         return;
       }
       case 'flame': {
-        // Llama: halo en el suelo y dos lenguas que parpadean; se apaga al final.
+        // Llama: halo en el suelo y dos lenguas verticales que nacen del suelo y parpadean; se apaga al final.
         const fade = Math.min(1, shot.life * 1.5);
         const halo = pool.next(this.tex('disc'));
         halo.position.set(shot.x, shot.y);
@@ -686,8 +628,11 @@ export class Renderer {
         for (let i = 0; i < 2; i++) {
           const flick = Math.sin(this.clock * 14 + shot.x * 0.7 + i * 2.4);
           const tongue = pool.next(this.tex(shot.sprite));
-          tongue.position.set(shot.x + (i - 0.5) * shot.radius * 0.6, shot.y - Math.abs(flick) * 2);
-          tongue.scale.set(Math.max(0.8, shot.radius / 16) * (0.85 + 0.15 * flick));
+          const size = Math.max(0.8, shot.radius / 16);
+          tongue.anchor.set(0.5, 1);
+          tongue.position.set(shot.x + (i - 0.5) * shot.radius * 0.6, shot.y + shot.radius * 0.35);
+          // Crecen hacia arriba al parpadear, con la base fija en el suelo.
+          tongue.scale.set(size, size * (0.85 + 0.2 * flick));
           tongue.alpha = 0.9 * fade;
         }
         return;
@@ -838,10 +783,11 @@ export class Renderer {
       n.y -= 22 * dt;
       const text = String(n.value);
       const size = n.big ? 1.5 : 1;
-      const startX = n.x - (text.length * 4 * size) / 2 + 2 * size;
+      // Cifras de 4 px más 1 de separación (los contornos se solapan).
+      const startX = n.x - (text.length * 5 * size) / 2 + 2.5 * size;
       for (let i = 0; i < text.length; i++) {
         const s = fx.next(this.tex(`n${text[i]}`));
-        s.position.set(startX + i * 4 * size, n.y);
+        s.position.set(startX + i * 5 * size, n.y);
         s.scale.set(size);
         s.tint = n.color;
         s.alpha = Math.min(1, n.life * 4);

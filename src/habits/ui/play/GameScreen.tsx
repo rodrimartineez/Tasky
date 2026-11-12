@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Ban, Dices, Pause, Play, Skull } from 'lucide-react';
+import { Ban, Dices, Pause, Skull } from 'lucide-react';
 import { PASSIVE_BY_ID } from '../../../game/content/passives';
 import { WEAPON_BY_ID } from '../../../game/content/weapons';
 import { Game, SPEEDS, type Hud } from '../../../game/Game';
@@ -8,6 +8,8 @@ import { MAX_PASSIVES, MAX_WEAPONS, type RunConfig, type RunResult, type Upgrade
 import { spriteDataUrl } from '../../../game/sprites/atlas';
 import { now } from '../../../core/clock';
 import { saveRunSnapshot } from '../../state/store';
+import { ChestReveal } from './ChestReveal';
+import { PauseMenu } from './PauseMenu';
 import styles from './GameScreen.module.css';
 
 /** Cada cuánto se guarda la partida para poder reanudarla (también al ocultar la app). */
@@ -64,7 +66,7 @@ interface GameScreenProps {
   config: RunConfig;
   /** Estado guardado para continuar una partida interrumpida. */
   resume: World | null;
-  /** Fin de la partida (muerte, victoria o abandono): se llama una sola vez. */
+  /** Fin de la partida (muerte o victoria): se llama una sola vez. */
   onFinish: (result: RunResult) => void;
   onExit: () => void;
   /** Partida del modo de pruebas (el resultado no se guarda). */
@@ -93,7 +95,7 @@ function resultTitle(r: RunResult, level: number, bossLevel: boolean): string {
   if (r.won) return `¡Nivel ${level} superado!`;
   if (r.mode === 'mirror') return r.completed ? '¡Reflejo completado!' : 'Fin del reflejo';
   if (r.completed && bossLevel) return 'La Muerte llegó antes de vencer al jefe';
-  return 'No has llegado al minuto 30';
+  return 'Has muerto';
 }
 
 function resultNote(r: RunResult, level: number, test: boolean): string {
@@ -168,7 +170,7 @@ export default function GameScreen({ level, attempt, config, resume, onFinish, o
   const startRef = useRef({ level, attempt, config, resume, onFinish, test, speed: savedSpeed(speeds) });
   const [hud, setHud] = useState<Hud | null>(null);
   const [choices, setChoices] = useState<UpgradeChoice[] | null>(null);
-  const [chest, setChest] = useState<UpgradeChoice[] | null>(null);
+  const [chest, setChest] = useState<{ rewards: UpgradeChoice[]; gold: number } | null>(null);
   const [purging, setPurging] = useState(false);
   const [paused, setPaused] = useState(false);
   // Modo «Descartar»: el siguiente clic en una opción la quita para siempre.
@@ -193,7 +195,6 @@ export default function GameScreen({ level, attempt, config, resume, onFinish, o
     const host = hostRef.current;
     if (!host) return;
     let cancelled = false;
-    let chestTimer: ReturnType<typeof setTimeout> | undefined;
     const start = startRef.current;
     const save = () => {
       const world = finishedRef.current ? null : gameRef.current?.snapshot();
@@ -222,11 +223,7 @@ export default function GameScreen({ level, attempt, config, resume, onFinish, o
         },
         onLevelUp: (c) => setChoices([...c]),
         onPurge: () => setPurging(true),
-        onChest: (rewards) => {
-          setChest([...rewards]);
-          clearTimeout(chestTimer);
-          chestTimer = setTimeout(() => setChest(null), 2800);
-        },
+        onChest: (rewards, gold) => setChest({ rewards: [...rewards], gold }),
         onPause: setPaused,
         onEnd: (r) => {
           finishedRef.current = true;
@@ -250,7 +247,6 @@ export default function GameScreen({ level, attempt, config, resume, onFinish, o
       });
     return () => {
       cancelled = true;
-      clearTimeout(chestTimer);
       clearInterval(saveTimer);
       document.removeEventListener('visibilitychange', onHidden);
       window.removeEventListener('pagehide', save);
@@ -310,15 +306,6 @@ export default function GameScreen({ level, attempt, config, resume, onFinish, o
     return () => window.removeEventListener('keydown', onKey);
   }, [choices, pick, reroll, toggleBanish]);
 
-  const abandon = () => {
-    const game = gameRef.current;
-    if (!game || finishedRef.current) return;
-    finishedRef.current = true;
-    const r = game.abandon();
-    onFinish(r);
-    setResult(r);
-  };
-
   return createPortal(
     <div className={styles.screen}>
       <div ref={hostRef} className={styles.canvas} />
@@ -371,21 +358,18 @@ export default function GameScreen({ level, attempt, config, resume, onFinish, o
             </div>
           )}
           {hud.wave && !hud.cycleBoss && !hud.bossAlive && <div className={styles.wave}>¡Oleada!</div>}
-          {chest && (
-            <div className={styles.chest} role="status">
-              <Icon name="i_chest" size={28} />
-              <div>
-                {chest.map((c, i) => (
-                  <p key={i} className={c.kind === 'evolution' ? styles.evolution : ''}>
-                    {c.kind === 'evolution'
-                      ? `¡Evolución! ${c.text}`
-                      : `${c.name} ${c.kind === 'weapon' || c.kind === 'passive' ? `→ Nv ${c.level}` : `· ${c.text}`}`}
-                  </p>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
+      )}
+
+      {chest && !choices && !purging && !result && (
+        <ChestReveal
+          rewards={chest.rewards}
+          gold={chest.gold}
+          onClose={() => {
+            setChest(null);
+            gameRef.current?.closeChest();
+          }}
+        />
       )}
 
       {choices && !result && (
@@ -452,24 +436,8 @@ export default function GameScreen({ level, attempt, config, resume, onFinish, o
         />
       )}
 
-      {paused && !choices && !purging && !result && (
-        <div className={styles.overlay}>
-          <div className={styles.panel} role="dialog" aria-label="Pausa">
-            <h2 className={styles.title}>Pausa</h2>
-            <button type="button" className={styles.primary} onClick={() => gameRef.current?.setPaused(false)}>
-              <Play /> Continuar
-            </button>
-            <button type="button" className={styles.secondary} onClick={onExit}>
-              Guardar y salir
-            </button>
-            <button type="button" className={styles.secondary} onClick={abandon}>
-              Terminar (te quedas el oro)
-            </button>
-            <p className={styles.note}>
-              Muévete con el dedo (o WASD / flechas). El ataque es automático. {hud ? `${hud.fps} fps · ${hud.graphics}` : ''}
-            </p>
-          </div>
-        </div>
+      {paused && !chest && !choices && !purging && !result && (
+        <PauseMenu hud={hud} onResume={() => gameRef.current?.setPaused(false)} onExit={onExit} />
       )}
 
       {result && (

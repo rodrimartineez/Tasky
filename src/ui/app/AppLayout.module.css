@@ -8,9 +8,9 @@
   position: sticky;
   top: 0;
   z-index: 10;
-  background: rgba(10, 10, 11, 0.78);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  /* Opaca y sin desenfoque, como en Hábitos (HabitsLayout.module.css): Safari (iOS) reconoce así la cabecera y no
+     la tapa con su propio sombreado bajo la barra de estado. Mismo color que el `theme-color` de index.html. */
+  background: var(--bg);
   border-bottom: 1px solid var(--border);
   /* PWA a pantalla completa en iPhone: deja libre la barra de estado */
   padding-top: env(safe-area-inset-top);
@@ -85,6 +85,10 @@
 }
 
 @media (max-width: 640px) {
+  /* Separación propia bajo la barra de estado / zona segura (igual que en Hábitos). */
+  .header {
+    padding-top: calc(env(safe-area-inset-top) + var(--space-2));
+  }
   .headerStart {
     gap: var(--space-3);
   }

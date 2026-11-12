@@ -376,20 +376,48 @@ describe('niveles de armas y pasivas (7 + hasta 999)', () => {
     return false;
   };
 
-  it('un arma al 7 no sube más hasta que todo lo que se lleva está al 7; después sube por encima', () => {
+  it('un arma al 7 solo sigue subiendo con las 5 armas y las 5 pasivas al 7; las pasivas nunca pasan del 7', () => {
     const w = createWorld(config('spark'));
     w.purgeAt = undefined;
-    const ws = w.player.weapons[0];
-    ws.level = 7;
-    ws.stats = statsAt(WEAPON_BY_ID.get('spark')!, 7);
-    w.player.passives = [{ id: 'whetstone', level: 3 }];
+    const at7 = (id: string) => {
+      const ws = newWeapon(id);
+      ws.level = 7;
+      ws.stats = statsAt(WEAPON_BY_ID.get(id)!, 7);
+      return ws;
+    };
+    w.player.weapons = [at7('spark')];
+    w.player.passives = [{ id: 'whetstone', level: 7 }];
+    // Todo lo que se lleva está al 7, pero faltan huecos por llenar.
     expect(buildComplete(w)).toBe(false);
     expect(offered(w, 'spark')).toBe(false);
-    w.player.passives[0].level = 7;
+    w.player.weapons = ['spark', 'lance', 'orbs', 'ember', 'storm'].map(at7);
+    w.player.passives = ['whetstone', 'hourglass', 'lens', 'boots', 'clover'].map((id) => ({ id, level: 7 }));
+    w.player.passives[4].level = 6;
+    expect(buildComplete(w)).toBe(false);
+    expect(offered(w, 'spark')).toBe(false);
+    w.player.passives[4].level = 7;
     expect(buildComplete(w)).toBe(true);
     expect(offered(w, 'spark')).toBe(true);
-    // Las pasivas se quedan en el 7.
     expect(offered(w, 'whetstone')).toBe(false);
+  });
+
+  it('un cofre da de 1 a 5 mejoras y más oro cuantas más da, con la misma media de antes', () => {
+    const counts = [0, 0, 0, 0, 0];
+    let gold = 0;
+    for (let seed = 1; seed <= 600; seed++) {
+      const w = createWorld(config('spark', BASE_STATS, seed));
+      w.time = 600;
+      w.player.passives = ['whetstone', 'hourglass'].map((id) => ({ id, level: 1 }));
+      const before = w.gold;
+      openChest(w);
+      counts[w.chestRewards.length - 1] += 1;
+      expect(w.gold - before).toBe(w.chestGold);
+      gold += w.chestGold ?? 0;
+    }
+    expect(counts.every((n) => n > 0)).toBe(true);
+    // Media de antes: 20 + 600 / 30 = 40 de oro por cofre (sin bonificaciones de partida).
+    expect(gold / 600).toBeGreaterThan(36);
+    expect(gold / 600).toBeLessThan(46);
   });
 
   it('por encima del 7 cada nivel mejora el arma en porcentaje y el máximo es el 999', () => {

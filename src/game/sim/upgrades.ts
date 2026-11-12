@@ -45,8 +45,13 @@ export function statsAt(def: WeaponDef, level: number) {
   return stats;
 }
 
-/** Todo lo que se lleva está al nivel 7: se desbloquean los niveles superiores de las armas. */
+/**
+ * Build completa: las cinco armas y las cinco pasivas, todas al nivel 7. Solo entonces las armas siguen subiendo
+ * (hasta el 999); las pasivas nunca pasan del 7.
+ */
 export const buildComplete = (w: World) =>
+  w.player.weapons.length >= MAX_WEAPONS &&
+  w.player.passives.length >= MAX_PASSIVES &&
   w.player.weapons.every((x) => x.level >= MAX_WEAPON_LEVEL) &&
   w.player.passives.every((x) => x.level >= (PASSIVE_BY_ID.get(x.id)?.maxLevel ?? MAX_WEAPON_LEVEL));
 
@@ -246,11 +251,26 @@ export function applyChoice(w: World, choice: UpgradeChoice) {
   }
 }
 
-/** Cofre: evoluciona las armas que lo tengan listo y, si no, mejora al azar 1 objeto que ya tengas (3 o 5 con suerte); da oro. */
+/**
+ * Cofre: de 1 a 5 mejoras (más con suerte) y algo de oro que crece con ellas. La media de oro es la misma que cuando
+ * el cofre daba siempre la misma cantidad, así que la economía no cambia: CHEST.gold[n - 1] es el multiplicador.
+ */
+export const CHEST = { odds: [0.03, 0.05, 0.1, 0.17], gold: [0.8, 1.1, 1.4, 1.8, 2.4] };
+
+/** Cofre: evoluciona las armas que lo tengan listo y, si no, mejora al azar objetos que ya tengas; da oro. */
 export function openChest(w: World) {
   const luck = w.player.stats.luck;
   const roll = rand(w);
-  const count = roll < 0.03 * luck ? 5 : roll < 0.15 * luck ? 3 : 1;
+  // Probabilidades acumuladas de 5, 4, 3 y 2 mejoras (escalan con la suerte); si no, 1.
+  let count = 1;
+  let acc = 0;
+  for (let i = 0; i < CHEST.odds.length; i++) {
+    acc += CHEST.odds[i] * luck;
+    if (roll < acc) {
+      count = 5 - i;
+      break;
+    }
+  }
   const rewards: UpgradeChoice[] = [];
   for (let i = 0; i < count; i++) {
     const ready = w.player.weapons.filter((ws) => evolutionReady(w, ws));
@@ -265,6 +285,8 @@ export function openChest(w: World) {
     applyChoice(w, choice);
     rewards.push(choice);
   }
-  w.gold += (20 + Math.floor(w.time / 30)) * runGold(w.config);
+  const gold = Math.round((20 + Math.floor(w.time / 30)) * CHEST.gold[count - 1] * runGold(w.config));
+  w.gold += gold;
+  w.chestGold = gold;
   w.chestRewards = rewards;
 }

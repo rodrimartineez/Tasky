@@ -143,8 +143,8 @@ se calcula siempre sumándolos:
 - Al empezar se escribe `run-start` (la partida queda consumida) y el estado de la simulación se guarda en local
   cada ~10 s (la simulación es datos puros: serializable).
 - Si la app se cierra o el móvil la mata: al volver se ofrece **reanudar** exactamente desde el último guardado.
-- «Terminar partida» la cierra con el oro conseguido hasta ese momento (sin superar el nivel). Si en este dispositivo
-  no hay copia guardada (se empezó en otro o no llegó a guardarse), solo se puede **cerrar sin oro**: el intento
+- No se puede terminar una partida a voluntad quedándose el oro: la pausa solo ofrece continuar, ver el equipamiento,
+  la tabla de evoluciones y **guardar y salir** (se reanuda después). Si en este dispositivo no hay copia guardada (se empezó en otro o no llegó a guardarse), solo se puede **cerrar sin oro**: el intento
   cuenta como gastado. `result:<n.º de intento>` es único → nunca dos resultados para la misma partida. No se puede
   reiniciar para «repetir la tirada» porque el intento ya está gastado. *(Ver D-G2.)*
 - La copia guardada es local (`habits-run.json` / clave `run` de IndexedDB), no se sincroniza.
@@ -361,9 +361,9 @@ Vale para cualquier arma futura sin hacer nada más.
 
 **Niveles de armas y pasivas** (`sim/upgrades.ts`, tablas en `content/weapons.ts` y `content/passives.ts`).
 - 7 niveles; cada uno se nota y el 7 es un gran salto (un arma al 7 rinde de 4 a 12 veces su nivel 1, algo más que el antiguo nivel 8).
-- Al llegar al 7, un objeto deja de ofrecerse. Mientras haya **algo** de lo que se lleva (armas o pasivas) por debajo
-  del 7, ninguna arma pasa del 7.
-- Con todo al 7 (`buildComplete`), las armas siguen subiendo hasta el **999** (`OVERLEVEL`): cada nivel +5 % de
+- Al llegar al 7, un objeto deja de ofrecerse. Las pasivas no pasan nunca del 7. Ninguna arma pasa del 7 hasta
+  llevar **las 5 armas y las 5 pasivas, todas al 7**.
+- Con la build completa (`buildComplete`), las armas siguen subiendo hasta el **999** (`OVERLEVEL`): cada nivel +5 % de
   daño y algo más de área (hasta ×1,6), cadencia, velocidad y duración; +1 proyectil cada 50 niveles (5 como mucho)
   y +1 de perforación cada 30. Las pasivas se quedan en el 7. Vale en todas las modalidades, pensado sobre todo para
   el infinito.
@@ -424,3 +424,24 @@ saltos, invocaciones, lluvias y anillos, cada jefe tiene ataques propios avisado
   La pausa muestra los fps y «efectos reducidos» cuando está activo.
 - Medición: 60 fps con 455 enemigos y con una build de efectos a tope en un móvil simulado (CPU ×4); memoria
   estable en partidas largas; el juego funciona sin conexión. Detalle en `IDEAS_MEJORAS_JUEGO.md` (Fase 6).
+
+## 15. Ajustes previos a la Fase 9 (12/11/2026)
+
+- **Derrota:** la pantalla final dice «Has muerto» (sin mencionar el minuto 30).
+- **Pausa:** Continuar · Ver equipamiento (las 5 armas y las 5 pasivas con su nivel y lo que hacen) · Tabla de
+  evoluciones (arma + pasiva = evolución; lo que se lleva se ilumina en dorado, lo que falta se ve apagado) ·
+  Guardar y salir. Se quitó «Terminar» (`PauseMenu.tsx`).
+- **Niveles:** las pasivas tienen un máximo absoluto de 7. Las armas pasan del 7 (hasta el 999) solo con las 5 armas
+  y las 5 pasivas equipadas al 7 (`buildComplete`); a partir de ahí las mejoras son solo de armas.
+- **Cofres** (`openChest`, `CHEST`): de 1 a 5 mejoras (probabilidades de 5/4/3/2 mejoras: 3/5/10/17 % × suerte) y
+  oro que crece con ellas (×0,8 · 1,1 · 1,4 · 1,8 · 2,4 sobre 20 + 1 por cada 30 s). La media es la misma que antes
+  (test), así que la economía no cambia. La partida se detiene durante la presentación (`ChestReveal.tsx`): cofre en
+  grande que se sacude, se abre con destello, rayos y chispas, y las mejoras aparecen de una en una. El sonido llegará
+  con la Fase 9.
+- **Arte:** personajes con diseños propios (animales, criaturas y seres fantásticos, de 14×18 a 22×22; solo el
+  Errante sigue siendo humano), pasivas sin marco, búmeran nuevo, llamas de la Estela de fuego en vertical y cifras
+  de daño de 4×6 con contorno.
+- **Campamento:** el legendario elegido se marca con el mismo dorado que los demás; vista previa del escenario
+  elegido y miniaturas, dibujadas con su suelo, adornos, enemigos y jefe reales (`sprites/preview.ts`).
+- **Proyectos:** la barra superior usa la misma posición, separación de la zona segura y fondo opaco (sin
+  desenfoque) que la de Hábitos.

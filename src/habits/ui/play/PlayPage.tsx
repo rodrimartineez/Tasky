@@ -6,6 +6,7 @@ import { STAGES } from '../../../game/content/stages';
 import { CYCLE_BOSS_BY_ID, CYCLE_LENGTH, cycleBossFor } from '../../../game/content/bosses';
 import type { RunConfig, RunMode, RunResult, World } from '../../../game/sim/types';
 import { spriteDataUrl } from '../../../game/sprites/atlas';
+import { stagePreviewUrl } from '../../../game/sprites/preview';
 import { Button } from '../../../ui/components/Button';
 import { ConfirmDialog } from '../../../ui/components/ConfirmDialog';
 import { toast } from '../../../ui/components/Toaster';
@@ -400,6 +401,10 @@ export function PlayPage() {
 
       <section className={styles.section}>
         <h2 className={styles.heading}>Escenario</h2>
+        <figure className={styles.preview}>
+          <img src={stagePreviewUrl(stageDef)} alt={`Vista previa de ${stageDef.name}`} draggable={false} />
+          <figcaption>{stageDef.name}</figcaption>
+        </figure>
         <div className={styles.grid}>
           {STAGES.map((s) => {
             const unlocked = isUnlocked(eco, `stage:${s.id}`);
@@ -412,6 +417,7 @@ export function PlayPage() {
                 disabled={!!open}
                 aria-pressed={s.id === stage}
               >
+                <img className={styles.thumb} src={stagePreviewUrl(s)} alt="" draggable={false} />
                 <span className={styles.optionName}>{s.name}</span>
                 {!unlocked && (
                   <span className={styles.price}>
