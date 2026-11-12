@@ -163,7 +163,7 @@ export function ProjectPage() {
       )}
 
       {phase ? (
-        <header className={styles.header}>
+        <header className={`${styles.header} ${styles.phaseHeader}`}>
           <div className={styles.heading}>
             <p className={styles.eyebrow}>
               <Layers /> Fase

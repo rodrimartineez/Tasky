@@ -193,3 +193,16 @@
   width: 14px;
   height: 14px;
 }
+
+/* Vista de fase: las acciones («···» y, en escritorio, «Nueva tarea») quedan a la derecha del nombre
+   en la misma fila, también en móvil, y el menú se abre dentro de la pantalla. */
+.phaseHeader {
+  flex-wrap: nowrap;
+}
+.phaseHeader .heading {
+  flex: 1 1 auto;
+}
+.phaseHeader .actions {
+  flex-shrink: 0;
+  width: auto;
+}
