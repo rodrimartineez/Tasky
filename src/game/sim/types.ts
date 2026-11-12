@@ -167,8 +167,8 @@ export type BossPattern =
 
 /**
  * Modalidad de la partida (HABITS_GUIDE §11):
- * - `normal`: 30 minutos y aparece La Muerte; superarla es llegar al minuto 30 (y vencer al jefe en los niveles de jefe).
- * - `infinite`: sin La Muerte ni final; la dificultad sigue creciendo. Llegar al minuto 30 (y vencer al jefe en los
+ * - `normal`: 15 minutos y aparece La Muerte; superarla es llegar al minuto 15 (y vencer al jefe en los niveles de jefe).
+ * - `infinite`: sin La Muerte ni final; la dificultad sigue creciendo. Llegar al minuto 15 (y vencer al jefe en los
  *   niveles de jefe) supera el nivel; la partida acaba al morir o al salir.
  * - `mirror`: el nivel actual con dificultad doble (MIRROR_SCALE). No supera niveles.
  */
@@ -249,6 +249,8 @@ export interface Player {
   moving: boolean;
   /** Segundos de invulnerabilidad tras un golpe. */
   hurtTimer: number;
+  /** Robo de vida que aún puede curar este segundo (tope: 1 % de la vida máxima por segundo). */
+  leechPool?: number;
   level: number;
   xp: number;
   xpNext: number;
@@ -433,7 +435,7 @@ export interface World {
   spawnAcc: number[];
   nextEvent: number;
   bossAlive: boolean;
-  /** Se llegó al minuto 30 (en modo normal o reflejo): ha aparecido La Muerte. */
+  /** Se llegó al minuto 15 (en modo normal o reflejo): ha aparecido La Muerte. */
   completed?: boolean;
   /** Jefe de ciclo: 0 = no ha aparecido, 1 = vivo, 2 = vencido. */
   cycleBoss?: number;
@@ -446,9 +448,9 @@ export interface World {
 }
 
 export interface RunResult {
-  /** Nivel superado: llegó al minuto 30 en modo normal (y venció al jefe de ciclo, si lo había). */
+  /** Nivel superado: llegó al minuto 15 en modo normal (y venció al jefe de ciclo, si lo había). */
   won: boolean;
-  /** Llegó al minuto 30 (apareció La Muerte). */
+  /** Llegó al minuto 15 (apareció La Muerte). */
   completed: boolean;
   mode: RunMode;
   time: number;
@@ -460,7 +462,12 @@ export interface RunResult {
   weapons: { id: string; level: number; dealt: number }[];
 }
 
-/** Duración máxima de una partida. */
-export const RUN_SECONDS = 30 * 60;
+/** Duración máxima de una partida (15 minutos desde el 12/11/2026; antes 30). */
+export const RUN_SECONDS = 15 * 60;
+/**
+ * Las tablas de contenido (apariciones, eventos, jefe de ciclo, escalada) siguen escritas para 30 minutos: el
+ * reloj de la partida avanza ×2 sobre ellas (`w.time * TIMELINE` = segundos de esas tablas).
+ */
+export const TIMELINE = 2;
 export const MAX_WEAPONS = 5;
 export const MAX_PASSIVES = 5;

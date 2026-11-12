@@ -6,7 +6,7 @@ import type { EnemyDef } from '../sim/types';
  * - Siempre: vida y daño según el nivel, como el resto de enemigos.
  * - Desde la 2.ª vuelta: añaden sus ataques `advanced` y se enfurecen por debajo de la mitad de vida.
  * - En cada vuelta: más proyectiles, ataques más seguidos y algo más de vida.
- * Aparecen en el minuto 20; para superar el nivel hay que vencerlo antes de que llegue La Muerte (minuto 30).
+ * Aparecen en el minuto 10; para superar el nivel hay que vencerlo antes de que llegue La Muerte (minuto 15).
  * Cada uno tiene ataques propios que lo identifican: ondas sísmicas, huevos que eclosionan, telarañas y burbujas de
  * tiempo que ralentizan, sombras y cabezas que disparan, charcos de plaga, rayos y barridos, y la gravedad del abismo.
  */
@@ -145,7 +145,7 @@ export const CYCLE_BOSSES: EnemyDef[] = [
   }),
 ];
 
-/** La Muerte: aparece en el minuto 30 y acaba la partida. No recibe daño. */
+/** La Muerte: aparece en el minuto 15 y acaba la partida. No recibe daño. */
 export const REAPER: EnemyDef = {
   id: 'reaper',
   name: 'La Muerte',
@@ -161,7 +161,7 @@ export const REAPER: EnemyDef = {
 
 /** Niveles por ciclo: el último de cada ciclo es el del jefe. */
 export const CYCLE_LENGTH = 7;
-/** Minuto (en segundos) en que aparece el jefe de ciclo. */
+/** Segundo de las tablas (de 30 minutos) en que aparece el jefe de ciclo: minuto 10 de la partida (`TIMELINE`). */
 export const CYCLE_BOSS_AT = 20 * 60;
 
 export const isBossLevel = (level: number) => level > 0 && level % CYCLE_LENGTH === 0;

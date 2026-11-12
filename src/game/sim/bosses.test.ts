@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { CYCLE_BOSSES, CYCLE_BOSS_AT, cycleBossFor, isBossLevel } from '../content/bosses';
 import { WITHERED_WOODS } from '../content/stages';
 import { SPRITES } from '../sprites/data';
-import { EGG, EGG_HATCH, patternsOf, REAPER_STRIKE } from './bosses';
+import { EGG, EGG_HATCH, patternsOf } from './bosses';
 import { damageEnemy, spawnEnemy } from './core';
-import { BASE_STATS, RUN_SECONDS, type RunConfig, type World } from './types';
+import { BASE_STATS, RUN_SECONDS, TIMELINE, type RunConfig, type World } from './types';
 import { chooseUpgrade, createWorld, purgeItems, runResult, step } from './world';
 
 const DT = 1 / 60;
@@ -47,7 +47,7 @@ describe('jefes de ciclo', () => {
 
   it('aparece en el minuto 20; sin vencerlo, llegar al 30 no supera el nivel', () => {
     const w = createWorld(bossLevel(7, { ...BASE_STATS, maxHp: 1e12, might: 0.001 }));
-    w.time = CYCLE_BOSS_AT - 1;
+    w.time = CYCLE_BOSS_AT / TIMELINE - 1;
     run(w, 3);
     expect(w.cycleBoss).toBe(1);
     expect(bossOf(w)).toBeDefined();
@@ -58,7 +58,7 @@ describe('jefes de ciclo', () => {
 
   it('venciéndolo y llegando al 30, el nivel queda superado', () => {
     const w = createWorld(bossLevel(7, { ...BASE_STATS, maxHp: 1e12 }));
-    w.time = CYCLE_BOSS_AT - 1;
+    w.time = CYCLE_BOSS_AT / TIMELINE - 1;
     run(w, 2);
     damageEnemy(w, bossOf(w)!, 1e15, 0, 0, 0);
     expect(w.cycleBoss).toBe(2);
@@ -71,7 +71,7 @@ describe('jefes de ciclo', () => {
     const first = createWorld(bossLevel(7));
     const third = createWorld({ ...bossLevel(7), cycleBoss: { id: cycleBossFor(7)!.id, round: 2 } });
     for (const w of [first, third]) {
-      w.time = CYCLE_BOSS_AT - 1;
+      w.time = CYCLE_BOSS_AT / TIMELINE - 1;
       run(w, 2);
     }
     const a = bossOf(first)!;
@@ -84,7 +84,7 @@ describe('jefes de ciclo', () => {
     for (let i = 0; i < 30; i++) {
       const level = (i + 1) * 7;
       const w = createWorld(bossLevel(level, { ...BASE_STATS, maxHp: 1e12 }));
-      w.time = CYCLE_BOSS_AT - 1;
+      w.time = CYCLE_BOSS_AT / TIMELINE - 1;
       run(w, 45);
       const boss = bossOf(w);
       expect(boss, `nivel ${level}`).toBeDefined();
@@ -99,7 +99,7 @@ describe('ataques propios de los jefes', () => {
     const spawned = new Set<string>();
     for (let k = 1; k <= 20; k++) {
       const w = createWorld(bossLevel(7 * k, { ...BASE_STATS, maxHp: 1e12 }));
-      w.time = CYCLE_BOSS_AT - 1;
+      w.time = CYCLE_BOSS_AT / TIMELINE - 1;
       for (let s = 0; s < 45 && w.phase !== 'dead'; s++) {
         run(w, 1);
         for (const h of w.hazards ?? []) kinds.add(h.kind ?? 'blast');
@@ -124,18 +124,11 @@ describe('ataques propios de los jefes', () => {
 });
 
 describe('La Muerte', () => {
-  it('golpea con la guadaña hasta matar: varios tajos visibles, sin revivir', () => {
-    const w = createWorld({ ...bossLevel(2), cycleBoss: undefined, stats: { ...BASE_STATS, maxHp: 500, revival: 2 } });
+  it('el primer tajo mata siempre, sin revivir y con regeneración muy alta', () => {
+    const w = createWorld({ ...bossLevel(2), cycleBoss: undefined, stats: { ...BASE_STATS, maxHp: 500, revival: 2, regen: 1e6 } });
     w.time = RUN_SECONDS - 0.5;
-    const hits: number[] = [];
-    let last = w.player.hp;
-    for (let i = 0; i < 60 / DT && w.phase !== 'dead'; i++) {
-      step(w, DT, 0, 0);
-      if (w.player.hp < last - 50) hits.push(w.time);
-      last = w.player.hp;
-    }
+    for (let i = 0; i < 60 / DT && w.phase !== 'dead'; i++) step(w, DT, 0, 0);
     expect(w.phase).toBe('dead');
-    expect(hits.length).toBe(Math.ceil(1 / REAPER_STRIKE.share));
     expect(runResult(w).won).toBe(true);
   });
 });

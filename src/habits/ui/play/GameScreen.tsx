@@ -93,7 +93,7 @@ const speedLabel = (s: number) => `×${s.toLocaleString('es-ES')}`;
 /** Titular del final: nivel superado, o por qué no. */
 function resultTitle(r: RunResult, level: number, bossLevel: boolean): string {
   if (r.won) return r.mode === 'infinite' ? `¡Nivel ${level} superado! Has resistido ${clock(r.time)}` : `¡Nivel ${level} superado!`;
-  if (r.mode === 'infinite') return r.time >= RUN_SECONDS && bossLevel ? 'Llegaste al minuto 30 sin vencer al jefe' : `Has resistido ${clock(r.time)}`;
+  if (r.mode === 'infinite') return r.time >= RUN_SECONDS && bossLevel ? 'Llegaste al minuto 15 sin vencer al jefe' : `Has resistido ${clock(r.time)}`;
   if (r.mode === 'mirror') return r.completed ? '¡Reflejo completado!' : 'Fin del reflejo';
   if (r.completed && bossLevel) return 'La Muerte llegó antes de vencer al jefe';
   return 'Has muerto';
@@ -177,7 +177,7 @@ export default function GameScreen({ level, attempt, config, resume, onFinish, o
   // Modo «Descartar»: el siguiente clic en una opción la quita para siempre.
   const [banishing, setBanishing] = useState(false);
   const hudRef = useRef<Hud | null>(null);
-  // Infinito pasado el minuto 30: el nivel ya está superado y salir termina la partida.
+  // Infinito pasado el minuto 15: el nivel ya está superado y salir termina la partida.
   const pastEnd = config.mode === 'infinite' && (hud?.time ?? 0) >= RUN_SECONDS;
   // Mayor número de repeticiones/descartes visto: los botones solo aparecen si el jugador tiene esas mejoras.
   const [tools, setTools] = useState({ rerolls: 0, banishes: 0 });

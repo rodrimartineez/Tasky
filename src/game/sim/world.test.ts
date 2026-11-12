@@ -171,19 +171,19 @@ describe('escalada dentro de la partida (Fase 8)', () => {
 
   it('la vida y el daño de los enemigos suben con los minutos sobre la base del nivel', () => {
     expect(timeHpScale(at(0))).toBe(1);
-    expect(timeHpScale(at(10))).toBeCloseTo(3.6, 5);
-    expect(timeHpScale(at(30))).toBeCloseTo(17.2, 5);
-    expect(damageScale(at(30)) / damageScale(at(0))).toBeCloseTo(4, 5);
+    expect(timeHpScale(at(1))).toBeCloseTo(1.3084, 5);
+    expect(timeHpScale(at(15))).toBeCloseTo(19.99, 5);
+    expect(damageScale(at(15)) / damageScale(at(0))).toBeCloseTo(6.001, 5);
     // El nivel siguiente empieza más arriba y vuelve a escalar igual.
     const next = { ...at(0), config: { ...config(3), level: 2 } };
     expect(hpScale(next)).toBeGreaterThan(hpScale(at(0)));
   });
 
-  it('los veteranos aparecen desde el minuto 5 y cada vez más, reforzados', () => {
-    expect(championChance(at(4))).toBe(0);
-    expect(championChance(at(15))).toBeGreaterThan(0);
-    expect(championChance(at(30))).toBeCloseTo(RAMP.champion.share, 5);
-    const w = at(25);
+  it('los veteranos aparecen desde el minuto 2,5 y cada vez más, reforzados', () => {
+    expect(championChance(at(2))).toBe(0);
+    expect(championChance(at(7.5))).toBeGreaterThan(0);
+    expect(championChance(at(15))).toBeCloseTo(RAMP.champion.share, 5);
+    const w = at(12);
     const normal = spawnEnemy(w, ENEMY_BY_ID.get('slime')!, 0, 0);
     const champion = spawnEnemy(w, ENEMY_BY_ID.get('slime')!, 0, 0, false, true);
     expect(champion.champion).toBe(true);

@@ -16,7 +16,7 @@ import { GAME_RELEASE, type GameRelease } from './release';
  * - Puntos: los dan los hábitos y se gastan en mejoras permanentes.
  * - Oro: lo dan las partidas y se gasta en personajes y escenarios.
  * - Intentos (HABITS_GUIDE §11): se ganan cumpliendo hábitos (+1 por cada diario cumplido, +3 por cada semanal) y no
- *   caducan. Cada partida gasta uno. El nivel solo sube al superar el actual (llegar al minuto 30 en modo normal).
+ *   caducan. Cada partida gasta uno. El nivel solo sube al superar el actual (llegar al minuto 15 en modo normal).
  *
  * Los ids de los asientos son deterministas: dos dispositivos que hacen lo mismo sin conexión generan el mismo
  * asiento, y el servidor solo guarda uno. Un asiento imposible (gastar lo que ya no hay, dos compras del mismo

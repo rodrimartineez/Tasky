@@ -27,7 +27,7 @@ export interface Hud {
   bossAlive: boolean;
   /** Jefe de ciclo en pantalla: nombre y vida que le queda (0–1). */
   cycleBoss: { name: string; hp: number } | null;
-  /** Ha llegado el minuto 30: La Muerte está en camino. */
+  /** Ha llegado el minuto 15: La Muerte está en camino. */
   reaper: boolean;
   /** Oleada en curso. */
   wave: boolean;
@@ -110,7 +110,7 @@ export class Game {
     return game;
   }
 
-  /** Termina la partida ya (modo infinito pasado el minuto 30: «Salir» no deja volver a ella). */
+  /** Termina la partida ya (modo infinito pasado el minuto 15: «Salir» no deja volver a ella). */
   finish() {
     if (this.ended || this.world.phase === 'dead') return;
     this.ended = true;

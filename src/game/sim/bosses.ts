@@ -134,17 +134,18 @@ export function spawnReaper(w: World) {
   emit(w, { type: 'shake', power: 10 });
 }
 
-/** Segundos entre tajos de La Muerte y vida máxima que quita cada uno (unos 4 tajos para acabar la partida). */
-export const REAPER_STRIKE = { every: 0.8, share: 0.26 };
+/** Segundos entre tajos de La Muerte. Cada tajo mata (12/11/2026): ni regeneración, ni vida ni mejoras lo aguantan. */
+export const REAPER_STRIKE = { every: 0.8 };
 
-/** Tajo de guadaña: ignora armadura e invulnerabilidad. Devuelve si ha golpeado. */
+/** Tajo de guadaña: mata siempre (ignora armadura, invulnerabilidad, revivir y regeneración). Devuelve si ha golpeado. */
 export function reaperStrike(w: World, e: Enemy): boolean {
   if (e.t1 > 0) return false;
   const p = w.player;
   e.t1 = REAPER_STRIKE.every;
-  const dmg = Math.ceil(p.stats.maxHp * REAPER_STRIKE.share);
+  const dmg = Math.ceil(Math.max(p.hp, p.stats.maxHp));
   p.stats.revival = 0;
-  p.hp -= dmg;
+  // Muy por debajo de 0: nada de lo que cura en el mismo paso (regeneración, robo de vida) puede salvarlo.
+  p.hp = -1e12;
   p.hurtTimer = 0.3;
   emit(w, { type: 'number', x: p.x, y: p.y - 10, value: dmg, crit: true, player: true });
   emit(w, { type: 'ring', x: p.x, y: p.y, radius: 18, color: 0xe5484d });

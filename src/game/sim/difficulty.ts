@@ -3,9 +3,9 @@ import type { RunConfig } from './types';
 /**
  * Dificultad por nivel (HABITS_GUIDE §11, ANALISIS_ECONOMIA.md §11). Se suma a la escalada por minutos de cada partida.
  *
- * El nivel solo sube al superar uno (llegar al minuto 30), así que la curva marca el ritmo de avance: la dureza del
+ * El nivel solo sube al superar uno (llegar al minuto 15), así que la curva marca el ritmo de avance: la dureza del
  * nivel L es la «frontera» medida para un jugador que cumple ~100 % de sus hábitos en su día L (la dificultad más
- * alta con la que aún llega al minuto 30). Así ese jugador supera de media un nivel al día, y quien cumple menos
+ * alta con la que aún llega al minuto 15). Así ese jugador supera de media un nivel al día, y quien cumple menos
  * avanza más despacio porque sus mejoras crecen más despacio. Sin techo, pero cada vez más despacio.
  *
  * Todo se expresa con un único factor de dureza H (vida de los enemigos ×H). El daño sube la mitad (1 + (H−1)/2) y la

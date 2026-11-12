@@ -38,11 +38,12 @@ export const PASSIVES: PassiveDef[] = [
     id: 'oakheart',
     name: 'Corazón de roble',
     icon: 'p_heart',
-    text: '+20 de vida máxima y regeneración',
+    text: '+20 de vida máxima y algo de regeneración',
     maxLevel: 7,
     apply: (s, n) => {
       s.maxHp += 20 * n + (n >= 7 ? 30 : 0);
-      s.regen += 0.2 * n + (n >= 7 ? 0.3 : 0);
+      // Regeneración baja (12/11/2026): antes 0,2 por nivel y hacía al personaje casi inmortal.
+      s.regen += 0.08 * n + (n >= 7 ? 0.1 : 0);
     },
   },
   {
@@ -119,10 +120,10 @@ export const PASSIVES: PassiveDef[] = [
     id: 'fang',
     name: 'Colmillo de sangre',
     icon: 'p_fang',
-    text: 'Recuperas el 0,4 % del daño que causas',
+    text: 'Recuperas el 0,15 % del daño que causas (con un tope por segundo)',
     maxLevel: 7,
     // `?? 0`: las partidas guardadas antes de esta pasiva no tienen el campo.
-    apply: (s, n) => void (s.leech = (s.leech ?? 0) + 0.004 * n + (n >= 7 ? 0.004 : 0)),
+    apply: (s, n) => void (s.leech = (s.leech ?? 0) + 0.0015 * n + (n >= 7 ? 0.0015 : 0)),
   },
 ];
 

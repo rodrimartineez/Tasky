@@ -324,9 +324,10 @@ describe('equilibrio de builds (daño)', () => {
       ws.level = 7;
       ws.stats = weaponStatsAt(def, 7);
     }
-    w.time = 600;
+    // Minutos 5–6:30 de la partida de 15 minutos (10–13 de las tablas).
+    w.time = 300;
     w.nextEvent = WITHERED_WOODS.events.length;
-    while (w.time < 690 && w.phase !== 'dead') {
+    while (w.time < 390 && w.phase !== 'dead') {
       if (w.phase === 'levelup') {
         w.pendingLevels = 0;
         w.phase = 'playing';
@@ -412,7 +413,7 @@ describe('niveles de armas y pasivas (7 + hasta 999)', () => {
     let gold = 0;
     for (let seed = 1; seed <= 600; seed++) {
       const w = createWorld(config('spark', BASE_STATS, seed));
-      w.time = 600;
+      w.time = 300;
       w.player.passives = ['whetstone', 'hourglass'].map((id) => ({ id, level: 1 }));
       const before = w.gold;
       openChest(w);
@@ -421,7 +422,7 @@ describe('niveles de armas y pasivas (7 + hasta 999)', () => {
       gold += w.chestGold ?? 0;
     }
     expect(counts.every((n) => n > 0)).toBe(true);
-    // Media de antes: 20 + 600 / 30 = 40 de oro por cofre (sin bonificaciones de partida).
+    // Media de antes: 20 + 600 / 30 = 40 de oro (minuto 5 de la partida = 10 de las tablas) por cofre (sin bonificaciones de partida).
     expect(gold / 600).toBeGreaterThan(36);
     expect(gold / 600).toBeLessThan(46);
   });

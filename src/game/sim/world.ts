@@ -3,7 +3,7 @@ import { ENEMY_BY_ID } from '../content/enemies';
 import { EGG_HATCH, reaperStrike, spawnCycleBoss, spawnReaper, updateCycleBoss, updateHazards } from './bosses';
 import { championChance, emit, hurtPlayer, maxEnemies, near, queryNear, rand, rebuildGrid, ringPoint, spawnEnemy, WAVES, waveFactor } from './core';
 import { runDensity, survivalBonus } from './difficulty';
-import { MAX_WEAPONS, RUN_SECONDS, type Enemy, type RunConfig, type RunResult, type World } from './types';
+import { MAX_WEAPONS, RUN_SECONDS, TIMELINE, type Enemy, type RunConfig, type RunResult, type World } from './types';
 import { applyChoice, newWeapon, openChest, recomputeStats, rollChoices } from './upgrades';
 import { enemyShot, updateProjectiles, updateWeapons } from './weapons';
 
@@ -57,8 +57,11 @@ export function createWorld(config: RunConfig): World {
   };
 }
 
-/** Escala de la experiencia por nivel: ajustada para llegar a ~nivel 60 en el minuto 30 (ANALISIS_ECONOMIA.md §12). */
-export const XP_SCALE = 1.05;
+/**
+ * Escala de la experiencia por nivel: ajustada para llegar a ~nivel 60 al final (ANALISIS_ECONOMIA.md §12). Desde que
+ * la partida dura 15 minutos se necesita la mitad (1,05 / `TIMELINE`) para mantener el ritmo de mejoras.
+ */
+export const XP_SCALE = 1.05 / TIMELINE;
 
 /** Experiencia necesaria para pasar del nivel `level` al siguiente. */
 export const xpForLevel = (level: number) => Math.round((5 + (level - 1) * 5 + Math.floor(Math.pow(level - 1, 1.9) * 0.6)) * XP_SCALE);
@@ -73,8 +76,9 @@ export const SPAWN_RATE = 1.5;
 
 function updateSpawns(w: World, dt: number) {
   const { stage } = w.config;
-  // Modo infinito: pasado el minuto 30 se repiten los últimos 10 minutos de apariciones (la dureza sigue subiendo).
-  const real = w.time / 60;
+  // Minuto de las tablas (30 de largo). Modo infinito: pasado el final se repiten sus últimos 10 minutos de apariciones
+  // (la dureza sigue subiendo).
+  const real = (w.time * TIMELINE) / 60;
   const minute = real < 30 ? real : LOOP_FROM + ((real - LOOP_FROM) % 10);
   const cap = maxEnemies(w);
   const density = runDensity(w.config) * SPAWN_RATE * waveFactor(w);
@@ -106,19 +110,19 @@ function updateSpawns(w: World, dt: number) {
     }
   }
 
-  if (w.config.cycleBoss && !w.cycleBoss && w.time >= CYCLE_BOSS_AT) spawnCycleBoss(w);
+  if (w.config.cycleBoss && !w.cycleBoss && w.time * TIMELINE >= CYCLE_BOSS_AT) spawnCycleBoss(w);
 
   const loops = w.eventLoops ?? 0;
   if (w.config.mode === 'infinite' && w.nextEvent >= stage.events.length && w.time >= (loops + 1) * RUN_SECONDS) {
     w.eventLoops = loops + 1;
     w.nextEvent = 0;
   }
-  const offset = (w.eventLoops ?? 0) * RUN_SECONDS;
-  while (w.nextEvent < stage.events.length && stage.events[w.nextEvent].at + offset <= w.time) {
+  const offset = (w.eventLoops ?? 0) * RUN_SECONDS * TIMELINE;
+  while (w.nextEvent < stage.events.length && stage.events[w.nextEvent].at + offset <= w.time * TIMELINE) {
     const event = stage.events[w.nextEvent++];
     const def = ENEMY_BY_ID.get(event.enemy);
     if (!def) continue;
-    // En los niveles de jefe, el jefe de ciclo sustituye al del escenario del minuto 20.
+    // En los niveles de jefe, el jefe de ciclo sustituye al del escenario del minuto 10 (20 de las tablas).
     if (w.config.cycleBoss && event.kind === 'boss' && event.at === CYCLE_BOSS_AT) continue;
     for (let i = 0; i < event.count; i++) {
       // Los anillos rodean al jugador a intervalos iguales; élites y jefes llegan por un punto al azar.
@@ -365,6 +369,7 @@ export function step(w: World, dt: number, moveX: number, moveY: number) {
   }
   p.hurtTimer -= dt;
   if (p.stats.regen > 0) p.hp = Math.min(p.stats.maxHp, p.hp + p.stats.regen * dt);
+  if (p.stats.leech > 0) p.leechPool = Math.min(p.stats.maxHp * 0.01, (p.leechPool ?? 0) + p.stats.maxHp * 0.01 * dt);
 
   updateSpawns(w, dt);
   rebuildGrid(w);
@@ -384,7 +389,7 @@ export function step(w: World, dt: number, moveX: number, moveY: number) {
     w.phase = 'dead';
     return;
   }
-  // Minuto 30: llega La Muerte (salvo en el modo infinito). La partida sigue hasta que alcanza al jugador.
+  // Minuto 15: llega La Muerte (salvo en el modo infinito). La partida sigue hasta que alcanza al jugador.
   if (!w.completed && w.config.mode !== 'infinite' && w.time >= RUN_SECONDS) spawnReaper(w);
   if (w.pendingLevels > 0) {
     w.choices = rollChoices(w);
@@ -457,17 +462,17 @@ export function purgeItems(w: World, weapons: number[], passives: number[]) {
   continueLevelUps(w);
 }
 
-/** ¿Ha llegado al minuto 30? En normal y reflejo llega La Muerte; en infinito la partida sigue. */
+/** ¿Ha llegado al minuto 15? En normal y reflejo llega La Muerte; en infinito la partida sigue. */
 export const reachedEnd = (w: World) => ((w.config.mode ?? 'normal') === 'infinite' ? w.time >= RUN_SECONDS : !!w.completed);
 
 /**
- * ¿Supera el nivel? En normal y en infinito: llegar al minuto 30 y, en los niveles de jefe, haberlo vencido. En
+ * ¿Supera el nivel? En normal y en infinito: llegar al minuto 15 y, en los niveles de jefe, haberlo vencido. En
  * infinito la partida sigue después y termina al morir o al salir. El reflejo nunca hace avanzar de nivel.
  */
 export const passed = (w: World) => (w.config.mode ?? 'normal') !== 'mirror' && reachedEnd(w) && (!w.config.cycleBoss || w.cycleBoss === 2);
 
 export function runResult(w: World): RunResult {
-  const bonus = survivalBonus(w.config, w.time, w.player.stats.greed);
+  const bonus = survivalBonus(w.config, w.time * TIMELINE, w.player.stats.greed);
   return {
     won: passed(w),
     completed: !!w.completed,

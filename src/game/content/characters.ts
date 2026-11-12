@@ -63,9 +63,9 @@ export const CHARACTERS: CharacterDef[] = [
     sprite: 'c_herbalist',
     price: 1_800,
     weapon: 'cloud',
-    trait: 'Regenera +0,5 de vida por segundo, pero hace un 15 % menos de daño.',
+    trait: 'Regenera +0,2 de vida por segundo, pero hace un 15 % menos de daño.',
     apply: (s) => {
-      s.regen += 0.5;
+      s.regen += 0.2;
       s.might *= 0.85;
     },
   },

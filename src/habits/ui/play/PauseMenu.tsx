@@ -81,7 +81,7 @@ function Evolutions({ hud }: { hud: Hud }) {
 }
 
 /** Menú de pausa: continuar, ver el equipamiento, la tabla de evoluciones, o guardar y salir. */
-/** `final`: modo infinito pasado el minuto 30; salir termina la partida (no se guarda para volver). */
+/** `final`: modo infinito pasado el minuto 15; salir termina la partida (no se guarda para volver). */
 export function PauseMenu({ hud, onResume, onExit, final = false }: { hud: Hud | null; onResume: () => void; onExit: () => void; final?: boolean }) {
   const [view, setView] = useState<'menu' | 'loadout' | 'evolutions'>('menu');
   if (view !== 'menu' && hud)
@@ -119,7 +119,7 @@ export function PauseMenu({ hud, onResume, onExit, final = false }: { hud: Hud |
         <button type="button" className={shared.secondary} onClick={onExit}>
           {final ? 'Salir' : 'Guardar y salir'}
         </button>
-        {final && <p className={shared.note}>Ya has pasado el minuto 30: al salir, la partida termina y se guarda su resultado.</p>}
+        {final && <p className={shared.note}>Ya has pasado el minuto 15: al salir, la partida termina y se guarda su resultado.</p>}
         <p className={shared.note}>
           Muévete con el dedo (o WASD / flechas). El ataque es automático. {hud ? `${hud.fps} fps · ${hud.graphics}` : ''}
         </p>

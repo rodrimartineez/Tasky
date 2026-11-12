@@ -1,6 +1,6 @@
 import { ENEMY_BY_ID } from '../content/enemies';
 import { runDamage, runDensity, runGold, runHp } from './difficulty';
-import type { Enemy, EnemyDef, Fx, PickupKind, World } from './types';
+import { TIMELINE, type Enemy, type EnemyDef, type Fx, type PickupKind, type World } from './types';
 
 /** Utilidades compartidas por los sistemas de la simulación: azar, consulta espacial, daño y botín. */
 
@@ -85,18 +85,19 @@ export function nearestEnemy(w: World, x: number, y: number, range: number, skip
 
 // ── Dificultad ──────────────────────────────────────────────────────────────────────────────────
 // Depende del minuto de partida y del nivel (sim/difficulty.ts), nunca de las mejoras del jugador.
-const minutes = (w: World) => w.time / 60;
+/** Minutos de las tablas (30 de largo); la partida real dura la mitad (`TIMELINE`). */
+const minutes = (w: World) => (w.time * TIMELINE) / 60;
 /**
  * Escalada dentro de cada partida (se multiplica por la dureza del nivel, así cada nivel empieza más arriba y vuelve
- * a subir durante sus 30 minutos). Con los valores actuales, respecto al minuto 0:
- * - Vida: ×3,6 en el minuto 10, ×9 en el 20 y ×17 en el 30.
- * - Daño: ×1,7 / ×2,7 / ×4 (antes de la Fase 8 llegaba solo a ×2,65: quedarse quieto con una build fuerte salía gratis).
- * - Veteranos: desde el minuto 5, una parte creciente de las apariciones normales sale reforzada (hasta 1 de cada 6
- *   en el minuto 30), con más vida y daño.
+ * a subir durante sus 15 minutos). Minutos reales, respecto al minuto 0:
+ * - Vida: ×1,3 en el minuto 1, ×5,7 en el 7 y ×20 en el 15.
+ * - Daño: ×1,2 / ×3 / ×6 (12/11/2026: subido para que quedarse quieto no baste).
+ * - Veteranos: desde el minuto 2,5, una parte creciente de las apariciones normales sale reforzada (hasta 1 de cada 6
+ *   en el 15), con más vida y daño.
  */
 export const RAMP = {
-  hp: [0.12, 0.014],
-  damage: [0.055, 0.0015],
+  hp: [0.12, 0.0171],
+  damage: [0.08, 0.00289],
   /** Veteranos: minuto en que empiezan, fracción en el 30 y refuerzo (vida, daño, tamaño, experiencia). */
   champion: { from: 5, share: 1 / 6, hp: 3, damage: 1.3, radius: 1.2, xp: 3 },
 };
@@ -207,7 +208,7 @@ function killEnemy(w: World, e: Enemy) {
     dropPickup(w, 'chest', e.x, e.y + 6, 1);
   } else {
     const roll = rand(w);
-    if (roll < 0.05 * luck) dropPickup(w, 'coin', e.x + 4, e.y, (1 + Math.floor(minutes(w) / 8)) * runGold(w.config));
+    if (roll < 0.05 * luck) dropPickup(w, 'coin', e.x + 4, e.y, (1 + Math.floor(minutes(w) / 8)) * TIMELINE * runGold(w.config));
     else if (roll > 0.996) dropPickup(w, 'heart', e.x, e.y, 30);
     else if (roll > 0.9945) dropPickup(w, 'magnet', e.x, e.y, 1);
   }
@@ -233,7 +234,11 @@ export function damageEnemy(w: World, e: Enemy, base: number, weapon: number, kx
   const dmg = Math.max(1, Math.round(base * stats.might * (crit ? stats.critMult : 1)));
   e.hp -= dmg;
   e.flash = 0.1;
-  if (stats.leech > 0) w.player.hp = Math.min(stats.maxHp, w.player.hp + dmg * stats.leech);
+  if (stats.leech > 0) {
+    const heal = Math.min(dmg * stats.leech, w.player.leechPool ?? 0);
+    w.player.leechPool = (w.player.leechPool ?? 0) - heal;
+    w.player.hp = Math.min(stats.maxHp, w.player.hp + heal);
+  }
   const resist = 1 - e.def.knockResist;
   e.kx += kx * resist;
   e.ky += ky * resist;

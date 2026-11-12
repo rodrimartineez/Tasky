@@ -38,11 +38,11 @@ interface Session {
 }
 
 const MODES: { id: RunMode; name: string; text: string; milestone: number }[] = [
-  { id: 'normal', name: 'Normal', text: 'Sobrevive 30 minutos para superar el nivel.', milestone: 0 },
+  { id: 'normal', name: 'Normal', text: 'Sobrevive 15 minutos para superar el nivel.', milestone: 0 },
   {
     id: 'infinite',
     name: 'Infinito',
-    text: 'Sin La Muerte: llegar al minuto 30 supera el nivel, y sigues hasta caer o salir.',
+    text: 'Sin La Muerte: llegar al minuto 15 supera el nivel, y sigues hasta caer o salir.',
     milestone: MILESTONES.infinite,
   },
   {
@@ -175,7 +175,7 @@ export function PlayPage() {
     });
 
   // La partida guardada lleva su propia configuración (nivel, modalidad, jefe…).
-  // Una partida infinita guardada pasado el minuto 30 no se reanuda: se cierra con su resultado (nivel superado y oro).
+  // Una partida infinita guardada pasado el minuto 15 no se reanuda: se cierra con su resultado (nivel superado y oro).
   const resumableWorld = resumable ? (resumable.world as World) : null;
   const pastEnd = !!resumableWorld && resumableWorld.config.mode === 'infinite' && resumableWorld.time >= RUN_SECONDS;
   const resume = () => {
@@ -288,7 +288,7 @@ export function PlayPage() {
               <>
                 <p className={styles.text}>
                   {pastEnd
-                    ? 'Esta partida infinita ya pasó del minuto 30, así que no se puede continuar: ciérrala para guardar su resultado y su oro.'
+                    ? 'Esta partida infinita ya pasó del minuto 15, así que no se puede continuar: ciérrala para guardar su resultado y su oro.'
                     : 'La partida quedó guardada. Puedes continuarla desde donde la dejaste.'}
                 </p>
                 <Button variant="primary" icon={<Play />} className={styles.play} onClick={resume}>
@@ -346,9 +346,9 @@ export function PlayPage() {
               {eco.testMode
                 ? 'Juega cualquier nivel, jefe y modalidad sin gastar intentos. No se guarda el oro ni el nivel; tus hábitos, puntos y mejoras funcionan con normalidad.'
                 : eco.available > 0
-                  ? `${MODES.find((m) => m.id === runMode)!.text} Al minuto 30 llega La Muerte. Si caes antes, sigues en este nivel y te quedas el oro.`
+                  ? `${MODES.find((m) => m.id === runMode)!.text} Al minuto 15 llega La Muerte. Si caes antes, sigues en este nivel y te quedas el oro.`
                   : 'No te quedan intentos. Consigue más cumpliendo hábitos: +1 por cada hábito diario y +3 por cada semanal. No caducan.'}
-              {boss && ' El jefe aparece en el minuto 20: véncelo antes de que llegue La Muerte para superar el nivel.'}
+              {boss && ' El jefe aparece en el minuto 10: véncelo antes de que llegue La Muerte para superar el nivel.'}
             </p>
             <div className={styles.modes} role="radiogroup" aria-label="Modalidad">
               {MODES.map((m) => {

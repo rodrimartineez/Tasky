@@ -3,7 +3,7 @@ import { PASSIVE_BY_ID, PASSIVES } from '../content/passives';
 import { WEAPON_BY_ID, WEAPONS, weaponStatsAt } from '../content/weapons';
 import { emit, rand } from './core';
 import { runGold } from './difficulty';
-import { MAX_PASSIVES, MAX_WEAPONS, type UpgradeChoice, type WeaponDef, type WeaponState, type World } from './types';
+import { MAX_PASSIVES, MAX_WEAPONS, TIMELINE, type UpgradeChoice, type WeaponDef, type WeaponState, type World } from './types';
 
 /** Subidas de nivel, evoluciones, cofres y cálculo de estadísticas. */
 
@@ -285,7 +285,7 @@ export function openChest(w: World) {
     applyChoice(w, choice);
     rewards.push(choice);
   }
-  const gold = Math.round((20 + Math.floor(w.time / 30)) * CHEST.gold[count - 1] * runGold(w.config));
+  const gold = Math.round((20 + Math.floor((w.time * TIMELINE) / 30)) * CHEST.gold[count - 1] * runGold(w.config));
   w.gold += gold;
   w.chestGold = gold;
   w.chestRewards = rewards;
