@@ -217,7 +217,9 @@ export const useHabits = create<HabitsState>()((set, get) => {
     buyUpgrade: (id) => {
       if (get().testMode) {
         // Modo de pruebas: cristales infinitos y nada se guarda en los datos reales.
-        if (!UPGRADE_BY_ID.has(id)) throw new EconomyError('Mejora desconocida.');
+        const def = UPGRADE_BY_ID.get(id);
+        if (!def) throw new EconomyError('Mejora desconocida.');
+        if ((get().testUpgrades[id] ?? 0) >= (def.maxLevel ?? Infinity)) throw new EconomyError('Esta mejora ya está al máximo.');
         const testUpgrades = { ...get().testUpgrades, [id]: (get().testUpgrades[id] ?? 0) + 1 };
         saveTestUpgrades(testUpgrades);
         set({ testUpgrades });

@@ -1,6 +1,6 @@
 import { UPGRADES } from '../../game/content/upgrades';
 import { ATTEMPTS } from '../core/economy';
-import { newStreak, stepStreak, streakPoints, weeklyPoints } from '../core/rewards';
+import { bountyDaily, bountyWeekly, newStreak, stepStreak, streakPoints, weeklyPoints } from '../core/rewards';
 
 /**
  * Modelo de la economía a largo plazo para el estudio de equilibrio (ANALISIS_ECONOMIA.md).
@@ -60,7 +60,17 @@ export function mulberry(seed: number) {
 }
 
 /** Mejoras que el usuario quiere, en orden de preferencia (todas las de combate). */
-const WANTED = UPGRADES.map((u) => u.id).filter((id) => !['greed', 'luck', 'pickup', 'growth', 'projSpeed'].includes(id));
+const WANTED = UPGRADES.map((u) => u.id).filter((id) => !['greed', 'luck', 'pickup', 'growth', 'projSpeed', 'bounty'].includes(id));
+
+/**
+ * Mejora de recompensas (Constancia): cada nivel suma +1 punto por hábito diario y +3 por semanal (máximo 4).
+ * Estrategias: `never` no la compra; `first` compra el siguiente nivel en cuanto puede, antes que nada;
+ * `cheapest` la trata como una mejora más (siempre compra lo más barato que quiere).
+ */
+export interface BountyPlan {
+  costs: number[];
+  strategy: 'never' | 'first' | 'cheapest';
+}
 
 export interface DaySnapshot {
   day: number;
@@ -72,10 +82,20 @@ export interface DaySnapshot {
   attempts: number;
   /** Racha media de los hábitos diarios. */
   avgStreak: number;
+  /** Nivel de la mejora de recompensas y puntos gastados en ella (no cuentan para el combate). */
+  bounty: number;
+  bountySpent: number;
 }
 
 /** Simula `days` días y devuelve una instantánea de cada día. */
-export function simulateEconomy(profile: Profile, rule: StreakRule, days: number, seed = 1, shieldEvery?: number): DaySnapshot[] {
+export function simulateEconomy(
+  profile: Profile,
+  rule: StreakRule,
+  days: number,
+  seed = 1,
+  shieldEvery?: number,
+  bountyPlan?: BountyPlan,
+): DaySnapshot[] {
   const rng = mulberry(seed);
   const habits = Array.from({ length: profile.dailyHabits }, () => makeHabit(rng));
   const streaks = Array.from({ length: profile.dailyHabits }, newStreak);
@@ -83,6 +103,9 @@ export function simulateEconomy(profile: Profile, rule: StreakRule, days: number
   const levels: Record<string, number> = {};
   let wallet = 0;
   let total = 0;
+  let bounty = 0;
+  let bountySpent = 0;
+  const bountyCost = () => (bountyPlan && bountyPlan.strategy !== 'never' ? (bountyPlan.costs[bounty] ?? Infinity) : Infinity);
   const out: DaySnapshot[] = [];
 
   for (let day = 1; day <= days; day++) {
@@ -93,7 +116,7 @@ export function simulateEconomy(profile: Profile, rule: StreakRule, days: number
       const met = habits[h](p);
       streaks[h] = stepStreak(streaks[h], met, shieldEvery !== Infinity, shieldEvery).next;
       if (met) {
-        points += rule(streaks[h].streak);
+        points += rule(streaks[h].streak) + bountyDaily(bounty);
         attempts += ATTEMPTS.daily;
       }
     }
@@ -101,17 +124,27 @@ export function simulateEconomy(profile: Profile, rule: StreakRule, days: number
       for (let h = 0; h < profile.weeklyHabits; h++) {
         weeklyStreaks[h] = rng() < profile.weekly(day / 7) ? weeklyStreaks[h] + 1 : 0;
         if (weeklyStreaks[h] > 0) {
-          points += weeklyPoints(weeklyStreaks[h]);
+          points += weeklyPoints(weeklyStreaks[h]) + bountyWeekly(bounty);
           attempts += ATTEMPTS.weekly;
         }
       }
     wallet += points;
     total += points;
 
+    // Mejora de recompensas con prioridad (estrategia `first`).
+    while (bountyPlan?.strategy === 'first' && bountyCost() <= wallet) {
+      wallet -= bountyCost();
+      bountySpent += bountyCost();
+      bounty += 1;
+    }
     // Gasta en la mejora deseada más barata mientras pueda.
     for (;;) {
       let best: string | null = null;
       let bestCost = Infinity;
+      if (bountyPlan?.strategy === 'cheapest' && bountyCost() < bestCost) {
+        bestCost = bountyCost();
+        best = 'bounty';
+      }
       for (const id of WANTED) {
         const cost = UPGRADES.find((u) => u.id === id)!.cost((levels[id] ?? 0) + 1);
         if (cost < bestCost) {
@@ -121,7 +154,10 @@ export function simulateEconomy(profile: Profile, rule: StreakRule, days: number
       }
       if (!best || bestCost > wallet) break;
       wallet -= bestCost;
-      levels[best] = (levels[best] ?? 0) + 1;
+      if (best === 'bounty') {
+        bountySpent += bestCost;
+        bounty += 1;
+      } else levels[best] = (levels[best] ?? 0) + 1;
     }
 
     out.push({
@@ -131,6 +167,8 @@ export function simulateEconomy(profile: Profile, rule: StreakRule, days: number
       levels: { ...levels },
       attempts,
       avgStreak: streaks.reduce((a, b) => a + b.streak, 0) / streaks.length,
+      bounty,
+      bountySpent,
     });
   }
   return out;

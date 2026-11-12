@@ -402,3 +402,57 @@ Mismo estudio que en el §11.5, con los ataques nuevos y la frontera nueva. Sin 
 
 Los dos últimos (los más pesados y con ondas o rayos) salen más duros; con 15 partidas por jefe aún es ruido, pero se
 vigilarán con datos reales.
+
+## 13. Mejora de recompensas «Constancia» (noviembre de 2026)
+
+**Petición:** con la progresión actual los costes de las mejoras permanentes pesan mucho frente a los puntos que da
+cumplir los hábitos. Se añade una mejora, disponible desde el principio en «Mejoras», que sube los puntos de cada
+hábito cumplido y compite con las mejoras del personaje.
+
+| Nivel | Coste | Puntos por hábito diario | Puntos por hábito semanal |
+|---|---:|---:|---:|
+| Inicial | — | 1 | 3 |
+| 1 | 21 | 2 | 6 |
+| 2 | 75 | 3 | 9 |
+| 3 | 200 | 4 | 12 |
+| 4 (máximo) | 450 | 5 | 15 |
+
+Total: 746 puntos. Las bonificaciones de racha (hitos de los diarios y racha de los semanales) se suman aparte, y el
+límite de 7 diarios con puntos completos sigue igual (la mitad a partir del 8.º). Cuenta desde la compra: las
+recompensas concedidas después, aunque sean de un periodo ya cumplido, usan el nivel nuevo. Código:
+`BOUNTY` en `game/content/upgrades.ts`, aplicado en `evaluateRewards` y `outlook` (`habits/core/habits.ts`).
+
+**Estudio** (`bounty.study.test.ts`, 12 semillas, 2 años, perfiles de §9 con 5 diarios y 2 semanales). Se probaron
+seis curvas con la primera mejora en 21 y tres estrategias: no comprarla, comprarla antes que nada, o tratarla como
+una mejora más (siempre lo más barato). Resumen con la estrategia «antes que nada»:
+
+| Curva | Constante: día de los niveles 1 / 2 / 3 / 4 | Normal | Irregular |
+|---|---|---|---|
+| 21/60/150/320 | 7 / 30 / 108 / 342 | 7 / 32 / 126 / 379 | 62 / 196 / 701 / — |
+| 21/63/189/567 | 7 / 33 / 163 / — | 7 / 34 / 187 / — | 62 / 216 / — / — |
+| **21/75/200/450 (elegida)** | **7 / 48 / 172 / 566** | **7 / 45 / 196 / 682** | **62 / 280 / — / —** |
+| 21/80/220/500 | 7 / 50 / 200 / 684 | 7 / 49 / 237 / — | 62 / 306 / — / — |
+| 21/90/270/640 | 7 / 56 / 275 / — | 7 / 63 / 321 / — | 62 / 391 / — / — |
+| 21/120/400/1000 | 7 / 91 / 522 / — | 7 / 98 / 628 / — | 62 / 616 / — / — |
+
+Con la curva elegida (Constante; «en combate» = puntos gastados o por gastar en mejoras del personaje):
+
+| | Puntos ganados día 90 / 365 / 730 | En combate día 30 / 90 / 365 / 730 |
+|---|---|---|
+| Sin Constancia | 2.231 / 13.061 / 29.905 | 522 / 2.231 / 13.061 / 29.905 |
+| Comprándola antes que nada | 2.948 / 18.071 / 42.209 | 631 / 2.852 / 17.775 / 41.463 |
+| Como una mejora más (niveles en los días 16 / 71 / 232 / 710) | 2.760 / 17.537 / 40.812 | 581 / 2.664 / 17.241 / 40.066 |
+
+Conclusiones:
+- **Merece la pena siempre**, también en el corto plazo: el nivel 1 se recupera en unos 4 días (5,5 puntos más al
+  día con 5 diarios y 2 semanales), y cada nivel siguiente tarda más en devolverse (≈ 14, 36 y 82 días).
+- **No se compra entera de golpe:** el nivel 2 llega hacia la 7.ª semana y el máximo hacia el año y medio para un
+  usuario constante (casi 2 años para uno normal). Mientras se ahorra para ella, el personaje deja de mejorar unas
+  semanas: esa es la decisión.
+- **Las mejoras del personaje siguen siendo atractivas:** los puntos que acaban en combate son un 25–40 % más que sin
+  Constancia a partir del 3.er mes, y las mejoras sin máximo siguen absorbiendo todo lo que sobra.
+- **Efecto en la progresión:** con más puntos en combate el personaje es más fuerte antes (nivel de partida
+  superable aproximado al año: 365 → 469 para un constante). Como cada intento solo puede superar un nivel, el
+  ritmo de niveles queda limitado sobre todo por los intentos; se volverá a medir en la Fase 8 (validación global).
+- Los irregulares (50 %) tardan unos 2 meses en el nivel 1 y 9 meses en el 2: es una mejora que premia la
+  constancia, como su nombre.

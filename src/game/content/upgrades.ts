@@ -16,6 +16,8 @@ export interface UpgradeDef {
   cost(level: number): number;
   /** Aplica `level` niveles a las estadísticas. */
   apply(stats: Stats, level: number): void;
+  /** Nivel máximo (solo las mejoras que lo tienen; las de combate no tienen límite). */
+  maxLevel?: number;
 }
 
 /** Coste polinómico: base · nivel^exp. Con exp ≈ 1,5 el precio crece sin dispararse. */
@@ -26,7 +28,27 @@ const expo = (base: number, factor: number) => (level: number) => Math.ceil(base
 const pct = (n: number) => `${Math.round(n * 100)} %`;
 const fixed = (n: number) => (Math.round(n * 10) / 10).toLocaleString('es-ES');
 
+/**
+ * Mejora de recompensas «Constancia» (ANALISIS_ECONOMIA.md §13; se aplica al conceder las recompensas en habits/core/habits.ts): cada nivel suma +1 punto
+ * a cada hábito diario cumplido y +3 a cada semanal, hasta el nivel 4 (5 y 15 puntos de base). Las bonificaciones de
+ * racha se suman aparte. Costes en BOUNTY.costs (el primero, 21 exactos).
+ */
+export const BOUNTY = { id: 'bounty', costs: [21, 75, 200, 450], daily: 1, weekly: 3 };
+export const BOUNTY_MAX = BOUNTY.costs.length;
+export const bountyDaily = (level: number) => Math.min(level, BOUNTY_MAX) * BOUNTY.daily;
+export const bountyWeekly = (level: number) => Math.min(level, BOUNTY_MAX) * BOUNTY.weekly;
+
 export const UPGRADES: UpgradeDef[] = [
+  {
+    // No toca el combate: sube los puntos que dan los hábitos (habits/core/rewards.ts, BOUNTY).
+    id: BOUNTY.id,
+    name: 'Constancia',
+    icon: 'u_bounty',
+    effect: (n) => `Cada hábito diario da ${1 + bountyDaily(n)} puntos y cada semanal ${3 + bountyWeekly(n)} (más las rachas)`,
+    cost: (n) => BOUNTY.costs[n - 1] ?? Infinity,
+    apply: () => {},
+    maxLevel: BOUNTY_MAX,
+  },
   {
     id: 'might',
     name: 'Poder',

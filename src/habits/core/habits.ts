@@ -1,5 +1,5 @@
 import type { LocalDate, Timestamp } from '../../core/model';
-import { newStreak, stepStreak, streakPoints, weeklyPoints, withDailyLimit, type StreakState } from './rewards';
+import { BOUNTY, bountyDaily, bountyWeekly, newStreak, stepStreak, streakPoints, weeklyPoints, withDailyLimit, type StreakState } from './rewards';
 import { PROFILE_ID, type Habit, type HabitKind, type HabitPeriod, type HabitsData, type LedgerEntry } from './model';
 import { dateInZone, isClosed, periodKey, periodStart, periodsBetween, previousPeriod, type PeriodKey } from './periods';
 
@@ -194,9 +194,25 @@ function dailyRanker(data: HabitsData, timeZone: string): (habit: Habit, key: Pe
   };
 }
 
-/** Puntos de un periodo cumplido, con la racha que alcanza (incluido ese periodo). */
-function pointsFor(habit: Habit, streak: number, rank: number): number {
-  return habit.period === 'daily' ? withDailyLimit(streakPoints(streak), rank) : weeklyPoints(streak);
+/** Puntos de un periodo cumplido, con la racha que alcanza (incluido ese periodo) y el nivel de Constancia. */
+function pointsFor(habit: Habit, streak: number, rank: number, bounty: number): number {
+  return habit.period === 'daily'
+    ? withDailyLimit(streakPoints(streak) + bountyDaily(bounty), rank)
+    : weeklyPoints(streak) + bountyWeekly(bounty);
+}
+
+/**
+ * Nivel de Constancia comprado hasta ahora (asientos `upgrade:bounty:<nivel>`). Vale para las recompensas que se
+ * conceden a partir de la compra, también las de periodos que se cierran después.
+ */
+function bountyLevel(data: HabitsData): number {
+  let level = 0;
+  for (const e of data.ledger)
+    if (e.kind === 'upgrade' && !e.deletedAt) {
+      const [, id, n] = e.id.split(':');
+      if (id === BOUNTY.id) level = Math.max(level, Number(n) || 0);
+    }
+  return level;
 }
 
 interface ClosedPeriod {
@@ -230,6 +246,7 @@ export function evaluateRewards(data: HabitsData, today: LocalDate, now: Timesta
   const granted = new Set(data.ledger.map((e) => e.id));
   const amounts = amountsOf(data);
   const rank = dailyRanker(data, timeZone);
+  const bounty = bountyLevel(data);
   const rewards: LedgerEntry[] = [];
   // También los archivados o borrados: sus periodos anteriores a ese momento siguen contando.
   for (const habit of data.habits) {
@@ -239,7 +256,7 @@ export function evaluateRewards(data: HabitsData, today: LocalDate, now: Timesta
       rewards.push({
         id,
         kind: 'habit_reward',
-        points: pointsFor(habit, p.streak, rank(habit, p.key)),
+        points: pointsFor(habit, p.streak, rank(habit, p.key), bounty),
         gold: 0,
         habitId: habit.id,
         period: p.key,
@@ -269,9 +286,10 @@ export function outlook(data: HabitsData, today: LocalDate): Outlook {
   const { timeZone } = data.profile;
   const amounts = amountsOf(data);
   const rank = dailyRanker(data, timeZone);
+  const bounty = bountyLevel(data);
   for (const habit of data.habits.filter(active)) {
     const key = periodKey(habit.period, today);
-    const points = pointsFor(habit, walkClosed(habit, amounts, timeZone, today).state.streak + 1, rank(habit, key));
+    const points = pointsFor(habit, walkClosed(habit, amounts, timeZone, today).state.streak + 1, rank(habit, key), bounty);
     result.perHabit.set(habit.id, points);
     if (isMet(habit.kind, amountIn(amounts, habit.id, key), targetFor(habit, key))) result.secured += points;
     else result.pending += points;

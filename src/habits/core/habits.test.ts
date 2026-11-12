@@ -206,6 +206,31 @@ describe('puntos por racha', () => {
   });
 });
 
+describe('mejora Constancia', () => {
+  it('cada nivel suma +1 a los diarios y +3 a los semanales desde la compra (las rachas aparte)', () => {
+    const { data, ids } = setup(read, gym);
+    let d = log(data, ids[0], '2026-11-02', 3);
+    d = log(d, ids[1], '2026-11-03', 3);
+    // Nivel 2 comprado: diario 1 + 2 = 3 puntos; semanal 3 + 6 = 9.
+    const purchase = (level: number) => ({
+      id: `upgrade:bounty:${level}`,
+      kind: 'upgrade' as const,
+      points: -1,
+      gold: 0,
+      habitId: null,
+      period: null,
+      details: null,
+      createdAt: T0,
+      updatedAt: T0,
+      deletedAt: null,
+    });
+    d = { ...d, ledger: [...d.ledger, purchase(1), purchase(2)] };
+    d = evaluateRewards(d, '2026-11-09', T0);
+    expect(d.ledger.find((e) => e.habitId === ids[0])?.points).toBe(3);
+    expect(d.ledger.find((e) => e.habitId === ids[1])?.points).toBe(9);
+  });
+});
+
 describe('escudo de racha, semanales y límite de diarios (Fase 5b)', () => {
   const days = (from: number, n: number) => Array.from({ length: n }, (_, i) => new Date(Date.UTC(2026, 10, from + i)).toISOString().slice(0, 10));
 

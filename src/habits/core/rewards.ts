@@ -21,6 +21,9 @@ export function nextMilestone(streak: number): { days: number; points: number } 
   return { days: next, points: streakPoints(next) };
 }
 
+/** Mejora de recompensas «Constancia» (definida con las demás mejoras en game/content/upgrades.ts). */
+export { BOUNTY, BOUNTY_MAX, bountyDaily, bountyWeekly } from '../../game/content/upgrades';
+
 /** Puntos base por hábito semanal cumplido (sistema propio, independiente de las rachas diarias). */
 export const WEEKLY_REWARD = 3;
 /** Semanales: +1 punto por cada 4 semanas seguidas cumplidas, hasta +3 (como mucho 6 puntos por semana). */

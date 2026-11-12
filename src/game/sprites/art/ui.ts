@@ -1,4 +1,4 @@
-/** Arte de interfaz: cofre abierto (presentación de cofres, GameScreen). */
+/** Arte de interfaz: cofre abierto (presentación de cofres) e icono de la mejora de recompensas. */
 export const ART: Record<string, string[]> = {
   i_chest_open: [
     '..kkkkkkkkkkkk..',
@@ -16,5 +16,23 @@ export const ART: Record<string, string[]> = {
     'kDDyYDDDDDDDyYDk',
     'kDDDDDDDDDDDDDDk',
     '.kkkkkkkkkkkkkk.',
+  ],
+  u_bounty: [
+    '................',
+    '....kkkkkkk.....',
+    '...kwppppPPk....',
+    '..kwpwppppPPk...',
+    '.kppppppppPPPk..',
+    '.kkkkkkkkkkkkk..',
+    '..kpwpppppPPk...',
+    '...kppppppPk....',
+    '....kpppPPk.....',
+    '.....kpPPk.kkk..',
+    '......kPk..kyk..',
+    '.......k.kkkykkk',
+    '.........kyyhyyk',
+    '.........kkkYkkk',
+    '...........kYk..',
+    '...........kkk..',
   ],
 };

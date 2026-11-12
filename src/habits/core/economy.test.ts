@@ -152,11 +152,22 @@ describe('mejoras y desbloqueos', () => {
     expect(() => buyUpgrade(d, 'might', START, T(3))).toThrow(EconomyError);
   });
 
-  it('ninguna mejora tiene nivel máximo y los costes siguen siendo finitos', () => {
+  it('las mejoras de combate no tienen nivel máximo y los costes siguen siendo finitos', () => {
     for (const u of UPGRADE_BY_ID.values()) {
+      if (u.maxLevel) continue;
       expect(Number.isFinite(u.cost(100))).toBe(true);
       expect(u.cost(100)).toBeGreaterThan(u.cost(99));
     }
+  });
+
+  it('Constancia cuesta 21 / 75 / 200 / 450 y no pasa del nivel 4', () => {
+    const bounty = UPGRADE_BY_ID.get('bounty')!;
+    expect([1, 2, 3, 4].map((n) => bounty.cost(n))).toEqual([21, 75, 200, 450]);
+    let d = grant(base(), 21 + 75 + 200 + 450 + 1000);
+    for (let i = 1; i <= 4; i++) d = buyUpgrade(d, 'bounty', START, T(i));
+    expect(economyOf(d, START, PROD).upgrades.bounty).toBe(4);
+    expect(() => buyUpgrade(d, 'bounty', START, T(5))).toThrow(EconomyError);
+    expect(economyOf(d, START, PROD).points).toBe(1000);
   });
 
   it('compras que juntas no se pueden pagar: la segunda se ignora al sincronizar', () => {

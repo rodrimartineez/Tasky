@@ -174,6 +174,8 @@ ella supera el nivel; §11). Máximo 5 armas y 5 pasivas, de 7 niveles (§12).
   élites con cofre.
 
 ### 5.3 Mejoras permanentes (puntos de hábitos)
+- **Constancia** (la primera de la lista): +1 punto por hábito diario y +3 por semanal por nivel, hasta el 4
+  (5 y 15 de base). Cuesta 21 / 75 / 200 / 450. Estudio y razones en `ANALISIS_ECONOMIA.md` §13.
 Poder · Armadura · Vida máxima · Regeneración · Velocidad de movimiento · Velocidad de ataque · Área · Duración ·
 Velocidad de proyectil · Proyectiles extra · Enfriamiento · Crítico (prob.) · Daño crítico · Alcance de recogida ·
 Experiencia · Suerte · Codicia (oro) · Hallazgo de objetos especiales · Revivir · Repetir elección de nivel ·

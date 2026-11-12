@@ -6,7 +6,7 @@ import { useEconomy, useHabits } from '../state/store';
 import { GemIcon } from './PointsBadge';
 import styles from './UpgradesPage.module.css';
 
-/** Tienda de mejoras permanentes: se pagan con los puntos de los hábitos y no tienen nivel máximo. */
+/** Tienda de mejoras permanentes: se pagan con los puntos de los hábitos. Solo Constancia tiene nivel máximo. */
 export function UpgradesPage() {
   const eco = useEconomy();
   const buy = useHabits((s) => s.buyUpgrade);
@@ -30,31 +30,39 @@ export function UpgradesPage() {
         </div>
       </div>
       <p className={styles.note}>
-        Las mejoras se aplican en todas las partidas y con todos los personajes. No tienen límite: cada nivel cuesta algo más que el anterior.
+        Las mejoras se aplican en todas las partidas y con todos los personajes. Cada nivel cuesta algo más que el anterior. Constancia no
+        mejora al personaje: hace que tus hábitos den más puntos (hasta el nivel 4).
       </p>
       <ul className={styles.grid}>
         {UPGRADES.map((u) => {
           const level = eco.upgrades[u.id] ?? 0;
+          const maxed = level >= (u.maxLevel ?? Infinity);
           const cost = u.cost(level + 1);
-          const affordable = cost <= eco.points;
+          const affordable = !maxed && cost <= eco.points;
           return (
             <li key={u.id} className={styles.item}>
               <img className={styles.icon} src={spriteDataUrl(u.icon)} alt="" draggable={false} />
               <div className={styles.body}>
                 <p className={styles.name}>
-                  {u.name} <span className={styles.level}>Nv {level}</span>
+                  {u.name} <span className={styles.level}>{u.maxLevel ? `Nv ${level}/${u.maxLevel}` : `Nv ${level}`}</span>
                 </p>
                 <p className={styles.effect}>{level > 0 ? u.effect(level) : 'Sin mejorar'}</p>
-                <p className={styles.next}>Siguiente: {u.effect(level + 1)}</p>
+                <p className={styles.next}>{maxed ? 'Nivel máximo' : `Siguiente: ${u.effect(level + 1)}`}</p>
               </div>
               <button
                 type="button"
                 className={styles.buy}
                 disabled={!affordable}
                 onClick={() => purchase(u.id)}
-                aria-label={`Mejorar ${u.name} por ${cost} puntos`}
+                aria-label={maxed ? `${u.name} al máximo` : `Mejorar ${u.name} por ${cost} puntos`}
               >
-                <GemIcon size={12} /> {cost.toLocaleString('es-ES')}
+                {maxed ? (
+                  'Máx.'
+                ) : (
+                  <>
+                    <GemIcon size={12} /> {cost.toLocaleString('es-ES')}
+                  </>
+                )}
               </button>
             </li>
           );

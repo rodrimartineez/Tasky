@@ -169,7 +169,8 @@ export function economyOf(data: HabitsData, today: LocalDate, release: GameRelea
         const [, upgrade, levelText] = e.id.split(':');
         const level = Number(levelText);
         const cost = -e.points;
-        if ((eco.upgrades[upgrade] ?? 0) !== level - 1 || cost > eco.points || cost <= 0) reject(e);
+        const max = UPGRADE_BY_ID.get(upgrade)?.maxLevel ?? Infinity;
+        if ((eco.upgrades[upgrade] ?? 0) !== level - 1 || level > max || cost > eco.points || cost <= 0) reject(e);
         else {
           eco.points -= cost;
           eco.upgrades[upgrade] = level;
@@ -278,6 +279,7 @@ export function buyUpgrade(data: HabitsData, upgrade: string, today: LocalDate, 
   if (!def) throw new EconomyError('Mejora desconocida.');
   const eco = economyOf(data, today);
   const level = (eco.upgrades[upgrade] ?? 0) + 1;
+  if (level > (def.maxLevel ?? Infinity)) throw new EconomyError('Esta mejora ya está al máximo.');
   const cost = def.cost(level);
   if (cost > eco.points) throw new EconomyError('No tienes puntos suficientes.');
   return append(data, entry(upgradeId(upgrade, level), 'upgrade', now, { points: -cost }));
