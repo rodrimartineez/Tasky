@@ -102,7 +102,7 @@ describe('niveles', () => {
     expect([eco.nextLevel, eco.passedLevel, eco.gold, eco.available]).toEqual([2, 1, 100, 1]);
   });
 
-  it('el modo infinito y el reflejo no superan niveles, y se desbloquean al superar los niveles 30 y 60', () => {
+  it('el infinito supera el nivel al llegar al 30 y el reflejo no; se desbloquean al superar los niveles 30 y 60', () => {
     let d = attempts(base(), 62);
     expect(() => startRun(d, 'wanderer', 'withered_woods', 'infinite', START, T(1), 0, PROD)).toThrow(EconomyError);
     for (let i = 1; i <= 19; i++) d = play(d, won(0), 'normal', i * 2).data;
@@ -110,9 +110,9 @@ describe('niveles', () => {
     d = play(d, won(0), 'normal', 40).data;
     for (let i = 21; i <= 30; i++) d = play(d, won(0), 'normal', i * 2).data;
     expect(economyOf(d, START, PROD).unlocks).toEqual({ infinite: true, mirror: false });
-    // Una partida infinita o reflejo «ganada» no sube de nivel.
+    // El infinito sí supera el nivel al llegar al minuto 30; el reflejo, no.
     d = play(d, won(500), 'infinite', 70).data;
-    expect(economyOf(d, START, PROD).nextLevel).toBe(31);
+    expect(economyOf(d, START, PROD).nextLevel).toBe(32);
     expect(() => startRun(d, 'wanderer', 'withered_woods', 'mirror', START, T(80), 0, PROD)).toThrow(EconomyError);
   });
 

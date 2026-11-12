@@ -89,7 +89,7 @@ describe('simulación', () => {
     expect(r.gold).toBe(Math.floor(w.gold) + r.survivalBonus);
   }, 60_000);
 
-  it('modo infinito: sin La Muerte, la partida sigue y siguen apareciendo enemigos; nunca supera niveles', () => {
+  it('modo infinito: sin La Muerte, la partida sigue y siguen apareciendo enemigos; el minuto 30 supera el nivel', () => {
     const w = createWorld({ ...config(4, { ...BASE_STATS, maxHp: 1e12, might: 200 }), mode: 'infinite' });
     w.time = RUN_SECONDS - 1;
     play(w, 60);
@@ -97,7 +97,10 @@ describe('simulación', () => {
     expect(w.completed).toBeFalsy();
     expect(w.enemies.some((e) => e.def.ai === 'reaper')).toBe(false);
     expect(w.enemies.length).toBeGreaterThan(0);
-    expect(runResult(w).won).toBe(false);
+    expect(runResult(w).won).toBe(true);
+    const early = createWorld({ ...config(4), mode: 'infinite' });
+    early.time = RUN_SECONDS - 5;
+    expect(runResult(early).won).toBe(false);
   });
 
   it('modo reflejo: enemigos con el doble de vida; llegar al 30 no supera el nivel', () => {

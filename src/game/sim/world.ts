@@ -457,11 +457,14 @@ export function purgeItems(w: World, weapons: number[], passives: number[]) {
   continueLevelUps(w);
 }
 
+/** ¿Ha llegado al minuto 30? En normal y reflejo llega La Muerte; en infinito la partida sigue. */
+export const reachedEnd = (w: World) => ((w.config.mode ?? 'normal') === 'infinite' ? w.time >= RUN_SECONDS : !!w.completed);
+
 /**
- * ¿Supera el nivel? Solo en modo normal: llegar al minuto 30 y, en los niveles de jefe, haberlo vencido.
- * Infinito y reflejo nunca hacen avanzar de nivel.
+ * ¿Supera el nivel? En normal y en infinito: llegar al minuto 30 y, en los niveles de jefe, haberlo vencido. En
+ * infinito la partida sigue después y termina al morir o al salir. El reflejo nunca hace avanzar de nivel.
  */
-export const passed = (w: World) => (w.config.mode ?? 'normal') === 'normal' && !!w.completed && (!w.config.cycleBoss || w.cycleBoss === 2);
+export const passed = (w: World) => (w.config.mode ?? 'normal') !== 'mirror' && reachedEnd(w) && (!w.config.cycleBoss || w.cycleBoss === 2);
 
 export function runResult(w: World): RunResult {
   const bonus = survivalBonus(w.config, w.time, w.player.stats.greed);

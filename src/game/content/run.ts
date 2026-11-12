@@ -13,7 +13,7 @@ import { withUpgrades } from './upgrades';
  * - `seed`: la de la partida. Sale del número de intento, así cada intento del mismo nivel es distinto y una
  *   partida empezada en un dispositivo es la misma en otro.
  * - `mode`: modalidad (normal, infinita o reflejo). En los niveles de jefe (múltiplos de 7) aparece el jefe de
- *   ciclo, salvo en el modo infinito.
+ *   ciclo en todas.
  * - `boost`: ayuda temporal solo para esta partida (fracciones: 0,3 = +30 %), p. ej. la ayuda de vuelta.
  * - `arcana`: arcano elegido (Fase 10): cambia el personaje, la dureza y el oro de esta partida.
  * - `skin`: aspecto del personaje (solo visual).
@@ -40,7 +40,7 @@ export function buildRunConfig(
   const arcanaDef = arcana ? ARCANA_BY_ID.get(arcana) : undefined;
   arcanaDef?.apply?.(stats);
   const skinDef = skin ? SKIN_BY_ID.get(skin) : undefined;
-  const cycleBoss = mode === 'infinite' ? null : cycleBossFor(level);
+  const cycleBoss = cycleBossFor(level);
   return {
     seed: (Math.imul(seed, 2654435761) ^ Math.imul(level, 40503) ^ 0x5bd1e995) | 0,
     level,

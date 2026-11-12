@@ -342,7 +342,10 @@ Reglas pedidas por el usuario el 11/11/2026. Todas las fases posteriores deben r
 - Velocidades **×1,5 y ×2** desde el nivel 1 (antes, hito del nivel 20; quitado el 12/11/2026 a petición del usuario) (botón en la partida; la simulación es la misma, solo se dan más pasos por
   fotograma, así que no cambia el equilibrio).
 - Nivel 30: **modo infinito**. Sin La Muerte ni final; la dureza sigue subiendo con los minutos y se repiten los
-  últimos 10 minutos de apariciones y los eventos del escenario. Gasta un intento, da oro y no cambia el nivel.
+  últimos 10 minutos de apariciones y los eventos del escenario. Gasta un intento y da oro. Desde el 12/11/2026,
+  llegar al minuto 30 (y vencer al jefe de ciclo en los niveles de jefe, que también aparece aquí) **supera el
+  nivel**; la partida sigue hasta morir o salir. Pasado el minuto 30, «Guardar y salir» pasa a ser «Salir» y termina
+  la partida (y una copia guardada pasado el 30 no se reanuda: se cierra con su resultado).
 - Nivel 60: **modo reflejo**. El nivel actual con dificultad doble (vida ×2, daño ×1,5, más densidad) y el doble de
   oro. Gasta un intento y no cambia el nivel.
 - Ambas modalidades se eligen en el campamento al preparar la partida.

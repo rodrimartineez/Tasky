@@ -6,7 +6,8 @@ import { buildRunConfig } from '../../../game/content/run';
 import { SKINS } from '../../../game/content/skins';
 import { STAGES } from '../../../game/content/stages';
 import { CYCLE_BOSS_BY_ID, CYCLE_LENGTH, cycleBossFor } from '../../../game/content/bosses';
-import type { RunConfig, RunMode, RunResult, World } from '../../../game/sim/types';
+import { RUN_SECONDS, type RunConfig, type RunMode, type RunResult, type World } from '../../../game/sim/types';
+import { runResult } from '../../../game/sim/world';
 import { spriteDataUrl } from '../../../game/sprites/atlas';
 import { stagePreviewUrl } from '../../../game/sprites/preview';
 import { Button } from '../../../ui/components/Button';
@@ -41,7 +42,7 @@ const MODES: { id: RunMode; name: string; text: string; milestone: number }[] = 
   {
     id: 'infinite',
     name: 'Infinito',
-    text: 'Sin La Muerte ni final: aguanta todo lo que puedas. No cambia tu nivel.',
+    text: 'Sin La Muerte: llegar al minuto 30 supera el nivel, y sigues hasta caer o salir.',
     milestone: MILESTONES.infinite,
   },
   {
@@ -140,7 +141,7 @@ export function PlayPage() {
   // Modalidad elegida, si sigue disponible (al desactivar el modo de pruebas puede no estarlo).
   const runMode = modeUnlocked(eco, mode) ? mode : 'normal';
   const level = eco.testMode ? testLevel : eco.nextLevel;
-  const boss = runMode === 'infinite' ? null : cycleBossFor(level);
+  const boss = cycleBossFor(level);
   const bossDef = boss ? CYCLE_BOSS_BY_ID.get(boss.id) : undefined;
   const cycle = Math.ceil(level / CYCLE_LENGTH);
 
@@ -174,9 +175,18 @@ export function PlayPage() {
     });
 
   // La partida guardada lleva su propia configuración (nivel, modalidad, jefe…).
+  // Una partida infinita guardada pasado el minuto 30 no se reanuda: se cierra con su resultado (nivel superado y oro).
+  const resumableWorld = resumable ? (resumable.world as World) : null;
+  const pastEnd = !!resumableWorld && resumableWorld.config.mode === 'infinite' && resumableWorld.time >= RUN_SECONDS;
   const resume = () => {
     if (!resumable || (!eco.testMode && !open)) return;
     const world = resumable.world as World;
+    if (pastEnd) {
+      const result = runResult(world);
+      finish(open?.attempt ?? 0, result, eco.testMode);
+      toast(result.won ? `¡Nivel ${world.config.level} superado!` : 'Partida cerrada con su resultado.');
+      return;
+    }
     setSession({ level: world.config.level, attempt: open?.attempt ?? 0, config: world.config, resume: world, test: eco.testMode });
   };
 
@@ -276,9 +286,13 @@ export function PlayPage() {
             <h1 className={styles.title}>Nivel {open.level}</h1>
             {snapshot === undefined ? null : resumable ? (
               <>
-                <p className={styles.text}>La partida quedó guardada. Puedes continuarla desde donde la dejaste.</p>
+                <p className={styles.text}>
+                  {pastEnd
+                    ? 'Esta partida infinita ya pasó del minuto 30, así que no se puede continuar: ciérrala para guardar su resultado y su oro.'
+                    : 'La partida quedó guardada. Puedes continuarla desde donde la dejaste.'}
+                </p>
                 <Button variant="primary" icon={<Play />} className={styles.play} onClick={resume}>
-                  Continuar
+                  {pastEnd ? 'Cerrar y guardar el resultado' : 'Continuar'}
                 </Button>
               </>
             ) : (

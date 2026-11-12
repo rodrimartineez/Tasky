@@ -110,6 +110,15 @@ export class Game {
     return game;
   }
 
+  /** Termina la partida ya (modo infinito pasado el minuto 30: «Salir» no deja volver a ella). */
+  finish() {
+    if (this.ended || this.world.phase === 'dead') return;
+    this.ended = true;
+    this.paused = false;
+    this.input.release();
+    this.callbacks.onEnd(runResult(this.world));
+  }
+
   /** Copia del estado para reanudar la partida más tarde (null si ya ha terminado). Es JSON puro. */
   snapshot(): World | null {
     const w = this.world;

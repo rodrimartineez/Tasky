@@ -168,7 +168,8 @@ export type BossPattern =
 /**
  * Modalidad de la partida (HABITS_GUIDE §11):
  * - `normal`: 30 minutos y aparece La Muerte; superarla es llegar al minuto 30 (y vencer al jefe en los niveles de jefe).
- * - `infinite`: sin La Muerte ni final; la dificultad sigue creciendo. No supera niveles.
+ * - `infinite`: sin La Muerte ni final; la dificultad sigue creciendo. Llegar al minuto 30 (y vencer al jefe en los
+ *   niveles de jefe) supera el nivel; la partida acaba al morir o al salir.
  * - `mirror`: el nivel actual con dificultad doble (MIRROR_SCALE). No supera niveles.
  */
 export type RunMode = 'normal' | 'infinite' | 'mirror';

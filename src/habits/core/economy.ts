@@ -239,8 +239,8 @@ export function economyOf(data: HabitsData, today: LocalDate, release: GameRelea
           break;
         }
         const d = e.details ?? {};
-        // Solo una partida normal del nivel actual puede superarlo.
-        const won = d.won === true && run.mode === 'normal' && run.level === eco.passedLevel + 1;
+        // Solo una partida normal o infinita del nivel actual puede superarlo (el reflejo, nunca).
+        const won = d.won === true && run.mode !== 'mirror' && run.level === eco.passedLevel + 1;
         run.result = { gold: e.gold, time: Number(d.time ?? 0), kills: Number(d.kills ?? 0), won, xpLevel: Number(d.xpLevel ?? 0) };
         if (won) eco.passedLevel = run.level;
         eco.gold += e.gold;

@@ -104,7 +104,7 @@ Definidas por el usuario el 11/11/2026; detalle en `HABITS_GUIDE.md` §11:
 - La dificultad de cada nivel sigue la frontera medida de un jugador constante (~1 nivel al día jugando 2 intentos).
   Todo lo que cambie el poder del jugador o de los enemigos obliga a repetir los estudios de frontera y progresión
   (`ANALISIS_ECONOMIA.md` §11).
-- Infinito y reflejo nunca cambian el nivel; el modo de pruebas debe poder probar cualquier nivel, jefe y modalidad.
+- El reflejo nunca cambia el nivel; el infinito lo supera al llegar al minuto 30 (cambio del 12/11/2026); el modo de pruebas debe poder probar cualquier nivel, jefe y modalidad.
 
 ### Requisitos para pasar de fase (en todas)
 

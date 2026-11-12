@@ -4,7 +4,7 @@ import { Ban, Dices, Flame, Pause, Skull } from 'lucide-react';
 import { PASSIVE_BY_ID } from '../../../game/content/passives';
 import { WEAPON_BY_ID } from '../../../game/content/weapons';
 import { Game, SPEEDS, type Hud } from '../../../game/Game';
-import { MAX_PASSIVES, MAX_WEAPONS, type RunConfig, type RunResult, type UpgradeChoice, type World } from '../../../game/sim/types';
+import { MAX_PASSIVES, MAX_WEAPONS, RUN_SECONDS, type RunConfig, type RunResult, type UpgradeChoice, type World } from '../../../game/sim/types';
 import { spriteDataUrl } from '../../../game/sprites/atlas';
 import { now } from '../../../core/clock';
 import { saveRunSnapshot } from '../../state/store';
@@ -92,8 +92,8 @@ const speedLabel = (s: number) => `×${s.toLocaleString('es-ES')}`;
 /** Partida a pantalla completa. Se monta al empezar a jugar (el motor se descarga en ese momento). */
 /** Titular del final: nivel superado, o por qué no. */
 function resultTitle(r: RunResult, level: number, bossLevel: boolean): string {
-  if (r.mode === 'infinite') return `Has resistido ${clock(r.time)}`;
-  if (r.won) return `¡Nivel ${level} superado!`;
+  if (r.won) return r.mode === 'infinite' ? `¡Nivel ${level} superado! Has resistido ${clock(r.time)}` : `¡Nivel ${level} superado!`;
+  if (r.mode === 'infinite') return r.time >= RUN_SECONDS && bossLevel ? 'Llegaste al minuto 30 sin vencer al jefe' : `Has resistido ${clock(r.time)}`;
   if (r.mode === 'mirror') return r.completed ? '¡Reflejo completado!' : 'Fin del reflejo';
   if (r.completed && bossLevel) return 'La Muerte llegó antes de vencer al jefe';
   return 'Has muerto';
@@ -102,7 +102,7 @@ function resultTitle(r: RunResult, level: number, bossLevel: boolean): string {
 function resultNote(r: RunResult, level: number, test: boolean): string {
   if (test) return 'Partida de prueba: no se guarda nada (ni el oro ni el nivel).';
   if (r.won) return `El oro ya está guardado. Siguiente: nivel ${level + 1}.`;
-  if (r.mode !== 'normal') return 'El oro ya está guardado. Esta modalidad no cambia tu nivel.';
+  if (r.mode === 'mirror') return 'El oro ya está guardado. Esta modalidad no cambia tu nivel.';
   return `El oro ya está guardado. Sigues en el nivel ${level}: cada intento empieza desde el minuto 0.`;
 }
 
@@ -177,6 +177,8 @@ export default function GameScreen({ level, attempt, config, resume, onFinish, o
   // Modo «Descartar»: el siguiente clic en una opción la quita para siempre.
   const [banishing, setBanishing] = useState(false);
   const hudRef = useRef<Hud | null>(null);
+  // Infinito pasado el minuto 30: el nivel ya está superado y salir termina la partida.
+  const pastEnd = config.mode === 'infinite' && (hud?.time ?? 0) >= RUN_SECONDS;
   // Mayor número de repeticiones/descartes visto: los botones solo aparecen si el jugador tiene esas mejoras.
   const [tools, setTools] = useState({ rerolls: 0, banishes: 0 });
   const [result, setResult] = useState<RunResult | null>(null);
@@ -443,7 +445,12 @@ export default function GameScreen({ level, attempt, config, resume, onFinish, o
       )}
 
       {paused && !chest && !choices && !purging && !result && (
-        <PauseMenu hud={hud} onResume={() => gameRef.current?.setPaused(false)} onExit={onExit} />
+        <PauseMenu
+          hud={hud}
+          onResume={() => gameRef.current?.setPaused(false)}
+          final={pastEnd}
+          onExit={pastEnd ? () => gameRef.current?.finish() : onExit}
+        />
       )}
 
       {result && (
