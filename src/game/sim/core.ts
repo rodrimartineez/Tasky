@@ -100,6 +100,11 @@ export const RAMP = {
   /** Veteranos: minuto en que empiezan, fracción en el 30 y refuerzo (vida, daño, tamaño, experiencia). */
   champion: { from: 5, share: 1 / 6, hp: 3, damage: 1.3, radius: 1.2, xp: 3 },
 };
+/**
+ * Vida extra de los enemigos especiales (12/11/2026, a petición del usuario: eran demasiado blandos). Los jefes (de
+ * escenario y de ciclo) tienen ×10 y las élites que sueltan cofre ×60 (antes ×6), sobre la escalada de la partida.
+ */
+export const TOUGHNESS = { boss: 10, elite: 60 };
 const ramp = ([a, b]: number[], m: number) => 1 + a * m + b * m * m;
 /** Multiplicador de vida por los minutos de partida (sin el del nivel). */
 export const timeHpScale = (w: World) => ramp(RAMP.hp, minutes(w));
@@ -134,7 +139,7 @@ const SPAWN_RADIUS = 310;
 
 export function spawnEnemy(w: World, def: EnemyDef, x: number, y: number, elite = false, champion = false): Enemy {
   const c = champion && !elite ? RAMP.champion : null;
-  const hp = def.hp * hpScale(w) * (elite ? 6 : 1) * (c?.hp ?? 1);
+  const hp = def.hp * hpScale(w) * (elite ? TOUGHNESS.elite : 1) * (def.ai === 'boss' ? TOUGHNESS.boss : 1) * (c?.hp ?? 1);
   const e: Enemy = {
     uid: w.nextUid++,
     def,

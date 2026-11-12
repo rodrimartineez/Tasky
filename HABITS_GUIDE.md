@@ -497,3 +497,11 @@ saltos, invocaciones, lluvias y anillos, cada jefe tiene ataques propios avisado
   - **Movimientos:** el historial de puntos de antes, día a día.
 - La ficha del hábito (`HabitPage.tsx`) añade «Evolución»: los últimos 6 meses con % cumplido y media registrada por
   día o semana frente al objetivo o límite.
+
+## 20. Jefes y élites más resistentes (12/11/2026)
+
+- `sim/core.ts` → `TOUGHNESS`: los jefes (de escenario y de ciclo) tienen ×10 de vida y las élites que sueltan cofre
+  ×60 (antes ×6), a petición del usuario porque eran demasiado blandos.
+- El estudio de jefes del `ANALISIS_ECONOMIA.md` §14.6 (34 % de niveles de jefe superados) se hizo antes de este
+  cambio: con ×10 de vida, los niveles de jefe serán bastante más difíciles; si cuesta demasiado, se ajusta
+  `TOUGHNESS.boss` o `BOSS_TUNING.hp`.
