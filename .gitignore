@@ -36,3 +36,6 @@ supabase/functions/tasky-mcp/dist/
 
 # Estado local de la CLI de Supabase
 supabase/.temp/
+
+# Auditoría de seguridad
+SEGURIDAD_AUTENTICACION.md
