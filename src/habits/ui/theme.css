@@ -3,6 +3,20 @@
  * Solo se aplica mientras el modo está abierto (HabitsApp pone data-mode="habits" en <html>):
  * así los componentes compartidos (diálogos, botones, campos) adoptan estos colores sin cambiar en Proyectos.
  */
+/*
+ * Cifras legibles: las de Pixelify Sans (3/8, 5/6, 0/8) se confundían a tamaño pequeño. Esta cara solo cubre
+ * dígitos y signos numéricos (unicode-range) y va delante en --hb-pixel-font: el resto del texto sigue en Pixelify.
+ * Silkscreen tiene cifras de bloque, anchas y muy distintas entre sí; se ajusta su tamaño al del texto.
+ */
+@font-face {
+  font-family: 'Tasky Digits';
+  src: url('../../../node_modules/@fontsource/silkscreen/files/silkscreen-latin-400-normal.woff2') format('woff2');
+  font-weight: 100 900;
+  font-display: swap;
+  size-adjust: 100%;
+  unicode-range: U+0025, U+002B-002F, U+0030-0039, U+00D7, U+2212;
+}
+
 :root[data-mode='habits'] {
   --hb-bg: #0d0b1a;
   /* Cabecera opaca (también es el theme-color mientras Hábitos está abierto: HabitsApp.tsx). */
@@ -21,7 +35,7 @@
   --hb-reduce-deep: #c4502a;
   --hb-flame: #ff9f3a;
   --hb-gem: #9d7bff;
-  --hb-pixel-font: 'Pixelify Sans', var(--font);
+  --hb-pixel-font: 'Tasky Digits', 'Pixelify Sans', var(--font);
   /* Borde de píxel: anillo oscuro + luz interior arriba, sombra interior abajo. */
   --hb-pixel-edge: 0 0 0 2px var(--hb-ink), inset 0 2px 0 rgba(255, 255, 255, 0.06), inset 0 -3px 0 rgba(0, 0, 0, 0.35);
 

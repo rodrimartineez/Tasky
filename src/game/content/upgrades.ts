@@ -44,7 +44,7 @@ export const UPGRADES: UpgradeDef[] = [
     id: BOUNTY.id,
     name: 'Constancia',
     icon: 'u_bounty',
-    effect: (n) => `Cada hábito diario da ${1 + bountyDaily(n)} puntos y cada semanal ${3 + bountyWeekly(n)} (más las rachas)`,
+    effect: (n) => `Cada hábito diario positivo da ${1 + bountyDaily(n)} puntos y cada semanal ${3 + bountyWeekly(n)} (más las rachas)`,
     cost: (n) => BOUNTY.costs[n - 1] ?? Infinity,
     apply: () => {},
     maxLevel: BOUNTY_MAX,

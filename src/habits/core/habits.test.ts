@@ -183,6 +183,24 @@ describe('recompensas', () => {
   });
 });
 
+describe('hábitos de reducción', () => {
+  it('al cerrar el día dan 1 punto si no se pasa del límite (9 o 10 de 10) y nada con 11, una sola vez', () => {
+    const { data, ids } = setup(face);
+    let d = log(data, ids[0], '2026-11-02', 9);
+    d = log(d, ids[0], '2026-11-03', 10);
+    d = log(d, ids[0], '2026-11-04', 11);
+    for (let i = 5; i <= 12; i++) d = log(d, ids[0], `2026-11-${String(i).padStart(2, '0')}`, 2);
+    // Antes de cerrar el día no hay recompensa.
+    expect(evaluateRewards(log(data, ids[0], '2026-11-02', 3), '2026-11-02', T0).ledger).toHaveLength(0);
+    const once = evaluateRewards(d, '2026-11-13', T0);
+    expect(once.ledger.map((e) => e.period)).not.toContain('2026-11-04');
+    // Siempre 1 punto, sin bonificación de racha (8 días seguidos del 5 al 12).
+    expect(once.ledger.every((e) => e.points === 1)).toBe(true);
+    expect(once.ledger).toHaveLength(10);
+    expect(evaluateRewards(once, '2026-11-13', T0).ledger).toHaveLength(10);
+  });
+});
+
 describe('puntos por racha', () => {
   it('un hábito diario da más puntos al pasar los hitos de racha', () => {
     const { data, ids } = setup(read);

@@ -194,8 +194,12 @@ function dailyRanker(data: HabitsData, timeZone: string): (habit: Habit, key: Pe
   };
 }
 
+/** Un hábito diario de reducción cumplido da siempre 1 punto (y 1 intento, economy.ts), sin rachas ni Constancia. */
+export const REDUCE_DAILY_POINTS = 1;
+
 /** Puntos de un periodo cumplido, con la racha que alcanza (incluido ese periodo) y el nivel de Constancia. */
 function pointsFor(habit: Habit, streak: number, rank: number, bounty: number): number {
+  if (habit.kind === 'reduce' && habit.period === 'daily') return REDUCE_DAILY_POINTS;
   return habit.period === 'daily'
     ? withDailyLimit(streakPoints(streak) + bountyDaily(bounty), rank)
     : weeklyPoints(streak) + bountyWeekly(bounty);

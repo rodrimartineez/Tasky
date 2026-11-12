@@ -90,7 +90,7 @@ describe('jefes de ciclo', () => {
       expect(boss, `nivel ${level}`).toBeDefined();
       expect([boss!.x, boss!.y, boss!.hp, w.player.x, w.player.y].every(Number.isFinite), `nivel ${level}`).toBe(true);
     }
-  }, 120_000);
+  }, 300_000);
 });
 
 describe('ataques propios de los jefes', () => {

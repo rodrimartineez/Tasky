@@ -22,7 +22,7 @@ export function HabitCard({ view }: { view: HabitView }) {
       : `${formatAmount(amount)} / ${withUnit(target, habit.unit)}`
     : over > 0
       ? `Límite superado (+${withUnit(over, habit.unit)})`
-      : `Quedan ${withUnit(remaining, habit.unit)} de ${formatAmount(target)}`;
+      : `${formatAmount(remaining)} / ${withUnit(target, habit.unit)} disponibles`;
 
   return (
     <motion.article
@@ -41,7 +41,13 @@ export function HabitCard({ view }: { view: HabitView }) {
           {!archived && reward > 0 && (
             <span
               className={`${styles.reward} ${met ? styles.rewardSecured : ''}`}
-              title={met ? `Asegurado: +${reward} al cerrar el periodo` : `Cumplirlo da +${reward}`}
+              title={
+                build
+                  ? met
+                    ? `Asegurado: +${reward} al cerrar el periodo`
+                    : `Cumplirlo da +${reward}`
+                  : `+${reward} al cerrar el periodo si no pasas del límite`
+              }
             >
               +{reward} <GemIcon size={12} />
             </span>
@@ -67,23 +73,27 @@ export function HabitCard({ view }: { view: HabitView }) {
             </motion.button>
           ) : (
             <>
+              {/* Deshacer: en los de reducción devuelve una unidad al límite disponible (+), en los positivos resta (−). */}
               <button
                 type="button"
                 className={styles.small}
                 onClick={() => log(habit.id, -1)}
                 disabled={amount <= 0}
-                aria-label={`Deshacer un registro de «${habit.name}»`}
+                aria-label={build ? `Deshacer un registro de «${habit.name}»` : `Devolver ${withUnit(habit.step, habit.unit)} al límite de «${habit.name}»`}
               >
-                <Minus />
+                {build ? <Minus /> : <Plus />}
               </button>
+              {/* Registrar: en los de reducción cada ocurrencia gasta límite disponible (−). */}
               <motion.button
                 type="button"
                 whileTap={{ scale: 0.9 }}
                 className={styles.big}
                 onClick={() => log(habit.id, 1)}
-                aria-label={`Registrar ${withUnit(habit.step, habit.unit)} en «${habit.name}»`}
+                aria-label={
+                  build ? `Registrar ${withUnit(habit.step, habit.unit)} en «${habit.name}»` : `Registrar una vez «${habit.name}» (resta ${withUnit(habit.step, habit.unit)})`
+                }
               >
-                <Plus />
+                {build ? <Plus /> : <Minus />}
                 <span className={styles.step}>{formatAmount(habit.step)}</span>
               </motion.button>
             </>

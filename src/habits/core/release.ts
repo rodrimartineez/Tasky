@@ -31,7 +31,9 @@ export interface GameRelease {
  * publicar se pasa a la 1, que empieza de cero (§10).
  */
 export const GAME_BUILD = {
-  devTools: true,
+  // Oculto desde el 12/11/2026 a petición del usuario: se vuelve a poner a true solo cuando pida probar algo.
+  // La temporada sigue en 0 (cambiarla empezaría la progresión de cero).
+  devTools: false,
   season: 0,
   startsOn: null as LocalDate | null,
 } as const;

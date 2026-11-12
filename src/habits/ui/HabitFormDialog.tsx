@@ -112,14 +112,18 @@ function HabitForm({ habit, currentTarget, onDone }: { habit?: Habit; currentTar
           onChange={(e) => setTarget(e.target.value)}
         />
         <TextField label="Unidad" optional placeholder="min, vasos, veces…" value={unit} maxLength={20} onChange={(e) => setUnit(e.target.value)} />
-        <TextField label="Cada registro suma" inputMode="decimal" value={step} onChange={(e) => setStep(e.target.value)} />
+        <TextField label={build ? 'Cada registro suma' : 'Cada registro resta'} inputMode="decimal" value={step} onChange={(e) => setStep(e.target.value)} />
       </div>
 
       <p className={styles.hint}>
         {build
           ? `Se cumple al llegar a ${validTarget ? formatAmount(targetValue) : '…'}${unit ? ` ${unit}` : ''} ${period === 'daily' ? 'en el día' : 'en la semana'}.`
-          : `Empiezas con ${validTarget ? formatAmount(targetValue) : '…'} disponibles; cada registro resta. Se cumple si no te pasas del límite.`}{' '}
-        {period === 'daily' ? (
+          : `Es lo máximo que puedes hacerlo ${period === 'daily' ? 'al día' : 'a la semana'}: empiezas con ${validTarget ? formatAmount(targetValue) : '…'} disponibles y cada registro resta. Se cumple si no te pasas del límite.`}{' '}
+        {!build && period === 'daily' ? (
+          <>
+            Si al cerrar el día (00:00) no te has pasado, recibes <strong>1 punto y 1 intento</strong>; si te pasas, nada.
+          </>
+        ) : period === 'daily' ? (
           <>
             Cumplirlo da <strong>1 punto</strong> al cerrar el día (00:00), y más cuanto más larga sea la racha (2 a los 3 días, 3 a los 7…).
           </>
