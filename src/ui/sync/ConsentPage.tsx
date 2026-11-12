@@ -21,6 +21,20 @@ const host = (url: string) => {
 };
 
 /**
+ * Destinos esperados: Claude (web y apps) y Claude Code (vuelve a localhost). Cualquiera puede registrar
+ * un cliente OAuth con el nombre que quiera, así que el destino es lo único fiable para detectar un engaño.
+ */
+const isExpectedDestination = (url: string) => {
+  try {
+    const { protocol, hostname } = new URL(url);
+    if (hostname === 'localhost' || hostname === '127.0.0.1') return protocol === 'http:';
+    return protocol === 'https:' && ['claude.ai', 'claude.com'].some((d) => hostname === d || hostname.endsWith(`.${d}`));
+  } catch {
+    return false;
+  }
+};
+
+/**
  * Pantalla de autorización OAuth (ruta /oauth/consent, configurada en Supabase Auth → OAuth Server).
  * Un asistente como Claude llega aquí para pedir acceso; solo se ve con la sesión iniciada.
  */
@@ -71,6 +85,12 @@ export function ConsentPage({ authorizationId }: { authorizationId: string | nul
                 Podrá ver, crear y modificar tus proyectos, tareas e ideas en nombre de <strong>{state.request.email}</strong>.
               </p>
             </div>
+            {!isExpectedDestination(state.request.redirectUri) && (
+              <p className={styles.error} role="alert">
+                <TriangleAlert /> Este destino no es Claude. Si no has pedido tú esta conexión, deniégala: podría ser un intento de
+                robar el acceso a tus datos.
+              </p>
+            )}
             <ul className={styles.consentList}>
               <li>
                 <ShieldCheck /> Al terminar volverás a <strong>{host(state.request.redirectUri)}</strong>

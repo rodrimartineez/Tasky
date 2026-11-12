@@ -20,6 +20,7 @@ function fakeServer() {
   const tables = Object.keys(rows) as Table[];
   let listener: ((s: { email: string } | null) => void) | null = null;
   let remote: (() => void) | null = null;
+  const offline = { value: false };
 
   const write = (table: Table, rec: Rec) => {
     const old = rows[table].get(rec.id);
@@ -35,7 +36,11 @@ function fakeServer() {
       return () => {};
     },
     signIn: async (email) => listener?.({ email }),
-    signOut: async () => listener?.(null),
+    signOut: async (everywhere) => {
+      // Como Supabase: cerrar todas las sesiones necesita al servidor; la de este dispositivo no.
+      if (everywhere && offline.value) throw new Error('Sin conexión.');
+      listener?.(null);
+    },
     getAuthorizationRequest: async () => ({ redirectUrl: '' }),
     decideAuthorization: async () => '',
     onRemoteChange(l) {
@@ -64,7 +69,7 @@ function fakeServer() {
     write(table, rec);
     remote?.();
   };
-  return { backend, write, writeAndNotify, get: (t: Table, id: string) => rows[t].get(id)?.rec };
+  return { backend, offline, write, writeAndNotify, get: (t: Table, id: string) => rows[t].get(id)?.rec };
 }
 
 const server = fakeServer();
@@ -138,6 +143,14 @@ describe('sincronización con el servidor', () => {
       title: 'Creada por Claude',
       timeSlot: 'evening',
     });
+  });
+
+  it('si no se pueden cerrar todas las sesiones, la de este dispositivo sigue abierta y con sus datos', async () => {
+    server.offline.value = true;
+    await expect(signOut(true)).rejects.toThrow('Sin conexión.');
+    server.offline.value = false;
+    expect(useSync.getState().email).toBe('yo@ejemplo.com');
+    expect(useTasky.getState().data.projects.length).toBeGreaterThan(0);
   });
 
   it('cerrar sesión en la web borra los datos del dispositivo', async () => {

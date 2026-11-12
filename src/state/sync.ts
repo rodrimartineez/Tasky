@@ -177,8 +177,9 @@ export async function signIn(email: string, password: string) {
   if (session) startSession(session.email);
 }
 
-export async function signOut() {
-  await backend?.signOut();
+/** Con `everywhere` se cierran también las demás sesiones de la cuenta; si falla, lanza y no cierra nada. */
+export async function signOut(everywhere = false) {
+  await backend?.signOut(everywhere);
   endSession();
 }
 

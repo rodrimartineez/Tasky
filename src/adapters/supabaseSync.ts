@@ -41,11 +41,15 @@ export function createSupabaseSync(url: string, key: string): SyncBackend {
       const { error } = await client.auth.signInWithPassword({ email: email.trim(), password });
       if (!error) return;
       if (error.status === 400 || /invalid/i.test(error.message)) throw new Error('Email o contraseña incorrectos.');
+      if (error.status === 429) throw new Error('Demasiados intentos. Espera unos minutos antes de volver a probar.');
       fail(error);
     },
 
-    async signOut() {
-      await client.auth.signOut({ scope: 'local' });
+    async signOut(everywhere = false) {
+      // 'local' borra la sesión del dispositivo antes de avisar al servidor: sin red también se cierra aquí.
+      // 'global' solo la borra si el servidor ha revocado todas las sesiones.
+      const { error } = await client.auth.signOut({ scope: everywhere ? 'global' : 'local' });
+      if (error && everywhere) fail(error);
     },
 
     async getAuthorizationRequest(id) {

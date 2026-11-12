@@ -50,7 +50,12 @@ export interface SyncBackend {
   onSessionChange(listener: (session: SyncSession | null) => void): () => void;
   /** Lanza un Error con un mensaje para el usuario si no se puede iniciar sesión. */
   signIn(email: string, password: string): Promise<void>;
-  signOut(): Promise<void>;
+  /**
+   * Cierra la sesión de este dispositivo (aunque no haya red). Con `everywhere`, revoca en el servidor
+   * todas las sesiones de la cuenta (otros dispositivos y asistentes); si no se puede, lanza un Error y
+   * la sesión sigue abierta.
+   */
+  signOut(everywhere?: boolean): Promise<void>;
   /**
    * Avisa (sin datos) en cuanto cambia algo en el servidor, venga de otro dispositivo o de un asistente,
    * para descargarlo al momento con pull. Devuelve la función para dejar de escuchar.
