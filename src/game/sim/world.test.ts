@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { ENEMY_BY_ID } from '../content/enemies';
 import { WITHERED_WOODS } from '../content/stages';
 import { WEAPONS } from '../content/weapons';
 import { botPlay } from './bot';
+import { championChance, damageScale, hpScale, RAMP, spawnEnemy, timeHpScale } from './core';
 import { runHp } from './difficulty';
 import { BASE_STATS, RUN_SECONDS, type RunConfig, type Stats, type World } from './types';
 import { weaponStatsAt } from './upgrades';
@@ -154,5 +156,35 @@ describe('revivir', () => {
     w.player.hp = -5;
     step(w, DT, 0, 0);
     expect(w.phase).toBe('dead');
+  });
+});
+
+describe('escalada dentro de la partida (Fase 8)', () => {
+  const at = (minute: number) => {
+    const w = createWorld(config(3));
+    w.time = minute * 60;
+    return w;
+  };
+
+  it('la vida y el daño de los enemigos suben con los minutos sobre la base del nivel', () => {
+    expect(timeHpScale(at(0))).toBe(1);
+    expect(timeHpScale(at(10))).toBeCloseTo(3.6, 5);
+    expect(timeHpScale(at(30))).toBeCloseTo(17.2, 5);
+    expect(damageScale(at(30)) / damageScale(at(0))).toBeCloseTo(4, 5);
+    // El nivel siguiente empieza más arriba y vuelve a escalar igual.
+    const next = { ...at(0), config: { ...config(3), level: 2 } };
+    expect(hpScale(next)).toBeGreaterThan(hpScale(at(0)));
+  });
+
+  it('los veteranos aparecen desde el minuto 5 y cada vez más, reforzados', () => {
+    expect(championChance(at(4))).toBe(0);
+    expect(championChance(at(15))).toBeGreaterThan(0);
+    expect(championChance(at(30))).toBeCloseTo(RAMP.champion.share, 5);
+    const w = at(25);
+    const normal = spawnEnemy(w, ENEMY_BY_ID.get('slime')!, 0, 0);
+    const champion = spawnEnemy(w, ENEMY_BY_ID.get('slime')!, 0, 0, false, true);
+    expect(champion.champion).toBe(true);
+    expect(champion.maxHp).toBeCloseTo(normal.maxHp * RAMP.champion.hp, 5);
+    expect(champion.damage).toBeGreaterThan(normal.damage);
   });
 });

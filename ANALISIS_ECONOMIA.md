@@ -456,3 +456,85 @@ Conclusiones:
   ritmo de niveles queda limitado sobre todo por los intentos; se volverá a medir en la Fase 8 (validación global).
 - Los irregulares (50 %) tardan unos 2 meses en el nivel 1 y 9 meses en el 2: es una mejora que premia la
   constancia, como su nombre.
+
+## 14. Fase 8: escalada dentro de la partida y validación global (noviembre de 2026)
+
+**Petición:** que la dificultad suba también dentro de cada nivel (enemigos más duros minuto a minuto, más presión y
+enemigos más exigentes, cada nivel desde una base más alta), que quedarse quieto tras conseguir evoluciones no baste
+para llegar al minuto 30 y que niveles como el 30 sean un reto real, sin romper la progresión.
+
+### 14.1 Diagnóstico
+
+- La vida de los enemigos **ya** subía con los minutos: ×3,6 en el minuto 10, ×9 en el 20 y ×17 en el 30 (más que el
+  ×4 del ejemplo de la petición). Lo que faltaba era presión: el daño solo llegaba a ×2,65 y no había enemigos
+  reforzados.
+- El problema de fondo era el bot de los estudios: elegía siempre la primera mejora. Con uno que busca evoluciones
+  (`botPick`), el mismo personaje del día 60 superaba el nivel 60 en las 3 semillas, y el de primera opción fallaba ya
+  en el 30. La curva de niveles estaba calibrada para un jugador bastante más torpe que una persona.
+
+### 14.2 Cambios
+
+- Daño `1 + 0,055·m + 0,0015·m²` (×1,7 / ×2,7 / ×4 en los minutos 10 / 20 / 30). Vida sin cambios.
+- Veteranos desde el minuto 5: hasta 1 de cada 6 apariciones normales en el 30, con ×3 de vida, ×1,3 de daño y ×3 de
+  experiencia (la presión extra también acelera algo la subida de nivel).
+- Bot de los estudios: `botPick` (evoluciones primero).
+
+### 14.3 Frontera (bot nuevo, escalada nueva)
+
+| Día (Constante) | Puntos | Frontera | Antes (ajuste del §12.2) |
+|---:|---:|---:|---:|
+| 1 | 5 | 0,77 | 0,56 |
+| 3 | 20 | 0,72 | 0,57 |
+| 7 | 71 | 0,83 | 0,61 |
+| 10 | 116 | 1,10 | 0,64 |
+| 30 | 526 | 1,26 | 0,88 |
+| 60 | 1.305 | 1,36 | 1,23 |
+| 120 | 3.270 | 1,67 | 1,86 |
+| 240 | 7.929 | 2,55 | 2,88 |
+| 365 | 13.077 | 4,47 | 3,73 |
+
+Días 1, 3, 7, 240 y 365 con 9 semillas, el resto con 5 (búsqueda binaria de 7 pasos). Ajuste:
+`F*(P) = 0,842 · (1 + P/1.277)^0,633`.
+
+### 14.4 Curva de niveles y progresión
+
+- Curva nueva: `levelHp(L) = 0,716 · (1 + L/47,2)^0,84` (nivel 1 +46 %, 10 +30 %, 30 +17 %, 100 +10 % sobre la
+  anterior). `goldA` 0,023 → 0,013.
+- El estudio de progresión cuenta ya Constancia (comprada como una mejora más) y solo los puntos que acaban en combate.
+
+| Perfil (2 intentos al día) | Nivel día 30 / 90 / 365 / 1.095 | Niveles al día | Oro año 1 / 2 / 3 |
+|---|---|---|---|
+| **Constante (95 %)** | 32 / 88 / 367 / 1.093 | **1,00** | 2,48 M / 4,24 M / 5,68 M |
+| Normal (80 %) | 32 / 85 / 345 / 999 | 0,91 | 2,41 M / 4,05 M / 5,32 M |
+| Irregular (50 %) | 28 / 55 / 146 / 388 | 0,34 | 1,14 M / 1,50 M / 1,80 M |
+
+El calendario de oro queda como antes (2,14 / 4,21 / 5,83 M); el primer año algo más, que absorben los arcanos y
+aspectos de la Fase 10.
+
+### 14.5 ¿Se puede ganar quedándose quieto?
+
+Bot que juega normal hasta el minuto indicado y luego no se mueve (sigue eligiendo mejoras), en la dureza del nivel
+que le toca a ese perfil, 4 semillas:
+
+| Perfil y nivel | Moviéndose | Quieto desde el 15 | Desde el 20 | Desde el 25 |
+|---|---|---|---|---|
+| Día 10, nivel 10 | 4 de 4 | muere en el 15–16 | muere en el 20 | muere en el 25–27 |
+| Día 30, nivel 30 | 3 de 4 | muere en el 15 | muere en el 20 | muere en el 25 |
+| Día 90, nivel 88 | 1 de 4 | muere | muere | 1 de 4 llega |
+
+Quieto, se muere en menos de un minuto en 35 de 36 partidas (casi siempre a manos del jefe o la oleada siguiente),
+incluso con 4–5 evoluciones.
+
+### 14.6 Jefes, ritmo y arcanos
+
+- Jefes de ciclo en la frontera (10 jefes × 7 días × 2 semillas): **47 de 140 superados (34 %)**, dentro del
+  objetivo (~1 de cada 3). Los más duros siguen siendo Coloso y Dragón del Eclipse (2 de 14).
+- Ritmo (0,8 × frontera): nivel de personaje **60–67 al minuto 30** (antes ~59), 17.000–28.000 eliminados,
+  0,2–0,26 ms por paso.
+- Arcanos (Fase 10), frontera del Constante del día 60: sin arcano 1,41; Luna de sangre 0,84, Eco 0,82, Cristal 1,07,
+  Vacío 1,18, Tempestad 0,72. Todos hacen la partida más difícil.
+
+### 14.7 Límites
+
+El bot sigue esquivando peor que una persona. Si con partidas reales los niveles siguen pareciendo fáciles (o
+demasiado duros), se ajusta `DIFFICULTY.base` con esos datos.

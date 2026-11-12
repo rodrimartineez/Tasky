@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { survivalBonus } from '../sim/difficulty';
-import { botPlay } from '../sim/bot';
+import { botPlay, firstPick } from '../sim/bot';
 import { BASE_STATS, MAX_PASSIVES, MAX_WEAPONS, type World } from '../sim/types';
 import { createWorld } from '../sim/world';
 import { SPRITES } from '../sprites/data';
@@ -112,7 +112,7 @@ describe('equilibrio de armas', () => {
       startingWeapon: weapon,
       sprite: 'hero',
     });
-    botPlay(w, 300);
+    botPlay(w, 300, undefined, firstPick);
     return w.player.weapons.find((x) => x.id === weapon)?.dealt ?? 0;
   };
 

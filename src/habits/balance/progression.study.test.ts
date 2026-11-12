@@ -2,6 +2,7 @@ import { describe, it } from 'vitest';
 import { isBossLevel } from '../../game/content/bosses';
 import { CHARACTERS } from '../../game/content/characters';
 import { STAGES } from '../../game/content/stages';
+import { BOUNTY } from '../../game/content/upgrades';
 import { DIFFICULTY, levelGold, levelHp, survivalBonus } from '../../game/sim/difficulty';
 import { mulberry, PROFILES, simulateEconomy, STREAK_RULES } from './economy';
 
@@ -23,6 +24,10 @@ const RULE = env.PROG_RULE ?? 'hitos';
 const CAPS = (env.PROG_CAPS ?? '1,2,99').split(',').map(Number);
 const BOSS = Number(env.PROG_BOSS ?? 1);
 const SEEDS = Number(env.PROG_SEEDS ?? 30);
+/** Cómo compra el perfil la mejora Constancia (`never`, `first` o `cheapest`, por defecto como una mejora más). */
+const BOUNTY_PLAN = { costs: BOUNTY.costs, strategy: (env.PROG_BOUNTY ?? 'cheapest') as 'never' | 'first' | 'cheapest' };
+/** Puntos que acaban en combate (los gastados en Constancia no hacen más fuerte al personaje). */
+const combat = (snap: { totalPoints: number; bountySpent: number }) => snap.totalPoints - snap.bountySpent;
 const DAYS = 1095;
 
 interface Run {
@@ -109,10 +114,10 @@ describe.skipIf(!DIR || !OUT)('estudio de progresión', () => {
 
     // Curva sugerida: la dureza del nivel L sigue a la frontera del perfil Constante en su día L (con el desplazamiento
     // de la logística, para que a ese nivel tenga ~50 % por intento). Mínimos cuadrados en escala logarítmica.
-    const constant = Array.from({ length: SEEDS }, (_, i) => simulateEconomy(PROFILES[0], STREAK_RULES[RULE], DAYS, i + 1));
+    const constant = Array.from({ length: SEEDS }, (_, i) => simulateEconomy(PROFILES[0], STREAK_RULES[RULE], DAYS, i + 1, undefined, BOUNTY_PLAN));
     const target = Array.from(
       { length: DAYS },
-      (_, d) => Math.log(frontier(constant.reduce((s, run) => s + run[d].totalPoints, 0) / SEEDS)) + logistic.m,
+      (_, d) => Math.log(frontier(constant.reduce((s, run) => s + combat(run[d]), 0) / SEEDS)) + logistic.m,
     );
     let curve = { base: 0, scale: 0, exp: 0, err: Infinity };
     for (let scale = 5; scale <= 400; scale *= 1.05)
@@ -148,7 +153,7 @@ describe.skipIf(!DIR || !OUT)('estudio de progresión', () => {
         const reach = milestones.map(() => [] as number[]);
         for (let seed = 1; seed <= SEEDS; seed++) {
           const rng = mulberry(seed * 7919);
-          const days = simulateEconomy(profile, STREAK_RULES[RULE], DAYS, seed);
+          const days = simulateEconomy(profile, STREAK_RULES[RULE], DAYS, seed, undefined, BOUNTY_PLAN);
           let level = 1;
           let bank = 0;
           let gold = 0;
@@ -160,7 +165,7 @@ describe.skipIf(!DIR || !OUT)('estudio de progresión', () => {
             for (let i = 0; i < plays; i++) {
               bank -= 1;
               const hard = levelHp(level) * (isBossLevel(level) ? BOSS : 1);
-              const x = Math.log(hard / frontier(snap.totalPoints));
+              const x = Math.log(hard / frontier(combat(snap)));
               const passed = rng() < passChance(x);
               const seconds = passed ? 1800 : timeWhenFailing(x);
               const earned = goldOf(level, seconds);

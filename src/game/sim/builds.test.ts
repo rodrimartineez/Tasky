@@ -6,8 +6,9 @@ import { WITHERED_WOODS } from '../content/stages';
 import { UPGRADE_BY_ID, withUpgrades } from '../content/upgrades';
 import { WEAPON_BY_ID, WEAPONS, weaponStatsAt } from '../content/weapons';
 import { SPRITES } from '../sprites/data';
-import { botPlay } from './bot';
+import { botPlay, firstPick } from './bot';
 import { spawnEnemy } from './core';
+import { levelHp } from './difficulty';
 import { BASE_STATS, MAX_WEAPONS, type Stats, type World } from './types';
 import {
   applyChoice,
@@ -306,14 +307,17 @@ describe('armas y pasivas nuevas (B2)', () => {
   });
 });
 
+/** Dureza de los enemigos en la medida de daño de las armas (la que daba el nivel 20 000 antes de la Fase 8). */
+const SWARM_HARDNESS = 52.74;
+
 describe('equilibrio de builds (daño)', () => {
   /**
    * Daño causado en 90 s por un arma sola, con un personaje casi inmortal que se mueve en círculo, a partir del minuto 10
-   * y con enemigos 60 veces más resistentes (nivel enorme): así nadie limpia la pantalla y el daño mide la potencia real del arma.
+   * y con enemigos ~50 veces más resistentes (dureza fija, independiente de la curva de niveles): así nadie limpia la pantalla y el daño mide la potencia real del arma.
    * (En una partida normal el daño total queda limitado por los enemigos que aparecen, y no distingue armas fuertes de muy fuertes.)
    */
   function swarmDamage(id: string): number {
-    const w = createWorld({ ...config(id, { ...BASE_STATS, maxHp: 1e6 }, 21), level: 20000 });
+    const w = createWorld({ ...config(id, { ...BASE_STATS, maxHp: 1e6 }, 21), level: 1, difficultyScale: SWARM_HARDNESS / levelHp(1) });
     const def = WEAPON_BY_ID.get(id)!;
     const ws = w.player.weapons[0];
     if (!def.evolvedFrom) {
@@ -333,14 +337,16 @@ describe('equilibrio de builds (daño)', () => {
     return ws.dealt;
   }
 
-  it('cada evolución hace entre 1,6 y 2,7 veces el daño de su arma base al nivel máximo, y ninguna pasa de 2,5 veces la mejor base', () => {
+  // Margen 1,55–2,8 (antes 1,6–2,7): desde la Fase 8 el enjambre incluye veteranos más resistentes y las armas de
+  // golpes grandes (meteoritos) o muy repartidos (Constelación) se separan ~0,04 más de su base.
+  it('cada evolución hace entre 1,55 y 2,8 veces el daño de su arma base al nivel máximo, y ninguna pasa de 2,5 veces la mejor base', () => {
     const base = new Map(WEAPONS.map((x) => [x.id, swarmDamage(x.id)]));
     const best = Math.max(...base.values());
     const wrong: string[] = [];
     for (const evo of EVOLUTIONS) {
       const evolved = swarmDamage(evo.def.id);
       const ratio = evolved / base.get(evo.weapon)!;
-      if (ratio < 1.6 || ratio > 2.7 || evolved > best * 2.5) wrong.push(`${evo.def.name} (${evo.weapon}): ×${ratio.toFixed(2)}`);
+      if (ratio < 1.55 || ratio > 2.8 || evolved > best * 2.5) wrong.push(`${evo.def.name} (${evo.weapon}): ×${ratio.toFixed(2)}`);
     }
     expect(wrong).toEqual([]);
     for (const id of ['ricochet', 'drone', 'trail']) expect(base.get(id)!, id).toBeLessThanOrEqual(best * 2.5);
@@ -355,7 +361,7 @@ describe('equilibrio de builds (daño)', () => {
         w.player.weapons[0].level = 7;
         w.player.weapons[0].stats = weaponStatsAt(def, 7);
       }
-      botPlay(w, 300);
+      botPlay(w, 300, undefined, firstPick);
       return w.player.weapons.find((x) => x.id === id)?.dealt ?? 0;
     };
     const best = Math.max(...WEAPONS.map((x) => dealt(x.id)));

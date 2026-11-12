@@ -478,3 +478,27 @@
   font-family: var(--hb-pixel-font);
   color: var(--hb-gold);
 }
+
+/* Arcanos y aspectos (Fase 10). */
+.sectionText {
+  margin: 0;
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+/* Vista previa del aspecto: el tinte se multiplica sobre la silueta del personaje, como en la partida. */
+.skin {
+  position: relative;
+  display: inline-block;
+  line-height: 0;
+}
+.skin::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--skin);
+  mix-blend-mode: multiply;
+  -webkit-mask: var(--shape) center bottom / contain no-repeat;
+  mask: var(--shape) center bottom / contain no-repeat;
+  pointer-events: none;
+}

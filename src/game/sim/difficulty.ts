@@ -14,14 +14,14 @@ import type { RunConfig } from './types';
  */
 export const DIFFICULTY = {
   /** Dureza del nivel L: base·(1 + L/scale)^exp. */
-  base: 0.48,
-  scale: 18,
-  exp: 0.67,
+  base: 0.716,
+  scale: 47.2,
+  exp: 0.84,
   /** Densidad de aparición: crece con la dureza hasta un techo (el límite real es el rendimiento). */
   densityA: 0.004,
   densityMax: 1.6,
   /** Oro: los niveles altos pagan más, para que avanzar siempre compense. */
-  goldA: 0.023,
+  goldA: 0.013,
   goldExp: 0.8,
 };
 
@@ -49,8 +49,8 @@ const scaleOf = (config: RunConfig) => (config.difficultyScale ?? 1) * (config.m
 export const runHp = (config: RunConfig) => levelHp(config.level) * scaleOf(config);
 export const runDamage = (config: RunConfig) => damageFor(runHp(config));
 export const runDensity = (config: RunConfig) => densityFor(runHp(config));
-export const runGold = (config: Pick<RunConfig, 'level' | 'mode'>) =>
-  levelGold(config.level) * (config.mode === 'mirror' ? MIRROR_GOLD : 1);
+export const runGold = (config: Pick<RunConfig, 'level' | 'mode' | 'goldScale'>) =>
+  levelGold(config.level) * (config.mode === 'mirror' ? MIRROR_GOLD : 1) * (config.goldScale ?? 1);
 
 /**
  * Bonificación de oro por supervivencia al acabar la partida (ANALISIS_ECONOMIA.md §10–11). Solo existe en niveles
@@ -59,8 +59,8 @@ export const runGold = (config: Pick<RunConfig, 'level' | 'mode'>) =>
  */
 export const SURVIVAL_BONUS = { perMinute: 5, fromMinute: 10, exp: 1.5 };
 
-export function survivalBonus(config: Pick<RunConfig, 'level' | 'mode'>, seconds: number, greed: number): number {
+export function survivalBonus(config: Pick<RunConfig, 'level' | 'mode' | 'goldScale'>, seconds: number, greed: number): number {
   const minutes = Math.max(0, seconds / 60 - SURVIVAL_BONUS.fromMinute);
-  const mode = config.mode === 'mirror' ? MIRROR_GOLD : 1;
+  const mode = (config.mode === 'mirror' ? MIRROR_GOLD : 1) * (config.goldScale ?? 1);
   return Math.floor((levelGold(config.level) - 1) * SURVIVAL_BONUS.perMinute * Math.pow(minutes, SURVIVAL_BONUS.exp) * greed * mode);
 }

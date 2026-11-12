@@ -470,12 +470,14 @@ export class Renderer {
       // Sombras y cabezas son copias pequeñas y oscuras de su jefe.
       const copy = e.def.id === 'clone' || e.def.id === 'head';
       // La Muerte se dibuja a ~48 px de alto, sea cual sea su sprite.
-      const size = e.def.ai === 'reaper' ? 48 / s.texture.height : e.elite ? 1.5 : copy ? 0.6 : 1;
+      const size = e.def.ai === 'reaper' ? 48 / s.texture.height : e.elite ? 1.5 : e.champion ? 1.2 : copy ? 0.6 : 1;
       // Rebote al andar (aplastar y estirar) y orientación hacia el jugador.
       const bounce = 1 + Math.sin(this.clock * 9 + e.uid) * 0.07;
       s.scale.set((p.x < e.x ? -size : size) * (2 - bounce), size * bounce);
       s.position.set(e.x, e.y);
       if (e.elite && e.flash <= 0) s.tint = 0xffe08a;
+      // Veteranos: más grandes y rojizos.
+      else if (e.champion && e.flash <= 0) s.tint = 0xff9c8a;
       if (copy && e.flash <= 0) {
         s.tint = e.def.id === 'clone' ? 0x6a5a9a : 0x9adf9a;
         s.alpha = 0.85;
@@ -508,9 +510,19 @@ export class Renderer {
     this.actors.begin();
     // Las partidas guardadas antes de existir los demás personajes no traen sprite: usan el del héroe base.
     const sprite = w.config.sprite ?? 'hero';
+    const skin = w.config.skin;
+    if (skin?.aura !== undefined && dying === null) {
+      // Aura del aspecto: un anillo que late bajo los pies.
+      const aura = this.actors.next(this.tex('ring'));
+      aura.position.set(p.x, p.y + 6);
+      aura.scale.set(0.42 + Math.sin(this.clock * 3) * 0.03, 0.17);
+      aura.tint = skin.aura;
+      aura.alpha = 0.8;
+    }
     const hero = this.actors.next(this.tex(`${sprite}_${p.moving && Math.floor(this.clock * 8) % 2 === 1 ? 1 : 0}`));
     hero.position.set(p.x, p.y - 2);
     hero.scale.x = p.dirX < 0 ? -1 : 1;
+    if (skin) hero.tint = skin.tint;
     // Al recibir daño destella en rojo, sin volverse transparente: el personaje se ve siempre.
     if (p.hurtTimer > 0 && dying === null && Math.floor(this.clock * 20) % 2 === 0) hero.tint = 0xff7a7a;
     if (dying !== null) {

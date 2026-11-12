@@ -24,6 +24,7 @@ const run = (n: number): RunRecord => ({
   level: n,
   mode: 'normal',
   character: 'wanderer',
+  arcana: null,
   stage: 'withered_woods',
   startedAt: `${day(n)}T18:00:00.000Z`,
   result: null,

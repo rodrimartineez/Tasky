@@ -23,7 +23,7 @@ const CURVES: Record<string, number[]> = {
   C: [21, 120, 400, 1000],
   D: [21, 63, 189, 567],
 };
-const frontier = (points: number) => 0.557 * Math.pow(1 + points / 385, 0.535);
+const frontier = (points: number) => 0.842 * Math.pow(1 + points / 1277, 0.633);
 /** Nivel de partida más alto que se puede superar con P puntos en combate (aproximado). */
 function reachable(points: number): number {
   const F = frontier(points);

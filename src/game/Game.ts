@@ -2,7 +2,7 @@ import { Input } from './input/input';
 import { Renderer } from './render/renderer';
 import type { RunConfig, RunResult, UpgradeChoice, World } from './sim/types';
 import { GameAudio } from './audio/listener';
-import { inWave } from './sim/core';
+import { inWave, timeHpScale } from './sim/core';
 import { banishChoice, evolutionReady, rerollChoices } from './sim/upgrades';
 import { chooseUpgrade, createWorld, purgeItems, runResult, step } from './sim/world';
 
@@ -31,6 +31,8 @@ export interface Hud {
   reaper: boolean;
   /** Oleada en curso. */
   wave: boolean;
+  /** Amenaza: cuánto ha subido la vida de los enemigos desde el minuto 0 (escalada de la partida). */
+  threat: number;
   /** Multiplicador de velocidad de la partida. */
   speed: number;
   /** Repeticiones y descartes que quedan en la partida. */
@@ -198,6 +200,7 @@ export class Game {
       cycleBoss: cycleBossHud(w),
       reaper: !!w.completed,
       wave: inWave(w) && !w.completed,
+      threat: timeHpScale(w),
       speed: this.speed,
       rerolls: p.rerolls ?? 0,
       banishes: p.banishes ?? 0,

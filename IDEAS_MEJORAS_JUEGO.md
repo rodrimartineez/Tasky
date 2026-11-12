@@ -70,12 +70,17 @@ conviene dibujar una sola vez sobre un contenido ya cerrado.
 | **6 — PWA y rendimiento** ✔️ (pendiente de tu validación) | Precarga sin conexión, rendimiento en móvil, calidad automática de efectos | — | 5, 5c, 5d, 5e, 7 | Alta |
 | **7 — Rediseño visual y artístico** (en curso, antes que la 6) | Todo el arte: personajes, enemigos, jefes, armas y sus efectos, proyectiles, pasivas, mejoras, recogidas y mapas; galería de sprites | A1, A2, A3, C3 (ampliadas) | 5e | Alta (pedida por el usuario) |
 | **9 — Sonido** ✔️ (pendiente de tu validación) | Efectos y música originales (incluido el sonido de abrir cofres) | A4 | 7 | Media |
-| **8 — Validación global** | Estudio de equilibrio completo, prueba en iPhone, regresión de Proyectos | — | 5–7, 9 | Hito: juego completo |
-| **10 — Largo plazo** | Logros, estadísticas, usos del oro, arcanos | C2, E2, D1, B3 | 8 (D1 antes de ~1 año de uso) | Media-baja |
+| **8 — Validación global** ✔️ (pendiente de tu validación; iPhone real pendiente) | Escalada dentro de la partida, bot realista, estudio de equilibrio completo, regresión de Proyectos | — | 5–7, 9 | Hito: juego completo |
+| **10 — Largo plazo** ✔️ (pendiente de tu validación) | Logros, estadísticas, arcanos y aspectos (usos del oro) | C2, E2, D1 (parte), B3 | 8 (D1 antes de ~1 año de uso) | Media-baja |
 
 **Cambio de orden pedido por el usuario el 12/11/2026:** después de la 6 va la **9 (Sonido)**, luego la **8
 (Validación global)** y por último la **10 (Largo plazo)**. Así la validación final, con iPhone real, se hace ya con
 el sonido incluido.
+
+**Ajuste pedido por el usuario el 12/11/2026, antes de la 8:** escalada progresiva de la dificultad dentro de cada
+nivel (los enemigos más duros minuto a minuto, más presión y enemigos más exigentes, cada nivel desde una base más
+alta), para que quedarse quieto con varias evoluciones no baste para llegar al minuto 30. Después, la 8 y la 10 del
+tirón, sin parar entre ellas. Hecho dentro de la Fase 8 (detalle abajo).
 
 Por qué este orden:
 
@@ -285,13 +290,34 @@ cerrado tras la 5c, así que el arte se dibuja una sola vez.
 - **Riesgo:** el estilo es subjetivo. Por eso se valida en 7.1 y tras el primer escenario de 7.4, antes de rehacer
   el resto.
 
-### Fase 8 — Validación global (hito)
+### Fase 8 — Validación global (hito) ✔️ (pendiente de tu validación)
 - Estudio completo de 3 años con todos los perfiles y la tabla del §1 actualizada: frontera, progresión y jefes
   (`ANALISIS_ECONOMIA.md` §11). Calibrar el bot con partidas reales del usuario (¿un jugador real supera más o menos
   que el bot en la misma dureza?) y reajustar la curva si hace falta.
 - Prueba en un iPhone real (PWA instalada), en el escritorio (Tauri) y en el navegador. Sincronización entre dos
   dispositivos (compras, partidas y escudos).
 - Regresión completa del modo Proyectos y del servidor MCP.
+- **Hecho (12/11/2026)** — detalle y cifras en `ANALISIS_ECONOMIA.md` §14:
+  - **Lo que había:** la vida de los enemigos ya subía con los minutos (×3,6 en el minuto 10, ×9 en el 20 y ×17 en
+    el 30, encima de la dureza del nivel), pero el daño solo ×2,65 y no había enemigos reforzados. Y, sobre todo, la
+    curva de niveles se había medido con un bot que elegía siempre la primera mejora: un jugador que busca
+    evoluciones es bastante más fuerte, así que los niveles quedaban fáciles.
+  - **Escalada dentro de la partida (pedida):** vida igual que antes (×17 al minuto 30), daño hasta ×4, y
+    **veteranos**: desde el minuto 5, cada vez más apariciones salen reforzadas (×3 de vida, +30 % de daño, más
+    grandes y rojizas; 1 de cada 6 en el minuto 30). Nuevo indicador **«Amenaza ×N»** en el HUD. Cada nivel sigue
+    empezando desde su base, más alta, y vuelve a escalar en sus 30 minutos.
+  - **Bot realista:** elige las mejoras para completar evoluciones (como una persona). Con él se repitió la frontera.
+  - **Curva de niveles nueva:** `0,716·(1 + L/47,2)^0,84` (antes `0,48·(1 + L/18)^0,67`): nivel 1 +46 %, nivel 10
+    +30 %, nivel 30 +17 %, nivel 100 +10 %. Medida ya con Constancia comprada como una mejora más. El constante sigue
+    subiendo **1,0 nivel al día** con 2 intentos; el oro baja (`goldA` 0,023 → 0,013) para mantener el calendario de
+    desbloqueos.
+  - **Comprobado con el simulador:** quedarse quieto desde el minuto 15, 20 o 25 muere en menos de un minuto en 35
+    de 36 partidas en el nivel que le toca al jugador; moviéndose, 7 de 8 en los niveles 10 y 30. Jefes: 34 % (objetivo ~1/3). Ritmo:
+    nivel ~62 al minuto 30.
+  - **Regresión:** todos los tests (215), `tsc`, `eslint` y `npm run build`; Proyectos abre y funciona en el navegador.
+  - **No hecho (no se puede desde aquí):** iPhone real, Tauri en el escritorio, sincronización entre dos
+    dispositivos y servidor MCP en uso real. Tampoco hay partidas reales tuyas medidas: si te sigue pareciendo fácil
+    o difícil, se reajusta `DIFFICULTY` con tus datos.
 
 ### Fase 9 — Sonido ✔️ (pendiente de tu validación)
 - **A4:** efectos y música originales por escenario, volumen y silencio. En el móvil, silencio por defecto.
@@ -310,13 +336,27 @@ cerrado tras la 5c, así que el arte se dibuja una sola vez.
   - Comprobado en el navegador: ~19 notas por segundo en plena partida, ninguna en silencio, sin errores. **Falta
     oírlo en un iPhone real** (Fase 8).
 
-### Fase 10 — Largo plazo
+### Fase 10 — Largo plazo ✔️ (pendiente de tu validación)
 | Id | Qué se hace | Regla de diseño |
 |---|---|---|
 | C2 | Logros (de juego y de hábitos, p. ej. «100 días de racha») | Recompensas cosméticas o de contenido, nunca puntos ni poder permanente |
 | E2 | Estadísticas y récords por personaje y escenario | Los datos ya están en el ledger (`details` de cada resultado) |
 | D1 | Usos del oro cuando todo esté desbloqueado: aspectos, decoración del campamento, escenarios de desafío | El oro nunca compra poder permanente |
 | B3 | Arcanos: modificadores elegidos al empezar la partida (más riesgo y más oro, comportamientos nuevos) | Se desbloquean con oro; afectan solo a esa partida |
+
+- **Hecho (12/11/2026):**
+  - **C2 + E2:** nueva pestaña **Logros** (`RecordsPage.tsx`, `core/records.ts`): 22 logros de hábitos y de juego con
+    su progreso, y estadísticas (totales, mejor racha, por personaje y por escenario). Todo se deduce del ledger: no
+    se guarda nada nuevo y vale para los datos que ya existen. Tres logros regalan un aspecto; ninguno da puntos,
+    intentos ni poder.
+  - **B3:** 5 arcanos en el campamento (20.000–300.000 de oro): Luna de sangre, Cristal, Eco, Vacío y Tempestad. Uno
+    por partida, queda registrado en ella. Medido con el bot: con cualquiera, la dureza máxima superable baja (de
+    1,41 a 0,72–1,18), así que nunca ayudan a subir de nivel; pagan ×1,4–×1,7 de oro.
+  - **D1 (parte):** 7 aspectos para el personaje (tinte y aura): 4 con oro (15.000–120.000) y 3 por logros. Entran en
+    el «Próximo objetivo» cuando ya está todo lo demás comprado.
+  - **No hecho de D1:** decoración del campamento y escenarios de desafío. Los arcanos cubren el papel de los
+    desafíos; la decoración queda como 🟡 si la quieres.
+  - El arcano y el aspecto elegidos se recuerdan en el dispositivo (no cambian la progresión).
 
 ---
 
@@ -338,24 +378,24 @@ cerrado tras la 5c, así que el arte se dibuja una sola vez.
   partida, a compensar con la dificultad.
 - **B2. Hasta ~16 armas y ~14 pasivas** ✔️ parte en la Fase 5 (13 armas, 12 pasivas), resto ✅ en la 5c. Aportan builds variadas.
   Equilibrio: más opciones diluyen la suerte (se compensa con C1).
-- **B3. Arcanos** ✅ (Fase 10). Variedad a largo plazo y sumidero de oro. Afectan solo a la partida.
+- **B3. Arcanos** ✔️ (Fase 10, pendiente de tu validación). Variedad a largo plazo y sumidero de oro. Afectan solo a la partida.
 
 ### C. Progresión e incremental
 - **C1. Revivir, Repetir y Descartar** ✅ (Fase 5c). Mejoras permanentes con puntos de hábitos. Revivir con
   máximo pequeño.
-- **C2. Logros** ✅ (Fase 10). Objetivos a medio plazo. Recompensas sin poder permanente.
+- **C2. Logros** ✔️ (Fase 10, pendiente de tu validación). Objetivos a medio plazo. Recompensas sin poder permanente.
 - **C3. Tienda incremental** ✅ (Fase 7). Hace satisfactorio gastar puntos.
 - **C4. Ayuda de vuelta tras inactividad** ✔️ (Fase 5b). Se activa tras 14 días sin cumplir ningún hábito; es gradual y temporal, solo dentro de la partida y nunca en puntos.
 
 ### D. Economía
-- **D1. Usos del oro** ✅ (Fase 10, antes de ~1 año de uso). El oro sigue sirviendo, sin dar poder permanente.
+- **D1. Usos del oro** ✔️ en parte (Fase 10: arcanos y aspectos; falta la decoración del campamento). El oro sigue sirviendo, sin dar poder permanente.
 - **D2. Racha de hábitos semanales** ✔️ (Fase 5b). +1 punto cada 4 semanas seguidas, con tope.
 - **D3. Escudo de racha** ✔️ (Fase 5b; ajustado en la 5c). Uno cada 60 días de racha; protege un día fallado y ese día no cuenta para el siguiente.
 - **D4. Límite contra hábitos inflados** ✔️ (Fase 5b). Los diarios a partir del 8.º dan la mitad.
 
 ### E. Calidad de vida
 - **E1. Velocidad ×1,5 y ×2** ✔️ (Fase 5d, hito del nivel 20). Partidas más ágiles sin cambiar la simulación.
-- **E2. Estadísticas y récords** ✅ (Fase 10). Seguimiento del progreso a largo plazo.
+- **E2. Estadísticas y récords** ✔️ (Fase 10, pendiente de tu validación). Seguimiento del progreso a largo plazo.
 
 ### M. Motivación
 - **M1. Puente hábito → juego visible** ✔️ (Fase 5b, aprobada el 11/11/2026). Cada día muestra lo que dará cumplir los hábitos (puntos según racha,

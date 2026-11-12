@@ -86,8 +86,28 @@ export function nearestEnemy(w: World, x: number, y: number, range: number, skip
 // ── Dificultad ──────────────────────────────────────────────────────────────────────────────────
 // Depende del minuto de partida y del nivel (sim/difficulty.ts), nunca de las mejoras del jugador.
 const minutes = (w: World) => w.time / 60;
-export const hpScale = (w: World) => (1 + minutes(w) * 0.12 + minutes(w) * minutes(w) * 0.014) * runHp(w.config);
-export const damageScale = (w: World) => (1 + minutes(w) * 0.055) * runDamage(w.config);
+/**
+ * Escalada dentro de cada partida (se multiplica por la dureza del nivel, así cada nivel empieza más arriba y vuelve
+ * a subir durante sus 30 minutos). Con los valores actuales, respecto al minuto 0:
+ * - Vida: ×3,6 en el minuto 10, ×9 en el 20 y ×17 en el 30.
+ * - Daño: ×1,7 / ×2,7 / ×4 (antes de la Fase 8 llegaba solo a ×2,65: quedarse quieto con una build fuerte salía gratis).
+ * - Veteranos: desde el minuto 5, una parte creciente de las apariciones normales sale reforzada (hasta 1 de cada 6
+ *   en el minuto 30), con más vida y daño.
+ */
+export const RAMP = {
+  hp: [0.12, 0.014],
+  damage: [0.055, 0.0015],
+  /** Veteranos: minuto en que empiezan, fracción en el 30 y refuerzo (vida, daño, tamaño, experiencia). */
+  champion: { from: 5, share: 1 / 6, hp: 3, damage: 1.3, radius: 1.2, xp: 3 },
+};
+const ramp = ([a, b]: number[], m: number) => 1 + a * m + b * m * m;
+/** Multiplicador de vida por los minutos de partida (sin el del nivel). */
+export const timeHpScale = (w: World) => ramp(RAMP.hp, minutes(w));
+export const hpScale = (w: World) => timeHpScale(w) * runHp(w.config);
+export const damageScale = (w: World) => ramp(RAMP.damage, minutes(w)) * runDamage(w.config);
+/** Probabilidad de que una aparición normal sea un veterano. */
+export const championChance = (w: World) =>
+  Math.max(0, Math.min(1, (minutes(w) - RAMP.champion.from) / (30 - RAMP.champion.from))) * RAMP.champion.share;
 /** Los enemigos aceleran poco a poco: al final ya no basta con huir. */
 export const speedScale = (w: World) => 1 + minutes(w) * 0.01;
 /** Máximo de enemigos vivos generados por aparición continua e invocaciones. */
@@ -112,8 +132,9 @@ export const waveFactor = (w: World) => {
 // ── Enemigos ────────────────────────────────────────────────────────────────────────────────────
 const SPAWN_RADIUS = 310;
 
-export function spawnEnemy(w: World, def: EnemyDef, x: number, y: number, elite = false): Enemy {
-  const hp = def.hp * hpScale(w) * (elite ? 6 : 1);
+export function spawnEnemy(w: World, def: EnemyDef, x: number, y: number, elite = false, champion = false): Enemy {
+  const c = champion && !elite ? RAMP.champion : null;
+  const hp = def.hp * hpScale(w) * (elite ? 6 : 1) * (c?.hp ?? 1);
   const e: Enemy = {
     uid: w.nextUid++,
     def,
@@ -121,10 +142,11 @@ export function spawnEnemy(w: World, def: EnemyDef, x: number, y: number, elite 
     y,
     hp,
     maxHp: hp,
-    damage: def.damage * damageScale(w) * (elite ? 1.5 : 1),
+    damage: def.damage * damageScale(w) * (elite ? 1.5 : 1) * (c?.damage ?? 1),
     speed: def.speed * speedScale(w),
-    radius: def.radius * (elite ? 1.5 : 1),
+    radius: def.radius * (elite ? 1.5 : c?.radius ?? 1),
     elite,
+    ...(c ? { champion: true } : {}),
     kx: 0,
     ky: 0,
     flash: 0,
@@ -169,7 +191,7 @@ function killEnemy(w: World, e: Enemy) {
   const luck = w.player.stats.luck;
   const boss = e.def.ai === 'boss';
   // En niveles con más densidad salen más enemigos: cada uno da menos experiencia para que el ritmo de subida sea parecido.
-  dropPickup(w, 'xp', e.x, e.y, (e.def.xp * (e.elite ? 10 : 1)) / runDensity(w.config));
+  dropPickup(w, 'xp', e.x, e.y, (e.def.xp * (e.elite ? 10 : e.champion ? RAMP.champion.xp : 1)) / runDensity(w.config));
   if (boss) {
     w.bossAlive = w.enemies.some((o) => !o.dead && o.def.ai === 'boss');
     if (e.def.patterns) w.cycleBoss = 2;

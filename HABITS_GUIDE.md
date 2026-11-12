@@ -243,6 +243,8 @@ constante (§11, `ANALISIS_ECONOMIA.md` §11). Objetivo original de la Fase 1 (c
 | Fase 5b — Motivación: puntos que dará cada hábito hoy (en su tarjeta), resumen «Hoy: +N asegurados · +M si cumples el resto» con la mejora más cercana (en Hábitos y en el campamento), aviso de puntos nuevos al cerrar el día, escudo de racha cada 21 días (también en el historial y el detalle), racha de semanales (+1 cada 4 semanas, máx. 6), mitad de puntos a partir del 8.º diario, ayuda de vuelta gradual y temporal (`core/comeback.ts`) | ✅ 40 tests de `habits/core` (escudo, semanales, límite, lo de hoy, ayuda de vuelta: activación, fuerza, retirada y fin). Navegador con un historial simulado en el perfil de prueba: tarjeta +N, resumen, aviso «+43 puntos», banner de vuelta (+21 % XP, +14 % vida tras 36 días); móvil 375 px. Estudio en `ANALISIS_ECONOMIA.md` §9 |
 | Fase 5c — Builds y economía: 16 evoluciones, armas Rebote/Dron/Estela, pasivas Ojo de águila y Colmillo de sangre, mejoras Segunda vida/Repetir/Descartar (con puntos), 4 personajes legendarios hasta 10 M de oro, bonificación de oro por supervivencia, escudo cada 60 días, modo de pruebas (§10), motor gráfico con alternativas para móvil | ✅ 169 tests (36 de builds, economía con temporadas y modo de pruebas, revivir). WebKit con iPhone 14 (WebGL y canvas) y navegador de escritorio con build sin conexión: campamento de pruebas, partida con legendario, pausa y guardado, sin errores. Pendiente: iPhone real |
 | Cambios previos a la Fase 6: selector del modo de pruebas (herramienta de desarrollo, por dispositivo, §10), apartado Catálogo (armas, pasivas y evoluciones desde `game/content/catalog.ts`), cabecera opaca con separación bajo la zona segura en móvil | ✅ 176 tests (alternar modos sin crear ni perder nada, catálogo frente a las definiciones). WebKit con iPhone 14 y Chromium de escritorio con la CSP de producción: alternar, partida real, partida de prueba, recarga, catálogo (16 + 14 + 16) y cabecera; sin errores. Pendiente: iPhone real |
+| Fase 8 — Escalada dentro de la partida (daño ×4 al minuto 30, veteranos, «Amenaza ×N»), bot que busca evoluciones, curva de niveles y oro recalibrados con Constancia (§17) | ✅ 215 tests, `tsc`, `eslint`, build. Estudios de frontera, progresión, jefes, ritmo y «quedarse quieto» (`ANALISIS_ECONOMIA.md` §14). Navegador: HUD de amenaza, Proyectos sin cambios. **Pendiente:** iPhone real, Tauri, sincronización entre dos dispositivos y MCP en uso real |
+| Fase 10 — Logros (22) y estadísticas en la pestaña «Logros», 5 arcanos y 7 aspectos con oro o logros (§18) | ✅ Tests de logros, estadísticas, precios y arcanos (nunca facilitan, registrados en la partida). Navegador escritorio y móvil 375 px: Logros, campamento (arcano, aspecto, bloqueos, diálogo de logro) y partida con aspecto; sin errores de consola |
 
 Notas de la Fase 3:
 - **Equilibrio provisional** (bot de `sim/bot.ts`, 4 semillas por perfil): sin mejoras 2–12 min; «1 mes» 11–22 min;
@@ -458,3 +460,27 @@ saltos, invocaciones, lluvias y anillos, cada jefe tiene ataques propios avisado
   `SoundControls.tsx`: botón en el HUD y apartado «Sonido» del campamento.
 - iOS: el contexto se desbloquea con el primer toque; si el móvil está en modo silencio, el sistema puede no
   reproducir Web Audio.
+
+## 17. Escalada dentro de la partida y validación global (Fase 8)
+
+- `sim/core.ts` → `RAMP`: vida de los enemigos `1 + 0,12·m + 0,014·m²` (×17 al minuto 30), daño `1 + 0,055·m +
+  0,0015·m²` (×4) y **veteranos** (`championChance`, desde el minuto 5 hasta 1 de cada 6 apariciones normales en el
+  30; ×3 de vida, ×1,3 de daño, ×3 de experiencia). Todo se multiplica por la dureza del nivel (`sim/difficulty.ts`),
+  así cada nivel empieza más arriba y vuelve a escalar.
+- HUD: «Amenaza ×N» = la vida de los enemigos respecto al minuto 0 (`timeHpScale`).
+- `sim/bot.ts`: `botPick` elige como una persona (evoluciones primero); `firstPick` queda para medir armas sin
+  favorecer ninguna.
+- Curva de niveles `DIFFICULTY`: `0,716·(1 + L/47,2)^0,84`, `goldA` 0,013. Estudios en `ANALISIS_ECONOMIA.md` §14; el
+  de progresión cuenta ya la mejora Constancia (`PROG_BOUNTY`, por defecto como una mejora más).
+
+## 18. Largo plazo (Fase 10)
+
+- **Logros y estadísticas:** `core/records.ts` (`recordsOf`, `ACHIEVEMENTS`, `achieved`) y la pestaña «Logros»
+  (`ui/RecordsPage.tsx`). Se deducen del ledger; no hay datos nuevos ni cambios en Supabase.
+- **Arcanos:** `game/content/arcana.ts`. Se desbloquean con oro (`unlock:<temporada>:arcana:<id>`), se eligen en el
+  campamento y `startRun` guarda el elegido en `details.arcana` (y lo rechaza si no está desbloqueado).
+  `buildRunConfig` aplica sus cambios: personaje (`stats`), dureza (`difficultyScale`) y oro (`goldScale`, que usan
+  `runGold` y `survivalBonus`).
+- **Aspectos:** `game/content/skins.ts`. Con oro (`unlock:…:skin:<id>`) o por un logro (no se pueden comprar). Solo
+  visuales: `config.skin` (tinte y aura) lo dibuja el renderizador.
+- La elección de arcano y aspecto se guarda en el dispositivo (`tasky-game-extras`).

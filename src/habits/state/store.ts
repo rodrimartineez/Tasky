@@ -73,7 +73,7 @@ interface HabitsState {
    * Gasta un intento y devuelve el número de intento, el nivel (0 si no se pudo) y la ayuda de vuelta.
    * En el modo de pruebas no gasta nada ni se registra, y se juega el nivel elegido (`testLevel`).
    */
-  startRun(mode: RunMode, testLevel?: number): { attempt: number; level: number; comeback: Comeback | null; test: boolean };
+  startRun(mode: RunMode, testLevel?: number, arcana?: string | null): { attempt: number; level: number; comeback: Comeback | null; test: boolean };
   /** Registra el resultado de una partida real (las de prueba no se registran). */
   finishRun(attempt: number, outcome: RunOutcome): void;
 }
@@ -229,7 +229,7 @@ export const useHabits = create<HabitsState>()((set, get) => {
     },
     unlock: (key) => commit((d) => unlock(d, key, todayIn(d), now(), releaseFor(get().testMode))),
     setLoadout: (character, stage) => commit((d) => setLoadout(d, character, stage, now())),
-    startRun(mode, testLevel = 1) {
+    startRun(mode, testLevel = 1, arcana = null) {
       const release = releaseFor(get().testMode);
       if (release.testMode) return { attempt: 0, level: Math.max(1, Math.floor(testLevel)), comeback: null, test: true };
       let level = 0;
@@ -247,6 +247,7 @@ export const useHabits = create<HabitsState>()((set, get) => {
           now(),
           comeback?.strength ?? 0,
           release,
+          arcana,
         );
         level = started.level;
         attempt = started.attempt;

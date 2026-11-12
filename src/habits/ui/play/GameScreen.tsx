@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Ban, Dices, Pause, Skull } from 'lucide-react';
+import { Ban, Dices, Flame, Pause, Skull } from 'lucide-react';
 import { PASSIVE_BY_ID } from '../../../game/content/passives';
 import { WEAPON_BY_ID } from '../../../game/content/weapons';
 import { Game, SPEEDS, type Hud } from '../../../game/Game';
@@ -17,6 +17,8 @@ import styles from './GameScreen.module.css';
 /** Cada cuánto se guarda la partida para poder reanudarla (también al ocultar la app). */
 const SAVE_MS = 10_000;
 
+/** Amenaza con un decimal hasta ×10 (como «×3,6») y entera después. */
+const threat = (x: number) => x.toLocaleString('es-ES', { maximumFractionDigits: x < 10 ? 1 : 0 });
 const clock = (seconds: number) => {
   const s = Math.floor(seconds);
   return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
@@ -325,6 +327,9 @@ export default function GameScreen({ level, attempt, config, resume, onFinish, o
             </span>
             <span className={styles.timer}>{clock(hud.time)}</span>
             <span className={styles.counters}>
+              <span className={styles.threat} title="Amenaza: cuánto más resistentes son los enemigos que al empezar" aria-label={`Amenaza ×${threat(hud.threat)}`}>
+                <Flame /> ×{threat(hud.threat)}
+              </span>
               <span>
                 <Skull /> {hud.kills}
               </span>

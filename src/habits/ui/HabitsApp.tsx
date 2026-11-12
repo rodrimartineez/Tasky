@@ -10,6 +10,7 @@ import { HabitPage } from './HabitPage';
 import { HabitsHome } from './HabitsHome';
 import { HabitsLayout } from './HabitsLayout';
 import { PlayPage } from './play/PlayPage';
+import { RecordsPage } from './RecordsPage';
 import { RewardsPage } from './RewardsPage';
 import { UpgradesPage } from './UpgradesPage';
 
@@ -38,6 +39,7 @@ export default function HabitsApp() {
         <Route path="play" element={<PlayPage />} />
         <Route path="upgrades" element={<UpgradesPage />} />
         <Route path="rewards" element={<RewardsPage />} />
+        <Route path="records" element={<RecordsPage />} />
         <Route path="catalog" element={<CatalogPage />} />
         {GAME_BUILD.devTools && <Route path="sprites" element={<SpritesPage />} />}
         <Route path="habit/:habitId" element={<HabitPage />} />

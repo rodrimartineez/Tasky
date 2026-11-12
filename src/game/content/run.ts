@@ -1,6 +1,8 @@
 import { BASE_STATS, type RunConfig, type RunMode } from '../sim/types';
+import { ARCANA_BY_ID } from './arcana';
 import { cycleBossFor } from './bosses';
 import { CHARACTER_BY_ID, CHARACTERS } from './characters';
+import { SKIN_BY_ID } from './skins';
 import { STAGE_BY_ID, STAGES } from './stages';
 import { withUpgrades } from './upgrades';
 
@@ -13,13 +15,21 @@ import { withUpgrades } from './upgrades';
  * - `mode`: modalidad (normal, infinita o reflejo). En los niveles de jefe (múltiplos de 7) aparece el jefe de
  *   ciclo, salvo en el modo infinito.
  * - `boost`: ayuda temporal solo para esta partida (fracciones: 0,3 = +30 %), p. ej. la ayuda de vuelta.
+ * - `arcana`: arcano elegido (Fase 10): cambia el personaje, la dureza y el oro de esta partida.
+ * - `skin`: aspecto del personaje (solo visual).
  */
 export function buildRunConfig(
   level: number,
   characterId: string,
   stageId: string,
   upgrades: Record<string, number>,
-  { boost = { xp: 0, hp: 0 }, mode = 'normal', seed = level }: { boost?: { xp: number; hp: number }; mode?: RunMode; seed?: number } = {},
+  {
+    boost = { xp: 0, hp: 0 },
+    mode = 'normal',
+    seed = level,
+    arcana,
+    skin,
+  }: { boost?: { xp: number; hp: number }; mode?: RunMode; seed?: number; arcana?: string | null; skin?: string | null } = {},
 ): RunConfig {
   const character = CHARACTER_BY_ID.get(characterId) ?? CHARACTERS[0];
   const stage = STAGE_BY_ID.get(stageId) ?? STAGES[0];
@@ -27,6 +37,9 @@ export function buildRunConfig(
   character.apply(stats);
   stats.growth *= 1 + boost.xp;
   stats.maxHp *= 1 + boost.hp;
+  const arcanaDef = arcana ? ARCANA_BY_ID.get(arcana) : undefined;
+  arcanaDef?.apply?.(stats);
+  const skinDef = skin ? SKIN_BY_ID.get(skin) : undefined;
   const cycleBoss = mode === 'infinite' ? null : cycleBossFor(level);
   return {
     seed: (Math.imul(seed, 2654435761) ^ Math.imul(level, 40503) ^ 0x5bd1e995) | 0,
@@ -38,5 +51,9 @@ export function buildRunConfig(
     sprite: character.sprite,
     mode,
     ...(cycleBoss ? { cycleBoss } : {}),
+    ...(arcanaDef
+      ? { arcana: arcanaDef.id, goldScale: arcanaDef.gold, ...(arcanaDef.hardness ? { difficultyScale: arcanaDef.hardness } : {}) }
+      : {}),
+    ...(skinDef ? { skin: { tint: skinDef.tint, ...(skinDef.aura ? { aura: skinDef.aura } : {}) } } : {}),
   };
 }

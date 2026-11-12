@@ -20,7 +20,7 @@ const OUT = env.PACE_OUT;
 const DAYS = (env.PACE_DAYS ?? '30,90,365').split(',').map(Number);
 const SEEDS = Number(env.PACE_SEEDS ?? 3);
 const SHARE = Number(env.PACE_SHARE ?? 0.8);
-const frontier = (points: number) => 0.557 * Math.pow(1 + points / 385, 0.535);
+const frontier = (points: number) => 0.842 * Math.pow(1 + points / 1277, 0.633);
 
 describe.skipIf(!OUT)('ritmo de partida', () => {
   it('nivel del personaje al minuto 30', async () => {

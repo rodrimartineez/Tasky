@@ -216,10 +216,16 @@ export interface RunConfig {
   sprite: string;
   /** Modalidad (por defecto, normal). */
   mode?: RunMode;
-  /** Multiplicador de dificultad sobre la del nivel (modo reflejo y estudios de equilibrio). Por defecto 1. */
+  /** Multiplicador de dificultad sobre la del nivel (arcanos y estudios de equilibrio; el reflejo va aparte). Por defecto 1. */
   difficultyScale?: number;
   /** Jefe de ciclo de esta partida (niveles múltiplos de 7) y vuelta de la rotación (0 = primera). */
   cycleBoss?: { id: string; round: number };
+  /** Arcano elegido (Fase 10): su id, para mostrarlo. Sus efectos ya van en `stats`, `difficultyScale` y `goldScale`. */
+  arcana?: string;
+  /** Multiplicador del oro de la partida (arcanos). Por defecto 1. */
+  goldScale?: number;
+  /** Aspecto del personaje (solo visual): tinte y aura. */
+  skin?: { tint: number; aura?: number };
 }
 
 export interface WeaponState {
@@ -266,6 +272,8 @@ export interface Enemy {
   speed: number;
   radius: number;
   elite: boolean;
+  /** Veterano (Fase 8): aparición normal reforzada, cada vez más frecuente con los minutos. */
+  champion?: boolean;
   /** Retroceso pendiente. */
   kx: number;
   ky: number;

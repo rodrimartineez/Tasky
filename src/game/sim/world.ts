@@ -1,7 +1,7 @@
 import { CYCLE_BOSS_AT } from '../content/bosses';
 import { ENEMY_BY_ID } from '../content/enemies';
 import { EGG_HATCH, reaperStrike, spawnCycleBoss, spawnReaper, updateCycleBoss, updateHazards } from './bosses';
-import { emit, hurtPlayer, maxEnemies, near, queryNear, rand, rebuildGrid, ringPoint, spawnEnemy, WAVES, waveFactor } from './core';
+import { championChance, emit, hurtPlayer, maxEnemies, near, queryNear, rand, rebuildGrid, ringPoint, spawnEnemy, WAVES, waveFactor } from './core';
 import { runDensity, survivalBonus } from './difficulty';
 import { MAX_WEAPONS, RUN_SECONDS, type Enemy, type RunConfig, type RunResult, type World } from './types';
 import { applyChoice, newWeapon, openChest, recomputeStats, rollChoices } from './upgrades';
@@ -101,7 +101,8 @@ function updateSpawns(w: World, dt: number) {
       w.spawnAcc[i] -= 1;
       if (!def || w.enemies.length >= cap) continue; // con el mapa lleno la aparición se pierde
       const at = ringPoint(w);
-      spawnEnemy(w, def, at.x, at.y);
+      const chance = championChance(w);
+      spawnEnemy(w, def, at.x, at.y, false, chance > 0 && rand(w) < chance);
     }
   }
 
