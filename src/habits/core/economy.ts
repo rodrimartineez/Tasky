@@ -7,7 +7,7 @@ import { UPGRADE_BY_ID } from '../../game/content/upgrades';
 import type { RunMode } from '../../game/sim/types';
 import { active, amountIn, amountsOf, isMet, rewardId, targetFor } from './habits';
 import type { HabitsData, LedgerEntry } from './model';
-import { periodStart } from './periods';
+import { dateInZone, periodStart } from './periods';
 import { GAME_RELEASE, type GameRelease } from './release';
 
 /**
@@ -83,7 +83,9 @@ export const MILESTONES = { infinite: 30, mirror: 60 };
 
 /**
  * Intentos ganados con los hábitos desde `firstDay`:
- * - Un intento por cada periodo cumplido ya cerrado (su recompensa está en el ledger): diario +1, semanal +3.
+ * - Un intento por cada porción añadida a un hábito semanal de construir.
+ * - Un intento por cada periodo diario cumplido ya cerrado (su recompensa está en el ledger).
+ *   Los semanales de reducir también se cuentan al cerrarse, si se cumplieron.
  * - Y, al momento, uno por cada hábito diario de construir cumplido hoy. Los de reducir se confirman al cerrar el
  *   día (hasta entonces aún se pueden pasar del límite).
  * Al cerrarse el día, el de hoy pasa a contarse por su recompensa (mismo hábito y día): nunca se cuenta dos veces.
@@ -96,7 +98,14 @@ function attemptsEarned(data: HabitsData, today: LocalDate, firstDay: LocalDate 
     if (e.kind !== 'habit_reward' || !e.period || e.deletedAt) continue;
     rewarded.add(e.id);
     if (periodStart(e.period) < firstDay) continue;
-    total += e.period.startsWith('W') ? ATTEMPTS.weekly : ATTEMPTS.daily;
+    if (!e.period.startsWith('W')) total += ATTEMPTS.daily;
+    else if (e.habitId && data.habits.find((h) => h.id === e.habitId)?.kind === 'reduce') total += ATTEMPTS.daily;
+  }
+  for (const log of data.logs) {
+    if (log.deletedAt || !data.profile || dateInZone(new Date(log.createdAt), data.profile.timeZone) < firstDay) continue;
+    const habit = data.habits.find((h) => h.id === log.habitId);
+    if (!habit || habit.period !== 'weekly') continue;
+    if (habit.kind === 'build' && log.delta > 0) total += 1;
   }
   if (today >= firstDay) {
     const amounts = amountsOf(data);

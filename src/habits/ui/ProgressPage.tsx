@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { ChevronRight, Trophy } from 'lucide-react';
 import { ATTEMPTS } from '../core/economy';
 import type { PeriodResult } from '../core/habits';
-import { addDays, mondayOf, periodEnd, periodOfKey, periodStart } from '../core/periods';
+import { addDays, dateInZone, mondayOf, periodEnd, periodOfKey, periodStart } from '../core/periods';
 import { useEconomy, useHabits } from '../state/store';
 import { FlameIcon, ShieldIcon, SwordIcon } from './icons';
 import { GemIcon } from './PointsBadge';
@@ -67,7 +67,8 @@ function Summary() {
     for (const e of data.ledger) {
       if (e.kind !== 'habit_reward' || !e.period || e.deletedAt) continue;
       const end = periodEnd(e.period);
-      const attempts = periodOfKey(e.period) === 'weekly' ? ATTEMPTS.weekly : ATTEMPTS.daily;
+      const habit = e.habitId ? data.habits.find((h) => h.id === e.habitId) : undefined;
+      const attempts = periodOfKey(e.period) === 'weekly' ? (habit?.kind === 'reduce' ? ATTEMPTS.daily : 0) : ATTEMPTS.daily;
       if (end >= weekFrom) {
         t.weekPoints += e.points;
         t.weekAttempts += attempts;
@@ -76,6 +77,15 @@ function Summary() {
         t.monthPoints += e.points;
         t.monthAttempts += attempts;
       }
+    }
+    for (const log of data.logs) {
+      if (log.deletedAt) continue;
+      const habit = data.habits.find((h) => h.id === log.habitId);
+      if (!habit || habit.period !== 'weekly') continue;
+      if (habit.kind !== 'build' || log.delta <= 0) continue;
+      const day = dateInZone(new Date(log.createdAt), data.profile?.timeZone ?? 'UTC');
+      if (day >= weekFrom) t.weekAttempts += 1;
+      if (day >= monthFrom) t.monthAttempts += 1;
     }
     return t;
   }, [data, today]);

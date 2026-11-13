@@ -77,8 +77,34 @@ describe('intentos', () => {
     expect(economyOf(next, '2026-11-11', PROD).available).toBe(2);
   });
 
-  it('cada hábito semanal cumplido da tres intentos al cerrar su semana', () => {
-    expect(economyOf(attempts(base(), 1, 'W2026-11-16'), START, PROD).available).toBe(3);
+  it('cada porción añadida a un hábito semanal da un intento al momento', () => {
+    let d = createHabit(base(), { name: 'Ejercicio', kind: 'build', period: 'weekly', unit: 'veces', step: 1, target: 3 }, 'exercise', T(0), START);
+    expect(economyOf(d, START, PROD).available).toBe(0);
+    d = logHabit(d, 'exercise', 1, 'l1', T(1), START);
+    expect(economyOf(d, START, PROD).available).toBe(1);
+    d = logHabit(d, 'exercise', 1, 'l2', T(2), START);
+    expect(economyOf(d, START, PROD).available).toBe(2);
+  });
+
+  it('el cierre semanal conserva los puntos, pero no concede intentos adicionales', () => {
+    let d = createHabit(base(), { name: 'Ejercicio', kind: 'build', period: 'weekly', unit: 'veces', step: 1, target: 1 }, 'exercise', T(0), START);
+    d = logHabit(d, 'exercise', 1, 'l1', T(1), START);
+    const next = evaluateRewards(d, '2026-11-16', T(2));
+    const eco = economyOf(next, '2026-11-16', PROD);
+    expect(eco.available).toBe(1);
+    expect(eco.points).toBe(3);
+  });
+
+  it('un hábito semanal de reducir da el intento al cerrar la semana si se cumple', () => {
+    const weeklyStart = '2026-11-09';
+    let d = ensureProfile({ ...base(), profile: null }, 'UTC', weeklyStart);
+    d = createHabit(d, { name: 'Azúcar', kind: 'reduce', period: 'weekly', unit: 'veces', step: 1, target: 1 }, 'sugar', T(0), weeklyStart);
+    d = logHabit(d, 'sugar', 1, 'l1', T(1), weeklyStart);
+    expect(economyOf(d, weeklyStart, PROD).available).toBe(0);
+    const next = evaluateRewards(d, '2026-11-16', T(2));
+    const eco = economyOf(next, '2026-11-16', PROD);
+    expect(eco.available).toBe(1);
+    expect(eco.points).toBe(3);
   });
 
   it('los intentos no caducan: se acumulan y cada partida gasta uno, gane o pierda', () => {
