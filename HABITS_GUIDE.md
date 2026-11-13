@@ -308,15 +308,16 @@ export const GAME_BUILD = { devTools: false, season: 1, startsOn: 'AAAA-MM-DD' /
 Reglas pedidas por el usuario el 11/11/2026. Todas las fases posteriores deben respetarlas.
 
 **Intentos (se ganan con los hábitos y no caducan).**
-- Cada hábito diario cumplido da **+1 intento** (y sus puntos de siempre). Los de construir lo dan al momento, al
-  registrar el cumplimiento; los de reducir, al cerrar el día (hasta entonces aún se puede pasar del límite).
-- Cada porción añadida a un hábito semanal de construir da **+1 intento** al momento. Los semanales de reducir,
+- Cada hábito diario cumplido da **+1 intento** (y sus puntos de siempre) al cerrar el día local; no aparece al
+  registrarlo y se concede al empezar el día siguiente. Así los diarios de reducir se validan con el límite definitivo.
+- Cada porción añadida a un hábito semanal de construir da **+1 intento al cerrar el día local** en que se registra,
+  aunque la semana todavía no haya terminado. Los semanales de reducir,
   igual que los diarios de reducir, dan **+1 intento al cerrar el periodo** solo si se cumplen. Al cerrarse la semana
   se conceden siempre los puntos de habilidad según la racha, sin intentos adicionales para los de construir.
-- Máximo por día = número de hábitos diarios activos. Los intentos se acumulan indefinidamente: no hay reinicio a
-  las 00:00 ni se pierden por cambiar de día, cerrar la app o dejar de jugar. Sin intentos no se puede jugar.
-- Implementación: `attemptsEarned` en `habits/core/economy.ts`. Se cuentan los registros de porciones semanales y
-  las recompensas diarias del ledger, más los diarios de construir cumplidos hoy. Disponibles = ganados − partidas
+- Los intentos se acumulan indefinidamente: no hay reinicio a las 00:00 ni se pierden por cambiar de día, cerrar la app
+  o dejar de jugar. Sin intentos no se puede jugar.
+- Implementación: `attemptsEarned` en `habits/core/economy.ts`. Se cuentan los registros de porciones semanales de días
+  cerrados y las recompensas de periodos cerrados del ledger. Disponibles = ganados − partidas
   empezadas (todas las modalidades).
 
 **Niveles.** Cada intento es una partida completa desde el minuto 0:

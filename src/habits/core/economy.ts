@@ -5,9 +5,9 @@ import { SKIN_BY_ID } from '../../game/content/skins';
 import { STAGE_BY_ID } from '../../game/content/stages';
 import { UPGRADE_BY_ID } from '../../game/content/upgrades';
 import type { RunMode } from '../../game/sim/types';
-import { active, amountIn, amountsOf, isMet, rewardId, targetFor } from './habits';
+import { periodStart } from './periods';
 import type { HabitsData, LedgerEntry } from './model';
-import { dateInZone, periodStart } from './periods';
+import { dateInZone } from './periods';
 import { GAME_RELEASE, type GameRelease } from './release';
 
 /**
@@ -83,36 +83,28 @@ export const MILESTONES = { infinite: 30, mirror: 60 };
 
 /**
  * Intentos ganados con los hábitos desde `firstDay`:
- * - Un intento por cada porción añadida a un hábito semanal de construir.
+ * - Un intento por cada porción añadida a un hábito semanal de construir cuyo día ya ha terminado.
  * - Un intento por cada periodo diario cumplido ya cerrado (su recompensa está en el ledger).
  *   Los semanales de reducir también se cuentan al cerrarse, si se cumplieron.
- * - Y, al momento, uno por cada hábito diario de construir cumplido hoy. Los de reducir se confirman al cerrar el
- *   día (hasta entonces aún se pueden pasar del límite).
- * Al cerrarse el día, el de hoy pasa a contarse por su recompensa (mismo hábito y día): nunca se cuenta dos veces.
+ * Los hábitos diarios de construir se cuentan por su recompensa, así que también esperan al cierre del día.
+ * No se cuenta ninguna actividad del día actual: el intento aparece al empezar el día siguiente.
  */
 function attemptsEarned(data: HabitsData, today: LocalDate, firstDay: LocalDate | null): number {
   if (!firstDay) return 0;
   let total = 0;
-  const rewarded = new Set<string>();
   for (const e of data.ledger) {
     if (e.kind !== 'habit_reward' || !e.period || e.deletedAt) continue;
-    rewarded.add(e.id);
     if (periodStart(e.period) < firstDay) continue;
     if (!e.period.startsWith('W')) total += ATTEMPTS.daily;
     else if (e.habitId && data.habits.find((h) => h.id === e.habitId)?.kind === 'reduce') total += ATTEMPTS.daily;
   }
   for (const log of data.logs) {
-    if (log.deletedAt || !data.profile || dateInZone(new Date(log.createdAt), data.profile.timeZone) < firstDay) continue;
+    if (log.deletedAt || !data.profile) continue;
+    const day = dateInZone(new Date(log.createdAt), data.profile.timeZone);
+    if (day < firstDay || day >= today) continue;
     const habit = data.habits.find((h) => h.id === log.habitId);
     if (!habit || habit.period !== 'weekly') continue;
     if (habit.kind === 'build' && log.delta > 0) total += 1;
-  }
-  if (today >= firstDay) {
-    const amounts = amountsOf(data);
-    for (const habit of data.habits) {
-      if (!active(habit) || habit.period !== 'daily' || habit.kind !== 'build' || rewarded.has(rewardId(habit.id, today))) continue;
-      if (isMet(habit.kind, amountIn(amounts, habit.id, today), targetFor(habit, today))) total += ATTEMPTS.daily;
-    }
   }
   return total;
 }

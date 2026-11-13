@@ -66,24 +66,26 @@ describe('intentos', () => {
     expect(() => startRun(base(), 'wanderer', 'withered_woods', 'normal', START, T(1), 0, PROD)).toThrow(EconomyError);
   });
 
-  it('un hábito diario cumplido da un intento al momento; uno de reducir, al cerrar el día', () => {
+  it('los hábitos diarios conceden el intento al cerrar el día', () => {
     let d = createHabit(base(), { name: 'Leer', kind: 'build', period: 'daily', unit: '', step: 1, target: 1 }, 'read', T(0), START);
     d = createHabit(d, { name: 'Azúcar', kind: 'reduce', period: 'daily', unit: '', step: 1, target: 1 }, 'sugar', T(0), START);
     expect(economyOf(d, START, PROD).available).toBe(0);
     d = logHabit(d, 'read', 1, 'l1', T(1), START);
-    expect(economyOf(d, START, PROD).available).toBe(1);
-    // Al cerrar el día se conceden las recompensas: el de leer sigue contando una vez y el de reducir suma el suyo.
+    expect(economyOf(d, START, PROD).available).toBe(0);
+    // Al cerrar el día se conceden las recompensas y ambos hábitos suman su intento.
     const next = evaluateRewards(d, '2026-11-11', T(2));
     expect(economyOf(next, '2026-11-11', PROD).available).toBe(2);
   });
 
-  it('cada porción añadida a un hábito semanal da un intento al momento', () => {
+  it('cada porción añadida a un hábito semanal da un intento al cerrar el día', () => {
     let d = createHabit(base(), { name: 'Ejercicio', kind: 'build', period: 'weekly', unit: 'veces', step: 1, target: 3 }, 'exercise', T(0), START);
     expect(economyOf(d, START, PROD).available).toBe(0);
     d = logHabit(d, 'exercise', 1, 'l1', T(1), START);
-    expect(economyOf(d, START, PROD).available).toBe(1);
-    d = logHabit(d, 'exercise', 1, 'l2', T(2), START);
-    expect(economyOf(d, START, PROD).available).toBe(2);
+    expect(economyOf(d, START, PROD).available).toBe(0);
+    const nextDay = '2026-11-11';
+    expect(economyOf(d, nextDay, PROD).available).toBe(1);
+    d = logHabit(d, 'exercise', 1, 'l2', '2026-11-11T10:00:00.000Z', nextDay);
+    expect(economyOf(d, nextDay, PROD).available).toBe(1);
   });
 
   it('el cierre semanal conserva los puntos, pero no concede intentos adicionales', () => {

@@ -84,8 +84,8 @@ function Summary() {
       if (!habit || habit.period !== 'weekly') continue;
       if (habit.kind !== 'build' || log.delta <= 0) continue;
       const day = dateInZone(new Date(log.createdAt), data.profile?.timeZone ?? 'UTC');
-      if (day >= weekFrom) t.weekAttempts += 1;
-      if (day >= monthFrom) t.monthAttempts += 1;
+      if (day >= weekFrom && day < today) t.weekAttempts += 1;
+      if (day >= monthFrom && day < today) t.monthAttempts += 1;
     }
     return t;
   }, [data, today]);

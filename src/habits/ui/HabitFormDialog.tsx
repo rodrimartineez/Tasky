@@ -125,11 +125,11 @@ function HabitForm({ habit, currentTarget, onDone }: { habit?: Habit; currentTar
           </>
         ) : period === 'daily' ? (
           <>
-            Cumplirlo da <strong>1 punto</strong> al cerrar el día (00:00), y más cuanto más larga sea la racha (2 a los 3 días, 3 a los 7…).
+            Cumplirlo da <strong>1 punto y 1 intento</strong> al cerrar el día (00:00), y más puntos cuanto más larga sea la racha (2 a los 3 días, 3 a los 7…).
           </>
         ) : (
           <>
-            Cumplirlo da <strong>{WEEKLY_REWARD} puntos</strong> al cerrar la semana (domingo a las 24:00).
+            Cada porción da <strong>1 intento al cerrar el día</strong>; cumplirlo da <strong>{WEEKLY_REWARD} puntos</strong> al cerrar la semana (domingo a las 24:00).
           </>
         )}
         {habit && ' Un objetivo nuevo vale desde el periodo actual.'}
