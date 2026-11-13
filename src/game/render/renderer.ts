@@ -707,6 +707,13 @@ export class Renderer {
         s.alpha = (1 - t) * (shot.radius > 60 ? 0.35 : 1);
         return;
       }
+      case 'enemyShot': {
+        const s = pool.next(this.tex(shot.sprite));
+        s.position.set(shot.x, shot.y);
+        s.rotation = shot.angle;
+        s.scale.set(1.5);
+        return;
+      }
       default: {
         if (shot.kind === 'bolt' || shot.kind === 'lance')
           this.trail(shot, Math.cos(shot.angle), Math.sin(shot.angle), shot.angle, 2, shot.kind === 'bolt' ? 4 : 8);
