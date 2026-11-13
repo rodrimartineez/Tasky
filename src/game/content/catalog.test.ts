@@ -30,6 +30,8 @@ describe('catálogo', () => {
     expect(passiveChanges(PASSIVE_BY_ID.get('whetstone')!)).toEqual([{ stat: 'might', label: 'Daño', perLevel: '+10 %', atMax: '+85 %' }]);
     const hourglass = passiveChanges(PASSIVE_BY_ID.get('hourglass')!)[0];
     expect([hourglass.perLevel, hourglass.atMax]).toEqual(['−6 %', '−48 %']);
+    const horn = passiveChanges(PASSIVE_BY_ID.get('horn')!)[0];
+    expect([horn.perLevel, horn.atMax]).toEqual(['+1', '+2']);
     expect(passiveChanges(PASSIVE_BY_ID.get('oakheart')!).map((c) => c.stat)).toEqual(['maxHp', 'regen']);
     for (const p of PASSIVES) expect(passiveChanges(p).length, p.name).toBeGreaterThan(0);
   });

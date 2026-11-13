@@ -327,7 +327,7 @@ function updatePickups(w: World, dt: number) {
       item.dead = true;
       if (item.kind === 'xp') gainXp(w, item.value);
       else if (item.kind === 'coin') w.gold += item.value * p.stats.greed;
-      else if (item.kind === 'heart') p.hp = Math.min(p.stats.maxHp, p.hp + item.value);
+      else if (item.kind === 'heart') p.hp = Math.min(p.stats.maxHp, p.hp + p.stats.maxHp * item.value);
       else if (item.kind === 'chest') openChest(w);
       else for (const other of w.pickups) if (other.kind === 'xp') other.pulled = true; // imán
       continue;

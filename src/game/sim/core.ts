@@ -103,9 +103,9 @@ export const RAMP = {
 };
 /**
  * Vida extra de los enemigos especiales (12/11/2026, a petición del usuario: eran demasiado blandos). Los jefes (de
- * escenario y de ciclo) tienen ×10 y las élites que sueltan cofre ×60 (antes ×6), sobre la escalada de la partida.
+ * escenario y de ciclo) tienen ×10 y las élites que sueltan cofre ×54 (10 % menos que ×60), sobre la escalada de la partida.
  */
-export const TOUGHNESS = { boss: 10, elite: 60 };
+export const TOUGHNESS = { boss: 10, elite: 50 };
 const ramp = ([a, b]: number[], m: number) => 1 + a * m + b * m * m;
 /** Multiplicador de vida por los minutos de partida (sin el del nivel). */
 export const timeHpScale = (w: World) => ramp(RAMP.hp, minutes(w));
@@ -175,6 +175,7 @@ export function ringPoint(w: World, angle = rand(w) * Math.PI * 2, radius = SPAW
 }
 
 const MAX_PICKUPS = 500;
+export const HEART_HEAL_FRACTION = 0.2;
 
 export function dropPickup(w: World, kind: PickupKind, x: number, y: number, value: number) {
   if (kind === 'xp' && w.pickups.length >= MAX_PICKUPS) {
@@ -209,7 +210,7 @@ function killEnemy(w: World, e: Enemy) {
   } else {
     const roll = rand(w);
     if (roll < 0.05 * luck) dropPickup(w, 'coin', e.x + 4, e.y, (1 + Math.floor(minutes(w) / 8)) * TIMELINE * runGold(w.config));
-    else if (roll > 0.996) dropPickup(w, 'heart', e.x, e.y, 30);
+    else if (roll > 0.996) dropPickup(w, 'heart', e.x, e.y, HEART_HEAL_FRACTION);
     else if (roll > 0.9945) dropPickup(w, 'magnet', e.x, e.y, 1);
   }
   if (e.def.splitsInto && !e.elite) {

@@ -22,7 +22,7 @@ export const PASSIVES: PassiveDef[] = [
     id: 'lens',
     name: 'Lente ancha',
     icon: 'p_lens',
-    text: '+10 % de área',
+    text: '+10 % de área efecto',
     maxLevel: 7,
     apply: (s, n) => void (s.area += 0.1 * n + (n >= 7 ? 0.15 : 0)),
   },
@@ -42,8 +42,7 @@ export const PASSIVES: PassiveDef[] = [
     maxLevel: 7,
     apply: (s, n) => {
       s.maxHp += 20 * n + (n >= 7 ? 30 : 0);
-      // Regeneración baja (12/11/2026): antes 0,2 por nivel y hacía al personaje casi inmortal.
-      s.regen += 0.08 * n + (n >= 7 ? 0.1 : 0);
+      s.regen += 0.1 * n + (n >= 7 ? 0.1 : 0);
     },
   },
   {
@@ -90,7 +89,7 @@ export const PASSIVES: PassiveDef[] = [
     id: 'candle',
     name: 'Vela eterna',
     icon: 'p_candle',
-    text: '+10 % de duración',
+    text: '+10 % de duración de los efectos',
     maxLevel: 7,
     apply: (s, n) => void (s.duration += 0.1 * n + (n >= 7 ? 0.15 : 0)),
   },
@@ -98,12 +97,9 @@ export const PASSIVES: PassiveDef[] = [
     id: 'horn',
     name: 'Cuerno gemelo',
     icon: 'p_horn',
-    text: '+1 proyectil en cada arma (otro más en el nivel 5) y +4 % de daño por nivel',
-    maxLevel: 7,
-    apply: (s, n) => {
-      s.amount += n >= 5 ? 2 : 1;
-      s.might += 0.04 * (n - 1) + (n >= 7 ? 0.1 : 0);
-    },
+    text: '+1 proyectil en cada nivel',
+    maxLevel: 2,
+    apply: (s, n) => void (s.amount += n),
   },
   {
     id: 'eye',

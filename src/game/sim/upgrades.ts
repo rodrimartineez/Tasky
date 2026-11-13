@@ -255,7 +255,7 @@ export function applyChoice(w: World, choice: UpgradeChoice) {
  * Cofre: de 1 a 5 mejoras (más con suerte) y algo de oro que crece con ellas. La media de oro es la misma que cuando
  * el cofre daba siempre la misma cantidad, así que la economía no cambia: CHEST.gold[n - 1] es el multiplicador.
  */
-export const CHEST = { odds: [0.03, 0.05, 0.1, 0.17], gold: [0.8, 1.1, 1.4, 1.8, 2.4] };
+export const CHEST = { odds: [0.03, 0.05, 0.1, 0.17], gold: [0.8, 1.1, 1.4, 1.8, 2.4], heal: 0.1 };
 
 /** Cofre: evoluciona las armas que lo tengan listo y, si no, mejora al azar objetos que ya tengas; da oro. */
 export function openChest(w: World) {
@@ -285,6 +285,7 @@ export function openChest(w: World) {
     applyChoice(w, choice);
     rewards.push(choice);
   }
+  w.player.hp = Math.min(w.player.stats.maxHp, w.player.hp + w.player.stats.maxHp * CHEST.heal);
   const gold = Math.round((20 + Math.floor((w.time * TIMELINE) / 30)) * CHEST.gold[count - 1] * runGold(w.config));
   w.gold += gold;
   w.chestGold = gold;

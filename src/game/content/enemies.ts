@@ -11,7 +11,7 @@ export const ENEMIES: EnemyDef[] = [
   { id: 'blob', name: 'Masa doble', sprite: 'e_blob', hp: 40, speed: 30, damage: 10, radius: 8, xp: 3, ai: 'chase', knockResist: 0.3, splitsInto: 'blobling' },
   { id: 'blobling', name: 'Masa menor', sprite: 'e_blobling', hp: 12, speed: 48, damage: 6, radius: 5, xp: 1, ai: 'chase', knockResist: 0 },
   { id: 'golem', name: 'Gólem de corteza', sprite: 'e_golem', hp: 160, speed: 20, damage: 18, radius: 10, xp: 10, ai: 'chase', knockResist: 0.8 },
-  { id: 'elder', name: 'Roble Anciano', sprite: 'e_elder', hp: 2500, speed: 22, damage: 25, radius: 18, xp: 150, ai: 'boss', knockResist: 1 },
+  { id: 'elder', name: 'Roble Anciano', sprite: 'e_elder', hp: 1500, speed: 22, damage: 25, radius: 18, xp: 150, ai: 'boss', knockResist: 1 },
   { id: 'toad', name: 'Sapo escupidor', sprite: 'e_toad', hp: 34, speed: 22, damage: 9, radius: 7, xp: 3, ai: 'shooter', knockResist: 0.3 },
   { id: 'leech', name: 'Sanguijuela', sprite: 'e_leech', hp: 6, speed: 60, damage: 5, radius: 5, xp: 1, ai: 'chase', knockResist: 0 },
   { id: 'rat', name: 'Rata de cripta', sprite: 'e_rat', hp: 4, speed: 58, damage: 4, radius: 4, xp: 1, ai: 'chase', knockResist: 0 },

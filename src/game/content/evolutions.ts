@@ -40,7 +40,7 @@ export const EVOLUTIONS: EvolutionDef[] = [
     'orbs',
     'candle',
     { id: 'eclipse', name: 'Eclipse', description: 'Seis lunas oscuras que casi nunca dejan de girar.', icon: 'w_eclipse', proj: 'x_eclipse' },
-    { damage: 20, cooldown: 2, amount: 6, pierce: 999, area: 48, speed: 3.8, duration: 7, knockback: 50 },
+    { damage: 20, cooldown: 0.8, amount: 6, pierce: 999, area: 48, speed: 3.8, duration: 7, knockback: 50 },
   ),
   evolution(
     'ember',
