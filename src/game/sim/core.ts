@@ -103,9 +103,9 @@ export const RAMP = {
 };
 /**
  * Vida extra de los enemigos especiales (12/11/2026, a petición del usuario: eran demasiado blandos). Los jefes (de
- * escenario y de ciclo) tienen ×10 y las élites que sueltan cofre ×54 (10 % menos que ×60), sobre la escalada de la partida.
+ * escenario y de ciclo) tienen ×10 y las élites que sueltan cofre ×25, sobre la escalada de la partida.
  */
-export const TOUGHNESS = { boss: 10, elite: 50 };
+export const TOUGHNESS = { boss: 10, elite: 25 };
 const ramp = ([a, b]: number[], m: number) => 1 + a * m + b * m * m;
 /** Multiplicador de vida por los minutos de partida (sin el del nivel). */
 export const timeHpScale = (w: World) => ramp(RAMP.hp, minutes(w));
