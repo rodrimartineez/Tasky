@@ -398,11 +398,11 @@ describe('niveles de armas y pasivas (7 + hasta 999)', () => {
     expect(buildComplete(w)).toBe(false);
     expect(offered(w, 'spark')).toBe(false);
     w.player.weapons = ['spark', 'lance', 'orbs', 'ember', 'storm'].map(at7);
-    w.player.passives = ['whetstone', 'hourglass', 'lens', 'boots', 'clover'].map((id) => ({ id, level: 7 }));
-    w.player.passives[4].level = 6;
+    w.player.passives = ['whetstone', 'hourglass', 'lens', 'boots', 'tiramisu'].map((id) => ({ id, level: 7 }));
+    w.player.passives[4].level = 1;
     expect(buildComplete(w)).toBe(false);
     expect(offered(w, 'spark')).toBe(false);
-    w.player.passives[4].level = 7;
+    w.player.passives[4].level = 2;
     expect(buildComplete(w)).toBe(true);
     expect(offered(w, 'spark')).toBe(true);
     expect(offered(w, 'whetstone')).toBe(false);

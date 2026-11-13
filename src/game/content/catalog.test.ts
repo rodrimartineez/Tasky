@@ -32,6 +32,8 @@ describe('catálogo', () => {
     expect([hourglass.perLevel, hourglass.atMax]).toEqual(['−6 %', '−48 %']);
     const horn = passiveChanges(PASSIVE_BY_ID.get('horn')!)[0];
     expect([horn.perLevel, horn.atMax]).toEqual(['+1', '+2']);
+    const tiramisu = passiveChanges(PASSIVE_BY_ID.get('tiramisu')!)[0];
+    expect([tiramisu.stat, tiramisu.perLevel, tiramisu.atMax]).toEqual(['revival', '+1', '+2']);
     expect(passiveChanges(PASSIVE_BY_ID.get('oakheart')!).map((c) => c.stat)).toEqual(['maxHp', 'regen']);
     for (const p of PASSIVES) expect(passiveChanges(p).length, p.name).toBeGreaterThan(0);
   });
@@ -41,5 +43,6 @@ describe('catálogo', () => {
       expect(e.weapon.id).toBe(e.evolution.weapon);
       expect(e.passive.id).toBe(e.evolution.passive);
     }
+    expect(evolutionEntries().find((e) => e.evolution.def.id === 'luckyblades')?.passive.id).toBe('tiramisu');
   });
 });

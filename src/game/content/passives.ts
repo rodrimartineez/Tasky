@@ -54,14 +54,6 @@ export const PASSIVES: PassiveDef[] = [
     apply: (s, n) => void (s.pickup *= 1 + 0.3 * n + (n >= 7 ? 0.4 : 0)),
   },
   {
-    id: 'clover',
-    name: 'Trébol de cuatro hojas',
-    icon: 'p_clover',
-    text: '+15 % de suerte',
-    maxLevel: 7,
-    apply: (s, n) => void (s.luck += 0.15 * n + (n >= 7 ? 0.15 : 0)),
-  },
-  {
     id: 'tome',
     name: 'Tomo de sabiduría',
     icon: 'p_tome',
@@ -100,6 +92,14 @@ export const PASSIVES: PassiveDef[] = [
     text: '+1 proyectil en cada nivel',
     maxLevel: 2,
     apply: (s, n) => void (s.amount += n),
+  },
+  {
+    id: 'tiramisu',
+    name: 'Tiramisú',
+    icon: 'p_tiramisu',
+    text: '+1 resurrección',
+    maxLevel: 2,
+    apply: (s, n) => void (s.revival += n),
   },
   {
     id: 'eye',

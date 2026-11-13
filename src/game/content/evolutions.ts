@@ -104,7 +104,7 @@ export const EVOLUTIONS: EvolutionDef[] = [
   ),
   evolution(
     'ricochet',
-    'clover',
+    'tiramisu',
     { id: 'luckyblades', name: 'Filos de la fortuna', description: 'Cuchillas doradas que rebotan una y otra vez.', icon: 'w_luckyblades', proj: 'x_luckyblades' },
     { damage: 33, cooldown: 1.2, amount: 4, pierce: 7, area: 5, speed: 220, duration: 3, knockback: 25 },
   ),
