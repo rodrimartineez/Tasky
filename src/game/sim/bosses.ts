@@ -19,7 +19,7 @@ export const BOSS_TUNING = {
   /** Daño de sus proyectiles y zonas respecto a su daño de contacto. */
   shot: 0.35,
   /** Segundos entre ataques en la primera vuelta. */
-  cooldown: 3,
+  cooldown: 4,
 };
 
 /** Vuelta de la rotación de la partida (0 = primera). */
@@ -164,12 +164,12 @@ function begin(w: World, e: Enemy, pattern: BossPattern, round: number, toPlayer
   const p = w.player;
   switch (pattern) {
     case 'radial':
-      ring(w, e, 12 + 4 * round, 75, rand(w) * Math.PI);
+      ring(w, e, 8 + 3 * round, 55, rand(w) * Math.PI);
       emit(w, { type: 'ring', x: e.x, y: e.y, radius: e.radius + 10, color });
       break;
     case 'fan': {
-      const n = 5 + 2 * round;
-      for (let i = 0; i < n; i++) enemyShot(w, e.x, e.y, toPlayer + (i - (n - 1) / 2) * 0.18, 110, e.damage * BOSS_TUNING.shot, 'x_arrow');
+      const n = 3 + round;
+      for (let i = 0; i < n; i++) enemyShot(w, e.x, e.y, toPlayer + (i - (n - 1) / 2) * 0.18, 80, e.damage * BOSS_TUNING.shot, 'x_arrow');
       break;
     }
     case 'spiral':
@@ -185,7 +185,7 @@ function begin(w: World, e: Enemy, pattern: BossPattern, round: number, toPlayer
       e.x = p.x + Math.cos(angle) * 95;
       e.y = p.y + Math.sin(angle) * 95;
       emit(w, { type: 'ring', x: e.x, y: e.y, radius: 30, color });
-      ring(w, e, 8 + 2 * round, 65, angle);
+      ring(w, e, 6 + round, 50, angle);
       break;
     }
     case 'summon': {
@@ -321,7 +321,7 @@ function begin(w: World, e: Enemy, pattern: BossPattern, round: number, toPlayer
         const a = (i / count) * Math.PI * 2;
         const x = p.x + Math.cos(a) * 210;
         const y = p.y + Math.sin(a) * 210;
-        enemyShot(w, x, y, a + Math.PI, 55 + 5 * round, e.damage * BOSS_TUNING.shot);
+        enemyShot(w, x, y, a + Math.PI, 40 + 4 * round, e.damage * BOSS_TUNING.shot);
       }
       break;
     }
@@ -367,7 +367,7 @@ export function updateCycleBoss(w: World, e: Enemy, dt: number, toPlayer: number
     // Brazos de disparos que giran (más brazos en cada vuelta), una tanda cada 0,1 s.
     if (Math.floor(e.sub * 10) !== Math.floor((e.sub + dt) * 10)) {
       const arms = 2 + Math.min(3, round);
-      for (let i = 0; i < arms; i++) enemyShot(w, e.x, e.y, (e.aim ?? 0) + (i / arms) * Math.PI * 2, 80, e.damage * BOSS_TUNING.shot);
+      for (let i = 0; i < arms; i++) enemyShot(w, e.x, e.y, (e.aim ?? 0) + (i / arms) * Math.PI * 2, 55, e.damage * BOSS_TUNING.shot);
       e.aim = (e.aim ?? 0) + 0.32;
     }
     velocity = [0, 0];

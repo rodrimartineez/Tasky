@@ -207,8 +207,8 @@ function updateEnemy(w: World, e: Enemy, dt: number) {
       }
       e.t1 -= dt;
       if (e.t1 <= 0 && dist < 220) {
-        e.t1 = 2.6;
-        enemyShot(w, e.x, e.y, Math.atan2(dy, dx), 80, e.damage);
+        e.t1 = 4;
+        enemyShot(w, e.x, e.y, Math.atan2(dy, dx), 60, e.damage);
       }
       break;
     case 'volley':
@@ -222,9 +222,9 @@ function updateEnemy(w: World, e: Enemy, dt: number) {
       }
       e.t1 -= dt;
       if (e.t1 <= 0 && dist < 230) {
-        e.t1 = 3.2;
+        e.t1 = 5;
         const aim = Math.atan2(dy, dx);
-        for (let i = -1; i <= 1; i++) enemyShot(w, e.x, e.y, aim + i * 0.22, 90, e.damage * 0.8, 'x_arrow');
+        for (let i = -1; i <= 1; i += 2) enemyShot(w, e.x, e.y, aim + i * 0.22, 65, e.damage * 0.8, 'x_arrow');
       }
       break;
     case 'egg':
@@ -253,9 +253,9 @@ function updateEnemy(w: World, e: Enemy, dt: number) {
       e.t1 -= dt;
       e.t2 -= dt;
       if (e.t1 <= 0) {
-        e.t1 = 4;
+        e.t1 = 6;
         const offset = rand(w) * Math.PI;
-        for (let i = 0; i < 12; i++) enemyShot(w, e.x, e.y, offset + (i / 12) * Math.PI * 2, 70, e.damage * 0.5);
+        for (let i = 0; i < 8; i++) enemyShot(w, e.x, e.y, offset + (i / 8) * Math.PI * 2, 50, e.damage * 0.5);
         emit(w, { type: 'ring', x: e.x, y: e.y, radius: e.radius + 8, color: 0xc9f27a });
       }
       if (e.t2 <= 0) {
