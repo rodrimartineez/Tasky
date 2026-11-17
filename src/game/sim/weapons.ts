@@ -1,5 +1,5 @@
 import { behaviourOf, hitFxOf, WEAPON_BY_ID } from '../content/weapons';
-import { damageEnemy, emit, hurtPlayer, near, nearestEnemy, queryNear, rand } from './core';
+import { damageEnemy, dropPickup, killEnemy, emit, healPlayer, hurtPlayer, near, nearestEnemy, ON_HIT, queryNear, rand } from './core';
 import type { Enemy, ProjKind, Projectile, WeaponState, World } from './types';
 
 /** Comportamiento de cada arma (clave = id en content/weapons.ts) y movimiento de los proyectiles. */
@@ -168,7 +168,19 @@ const flask: Fire = (w, ws, index) => {
 
 const WHIP_DIRS = [0, Math.PI, Math.PI / 2, -Math.PI / 2];
 /** Látigo: golpea al instante un sector delante del jugador; con más látigos también por detrás y a los lados. */
-const whip: Fire = (w, ws, index) => {
+const whip: Fire = (w, ws, index) => sweep(w, ws, index, 1, 'x_slash');
+
+/** Filo errante: como el látigo, pero solo mientras te mueves; hasta el doble de daño tras 2 s corriendo. */
+const vento: Fire = (w, ws, index) => {
+  const { player } = w;
+  if (!player.moving) {
+    ws.timer = 0.05; // espera a que el jugador se mueva
+    return;
+  }
+  sweep(w, ws, index, 1 + Math.min(player.moveTime ?? 0, 2) / 2, 'x_vento');
+};
+
+function sweep(w: World, ws: WeaponState, index: number, power: number, sprite: string) {
   const { player } = w;
   const count = ws.stats.amount + player.stats.amount;
   const reach = ws.stats.area * player.stats.area;
@@ -184,15 +196,15 @@ const whip: Fire = (w, ws, index) => {
       const dy = e.y - player.y;
       const d = Math.hypot(dx, dy) || 1;
       if ((dx * cx + dy * cy) / d < 0.3) continue; // fuera del sector (unos ±72°)
-      damageEnemy(w, e, ws.stats.damage, index, (dx / d) * ws.stats.knockback, (dy / d) * ws.stats.knockback);
+      damageEnemy(w, e, ws.stats.damage * power, index, (dx / d) * ws.stats.knockback, (dy / d) * ws.stats.knockback);
     }
-    const p = spawnProjectile(w, 'slash', look(ws, 'x_slash'), index, player.x + cx * reach * 0.55, player.y + cy * reach * 0.55);
+    const p = spawnProjectile(w, 'slash', look(ws, sprite), index, player.x + cx * reach * 0.55, player.y + cy * reach * 0.55);
     p.angle = angle;
     p.radius = reach;
     p.life = ws.stats.duration;
     p.total = ws.stats.duration;
   }
-};
+}
 
 /** Búmeran: sale hacia el enemigo más cercano, atraviesa todo y vuelve a la mano (golpea a la ida y a la vuelta). */
 const boomerang: Fire = (w, ws, index) => {
@@ -280,6 +292,8 @@ const meteors: Fire = (w, ws, index) => {
 };
 
 const CLOUD_TICK = 0.5;
+const PLAGUE_SPEED = 8;
+const PLAGUE_GROWTH = 8;
 /** Nube venenosa: se queda donde cae y daña a todo el que esté dentro cada medio segundo. */
 const cloud: Fire = (w, ws, index) => {
   const { player } = w;
@@ -319,6 +333,7 @@ const nova: Fire = (w, ws, index) => {
 };
 
 const RICOCHET_RANGE = 120;
+const RICOCHET_BLAST = 16;
 const aimed: number[] = [];
 /** Cuchillas rebotantes: cada una vuela hacia un enemigo distinto y, al golpear, salta al más cercano que aún no ha tocado. */
 const ricochet: Fire = (w, ws, index) => {
@@ -386,7 +401,235 @@ const trail: Fire = (w, ws, index) => {
   }
 };
 
-const FIRE: Record<string, Fire> = { spark, lance, orbs, ember, storm, flask, whip, boomerang, mines, beam, meteors, cloud, nova, ricochet, drone, trail };
+
+// ── Catálogo del género (17/11/2026) ───────────────────────────────────────────────────────────
+
+/** Proyectil con los valores habituales del arma (daño, tamaño, vida, perforación y retroceso). */
+function shot(w: World, ws: WeaponState, index: number, kind: ProjKind, sprite: string, angle: number, speed = ws.stats.speed * w.player.stats.projSpeed) {
+  const { player } = w;
+  const p = spawnProjectile(w, kind, look(ws, sprite), index, player.x, player.y);
+  p.vx = Math.cos(angle) * speed;
+  p.vy = Math.sin(angle) * speed;
+  p.angle = angle;
+  p.damage = ws.stats.damage;
+  p.radius = ws.stats.area * player.stats.area;
+  p.life = ws.stats.duration * player.stats.duration;
+  p.pierce = ws.stats.pierce;
+  p.knockback = ws.stats.knockback;
+  return p;
+}
+
+const AXE_GRAVITY = 260;
+/** Segur: sale hacia arriba, abierta en abanico hacia donde mira el jugador, y cae en arco por la gravedad. */
+const axe: Fire = (w, ws, index) => {
+  const { player } = w;
+  const count = ws.stats.amount + player.stats.amount;
+  for (let i = 0; i < count; i++) {
+    const p = shot(w, ws, index, 'axe', 'x_axe', -Math.PI / 2);
+    p.vx = (i - (count - 1) / 2) * 32 + player.dirX * 25 + (rand(w) - 0.5) * 16;
+  }
+};
+
+/** Espiral de segures: segures que salen girando en todas direcciones y lo atraviesan todo. */
+const deathspiral: Fire = (w, ws, index) => {
+  const count = ws.stats.amount + w.player.stats.amount;
+  const base = rand(w) * Math.PI * 2;
+  for (let i = 0; i < count; i++) shot(w, ws, index, 'spin', 'x_deathspiral', base + (i / count) * Math.PI * 2);
+};
+
+/** Cetro de brasas: bolas de fuego contra enemigos al azar (o en una dirección al azar si no hay ninguno cerca). */
+const firewand: Fire = (w, ws, index) => {
+  const { player } = w;
+  const count = ws.stats.amount + player.stats.amount;
+  const found = queryNear(player.x, player.y, 160);
+  scratch.length = 0;
+  for (let i = 0; i < found; i++) scratch.push(near[i]);
+  for (let i = 0; i < count; i++) {
+    const target = scratch.length > 0 ? scratch[Math.floor(rand(w) * scratch.length)] : null;
+    const angle = target ? Math.atan2(target.y - player.y, target.x - player.x) : rand(w) * Math.PI * 2;
+    shot(w, ws, index, 'bolt', 'x_fireball', angle);
+  }
+};
+
+/**
+ * Sello del vacío: borra a los enemigos normales que hay en su radio (élites y jefes solo reciben su daño) y también la
+ * experiencia del suelo. El Sello de la luna llena, en cambio, la atrae toda hacia el jugador.
+ */
+const pentagram: Fire = (w, ws, index) => {
+  const { player } = w;
+  const radius = ws.stats.area * player.stats.area;
+  const count = queryNear(player.x, player.y, radius);
+  const targets = near.slice(0, count);
+  for (const e of targets) {
+    if (e.elite || e.def.ai === 'boss' || e.def.ai === 'reaper') damageEnemy(w, e, ws.stats.damage, index, 0, 0);
+    else if (!e.dead) {
+      // Borrado: cuenta como su daño nominal (no la vida que tuviera) para el resumen y el equilibrio.
+      ws.dealt += ws.stats.damage;
+      killEnemy(w, e);
+    }
+  }
+  const gather = ws.id === 'fullmoon';
+  for (const item of w.pickups) {
+    if (item.kind !== 'xp' || Math.hypot(item.x - player.x, item.y - player.y) > radius) continue;
+    if (gather) item.pulled = true;
+    else item.dead = true;
+  }
+  emit(w, { type: 'ring', x: player.x, y: player.y, radius, color: tint(ws, 0xd9b8ff) });
+  emit(w, { type: 'ring', x: player.x, y: player.y, radius: radius * 0.5, color: 0xffffff });
+  emit(w, { type: 'shake', power: 4 });
+};
+
+/** Radio de la explosión de cada bomba de las aves. */
+const BIRD_BLAST = 20;
+function spawnBirds(w: World, ws: WeaponState, index: number, sprite: string, orbit: number, spin: number, count: number, life: number) {
+  const { player } = w;
+  for (let i = 0; i < count; i++) {
+    const p = spawnProjectile(w, 'bird', look(ws, sprite), index, player.x, player.y);
+    p.angle = (i / count) * Math.PI * 2 + (spin < 0 ? Math.PI : 0);
+    p.orbitR = orbit;
+    p.vx = spin; // velocidad angular (negativa: sentido contrario)
+    p.vy = (1 / ws.stats.speed) * player.stats.cooldown; // segundos entre bombas
+    p.total = 0.4 + i * 0.25;
+    p.damage = ws.stats.damage;
+    p.knockback = ws.stats.knockback;
+    p.life = life;
+  }
+}
+
+/** Paloma y cuervo: vuelan en círculo alrededor del jugador (en sentidos contrarios) soltando bombas. */
+const bird =
+  (sprite: string, spin: number): Fire =>
+  (w, ws, index) => {
+    const life = ws.stats.duration * w.player.stats.duration;
+    spawnBirds(w, ws, index, sprite, ws.stats.area * w.player.stats.area, spin, ws.stats.amount + w.player.stats.amount, life);
+    ws.timer += life;
+  };
+
+/** Alas del equilibrio: las dos aves a la vez, una por fuera y otra por dentro. */
+const twinwings: Fire = (w, ws, index) => {
+  const { player } = w;
+  const life = ws.stats.duration * player.stats.duration;
+  const orbit = ws.stats.area * player.stats.area;
+  const count = Math.max(1, Math.ceil((ws.stats.amount + player.stats.amount) / 2));
+  spawnBirds(w, ws, index, 'x_twinwings', orbit * 1.15, 1.3, count, life);
+  spawnBirds(w, ws, index, 'x_twinwings', orbit * 0.7, -1.7, count, life);
+  ws.timer += life;
+};
+
+const CROSS_DIRS = [0, Math.PI, Math.PI / 2, -Math.PI / 2];
+const SALTIRE_DIRS = [Math.PI / 4, (-3 * Math.PI) / 4, -Math.PI / 4, (3 * Math.PI) / 4];
+/** Revólveres: disparan respecto a donde mira el jugador, en cruz o en aspa; pasadas las cuatro direcciones, en ráfaga. */
+const pistol =
+  (dirs: number[], sprite: string): Fire =>
+  (w, ws, index) => {
+    const facing = Math.atan2(w.player.dirY, w.player.dirX);
+    const count = ws.stats.amount + w.player.stats.amount;
+    for (let i = 0; i < count; i++) shot(w, ws, index, 'bolt', sprite, facing + dirs[i % 4] + Math.floor(i / 4) * 0.15);
+  };
+
+const CAT_TURN = 0.9;
+/** Gatos: aparecen junto al jugador y vagan al azar, a veces hacia el enemigo más cercano. */
+const cats: Fire = (w, ws, index) => {
+  const count = ws.stats.amount + w.player.stats.amount;
+  for (let i = 0; i < count; i++) {
+    const p = shot(w, ws, index, 'critter', 'x_cat', rand(w) * Math.PI * 2);
+    p.total = CAT_TURN * rand(w);
+  }
+};
+
+const COLUMN_TICK = 0.3;
+/** Media altura de las columnas de luz (algo más que la pantalla). */
+export const COLUMN_HALF = 150;
+/** Pilar lunar: columnas verticales que siguen al jugador y dañan a todo lo que hay dentro. */
+const mana: Fire = (w, ws, index) => {
+  const { player } = w;
+  const count = ws.stats.amount + player.stats.amount;
+  const half = ws.stats.area * player.stats.area;
+  for (let i = 0; i < count; i++) {
+    const p = spawnProjectile(w, 'column', look(ws, 'x_mana'), index, player.x, player.y);
+    p.orbitR = (i - (count - 1) / 2) * half * 2.4; // desplazamiento horizontal respecto al jugador
+    p.radius = half;
+    p.damage = ws.stats.damage;
+    p.life = ws.stats.duration * player.stats.duration;
+    p.total = 0;
+  }
+};
+
+/** Saeta del reloj: cada disparo avanza una hora en la esfera (12 direcciones, en el sentido de las agujas). */
+const clock: Fire = (w, ws, index) => {
+  ws.step = ((ws.step ?? 0) + 1) % 12;
+  const count = ws.stats.amount + w.player.stats.amount;
+  const base = -Math.PI / 2 + ws.step * (Math.PI / 6);
+  for (let i = 0; i < count; i++) shot(w, ws, index, 'bolt', 'x_clock', base + (i / count) * Math.PI * 2);
+};
+
+/** Égida de hiedra: escudo que bloquea todo el daño durante unos segundos. */
+const laurel: Fire = (w, ws) => {
+  const { player } = w;
+  player.shield = Math.max(player.shield ?? 0, ws.stats.duration * player.stats.duration);
+  emit(w, { type: 'ring', x: player.x, y: player.y, radius: 18, color: tint(ws, 0x9fe8a0) });
+};
+
+/** Tormenta perfecta: cada descarga cae dos veces. */
+const tempest: Fire = (w, ws, index) => {
+  storm(w, ws, index);
+  storm(w, ws, index);
+};
+
+// Efectos al golpear (sim/core.ts ON_HIT). No pueden consultar la rejilla: quien los llama puede estar recorriendo `near`.
+const FREEZE = 1.2;
+const freezeFor = (w: World, e: Enemy, seconds: number) => {
+  const tough = e.elite || e.def.ai === 'boss';
+  e.freeze = Math.max(e.freeze ?? 0, seconds * w.player.stats.duration * (tough ? 0.3 : 1));
+};
+ON_HIT.clock = (w, e) => freezeFor(w, e, FREEZE);
+ON_HIT.eternal = (w, e) => {
+  freezeFor(w, e, FREEZE * 1.5);
+  if (!e.elite && e.def.ai !== 'boss') e.hp /= 2;
+};
+ON_HIT.hunger = (w, e) => {
+  if (rand(w) < 0.1) freezeFor(w, e, 1.5);
+  if (rand(w) < 0.03) dropPickup(w, 'coin', e.x, e.y, 2);
+};
+ON_HIT.cataract = (w, e) => void (e.chill = Math.max(e.chill ?? 0, 2 * w.player.stats.duration));
+ON_HIT.galewhip = (w) => healPlayer(w, 1);
+ON_HIT.pyre = (w) => healPlayer(w, 0.4);
+
+/** Comportamiento por id: el de la propia arma o evolución si lo tiene; si no, el de su arma base. */
+const FIRE: Record<string, Fire> = {
+  spark,
+  lance,
+  orbs,
+  ember,
+  storm,
+  flask,
+  whip,
+  boomerang,
+  mines,
+  beam,
+  meteors,
+  cloud,
+  nova,
+  ricochet,
+  drone,
+  trail,
+  axe,
+  deathspiral,
+  firewand,
+  pentagram,
+  dove: bird('x_dove', 1.3),
+  raven: bird('x_raven', -1.7),
+  twinwings,
+  cardinal: pistol(CROSS_DIRS, 'x_cardinal'),
+  saltire: pistol(SALTIRE_DIRS, 'x_saltire'),
+  starburst: beam,
+  cats,
+  mana,
+  clock,
+  laurel,
+  vento,
+  tempest,
+};
 
 export function updateWeapons(w: World, dt: number) {
   const weapons = w.player.weapons;
@@ -395,7 +638,7 @@ export function updateWeapons(w: World, dt: number) {
     ws.timer -= dt;
     if (ws.timer > 0) continue;
     ws.timer += ws.stats.cooldown * w.player.stats.cooldown;
-    FIRE[behaviourOf(ws.id)]?.(w, ws, i);
+    (FIRE[ws.id] ?? FIRE[behaviourOf(ws.id)])?.(w, ws, i);
   }
 }
 
@@ -421,18 +664,25 @@ function hitLine(w: World, p: Projectile) {
 }
 
 function explode(w: World, p: Projectile, color = 0xffb347, shake = 1.5) {
-  emit(w, { type: 'ring', x: p.x, y: p.y, radius: p.radius, color });
-  emit(w, { type: 'puff', x: p.x, y: p.y, color: 0xffd98a, count: 8 });
+  blast(w, p.x, p.y, p.radius, p.damage, p.weapon, p.knockback, color, shake);
+}
+
+function blast(w: World, x: number, y: number, radius: number, damage: number, weapon: number, knockback: number, color: number, shake: number) {
+  emit(w, { type: 'ring', x, y, radius, color });
+  emit(w, { type: 'puff', x, y, color: 0xffd98a, count: 8 });
   emit(w, { type: 'shake', power: shake });
-  const count = queryNear(p.x, p.y, p.radius);
+  const count = queryNear(x, y, radius);
   for (let i = 0; i < count; i++) {
     const e = near[i];
-    const dx = e.x - p.x;
-    const dy = e.y - p.y;
+    const dx = e.x - x;
+    const dy = e.y - y;
     const d = Math.hypot(dx, dy) || 1;
-    damageEnemy(w, e, p.damage, p.weapon, (dx / d) * p.knockback, (dy / d) * p.knockback);
+    damageEnemy(w, e, damage, weapon, (dx / d) * knockback, (dy / d) * knockback);
   }
 }
+
+/** Id del arma que lanzó un proyectil. */
+const weaponOf = (w: World, p: Projectile) => w.player.weapons[p.weapon]?.id;
 
 export function updateProjectiles(w: World, dt: number) {
   const { player } = w;
@@ -531,6 +781,17 @@ export function updateProjectiles(w: World, dt: number) {
         break;
       }
       case 'cloud': {
+        if (weaponOf(w, p) === 'plague') {
+          // Peste carmesí: crece y se arrastra hacia el jugador.
+          const dx = player.x - p.x;
+          const dy = player.y - p.y;
+          const d = Math.hypot(dx, dy) || 1;
+          if (d > 6) {
+            p.x += (dx / d) * PLAGUE_SPEED * dt;
+            p.y += (dy / d) * PLAGUE_SPEED * dt;
+          }
+          p.radius += PLAGUE_GROWTH * dt;
+        }
         p.total -= dt;
         if (p.total > 0) break;
         p.total += CLOUD_TICK;
@@ -539,6 +800,7 @@ export function updateProjectiles(w: World, dt: number) {
         break;
       }
       case 'ricochet': {
+        let exploded: Enemy | null = null;
         p.x += p.vx * dt;
         p.y += p.vy * dt;
         p.angle += dt * 18;
@@ -552,6 +814,7 @@ export function updateProjectiles(w: World, dt: number) {
           hitFx(w, p, e.x, e.y);
           // Rebota hacia el enemigo más cercano que aún no ha golpeado; sin rebotes o sin enemigos, se acaba.
           const next = p.pierce-- > 0 ? nearestEnemy(w, e.x, e.y, RICOCHET_RANGE, p.hit) : null;
+          if (weaponOf(w, p) === 'luckyblades') exploded = e;
           if (!next) {
             p.dead = true;
             break;
@@ -561,6 +824,8 @@ export function updateProjectiles(w: World, dt: number) {
           p.vy = ((next.y - e.y) / d) * speed;
           break;
         }
+        // Filos detonantes: cada rebote estalla (fuera del recorrido de `near`, que la explosión reutiliza).
+        if (exploded) blast(w, exploded.x, exploded.y, RICOCHET_BLAST * player.stats.area, p.damage * 0.08, p.weapon, p.knockback, 0xffd34a, 0.5);
         break;
       }
       case 'drone': {
@@ -593,6 +858,74 @@ export function updateProjectiles(w: World, dt: number) {
         p.total += FLAME_TICK;
         const count = queryNear(p.x, p.y, p.radius);
         for (let i = 0; i < count; i++) damageEnemy(w, near[i], p.damage, p.weapon, 0, 0);
+        break;
+      }
+      case 'axe':
+        p.vy += AXE_GRAVITY * dt;
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.angle += dt * 12;
+        hitLine(w, p);
+        break;
+      case 'spin':
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.angle += dt * 14;
+        hitLine(w, p);
+        break;
+      case 'bird': {
+        p.angle += p.vx * dt;
+        p.x = player.x + Math.cos(p.angle) * p.orbitR;
+        p.y = player.y + Math.sin(p.angle) * p.orbitR;
+        p.total -= dt;
+        if (p.total > 0) break;
+        p.total += p.vy;
+        // Suelta una bomba que cae justo debajo y estalla enseguida.
+        const bomb = spawnProjectile(w, 'bomb', 'x_bomblet', p.weapon, p.x, p.y);
+        bomb.tx = p.x + (rand(w) - 0.5) * 24;
+        bomb.ty = p.y + (rand(w) - 0.5) * 24;
+        bomb.total = 0.35;
+        bomb.life = bomb.total;
+        bomb.damage = p.damage;
+        bomb.radius = BIRD_BLAST * player.stats.area;
+        bomb.knockback = p.knockback;
+        break;
+      }
+      case 'critter': {
+        p.total -= dt;
+        if (p.total <= 0) {
+          p.total = CAT_TURN * (0.6 + rand(w) * 0.8);
+          const speed = Math.hypot(p.vx, p.vy) || 1;
+          const prey = rand(w) < 0.5 ? nearestEnemy(w, p.x, p.y, 110) : null;
+          const angle = prey ? Math.atan2(prey.y - p.y, prey.x - p.x) : rand(w) * Math.PI * 2;
+          p.vx = Math.cos(angle) * speed;
+          p.vy = Math.sin(angle) * speed;
+        }
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        const count = queryNear(p.x, p.y, p.radius);
+        for (let i = 0; i < count; i++) {
+          const e = near[i];
+          if (e.contactCd > 0) continue;
+          e.contactCd = 0.45;
+          const speed = Math.hypot(p.vx, p.vy) || 1;
+          damageEnemy(w, e, p.damage, p.weapon, (p.vx / speed) * p.knockback, (p.vy / speed) * p.knockback);
+          hitFx(w, p, e.x, e.y);
+        }
+        break;
+      }
+      case 'column': {
+        p.x = player.x + p.orbitR;
+        p.y = player.y;
+        p.total -= dt;
+        if (p.total > 0) break;
+        p.total += COLUMN_TICK;
+        const count = queryNear(p.x, p.y, COLUMN_HALF);
+        for (let i = 0; i < count; i++) {
+          const e = near[i];
+          if (Math.abs(e.x - p.x) > p.radius + e.radius) continue;
+          damageEnemy(w, e, p.damage, p.weapon, 0, 0);
+        }
         break;
       }
       case 'enemyShot': {

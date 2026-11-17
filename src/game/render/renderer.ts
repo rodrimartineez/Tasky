@@ -2,7 +2,7 @@
 import 'pixi.js/unsafe-eval';
 import { Application, Container, Rectangle, Sprite, Texture, TilingSprite, type ApplicationOptions } from 'pixi.js';
 import { behaviourOf, WEAPON_BY_ID } from '../content/weapons';
-import { emberRadius, MINE_ARM } from '../sim/weapons';
+import { COLUMN_HALF, emberRadius, MINE_ARM } from '../sim/weapons';
 import type { Fx, Projectile, World } from '../sim/types';
 import { buildAtlas, buildGroundTile, CIRCLE_RADIUS, WHITE } from '../sprites/atlas';
 import { GROUNDS } from '../sprites/grounds';
@@ -482,6 +482,11 @@ export class Renderer {
         s.tint = e.def.id === 'clone' ? 0x6a5a9a : 0x9adf9a;
         s.alpha = 0.85;
       }
+      // Congelados, azul hielo y quietos; ralentizados, algo azulados.
+      if ((e.freeze ?? 0) > 0) {
+        s.tint = 0x9fd8ff;
+        s.scale.set(p.x < e.x ? -size : size, size);
+      } else if ((e.chill ?? 0) > 0 && e.flash <= 0) s.tint = 0xc8b8ff;
     }
     // Jefes encima del resto de enemigos, mucho más grandes que el jugador y con un aura de su color.
     for (const e of w.enemies) {
@@ -525,6 +530,20 @@ export class Renderer {
     if (skin) hero.tint = skin.tint;
     // Al recibir daño destella en rojo, sin volverse transparente: el personaje se ve siempre.
     if (p.hurtTimer > 0 && dying === null && Math.floor(this.clock * 20) % 2 === 0) hero.tint = 0xff7a7a;
+    // Escudo de la Égida de hiedra: burbuja verde que parpadea al acabarse.
+    const shield = p.shield ?? 0;
+    if (shield > 0 && dying === null && (shield > 0.6 || Math.floor(this.clock * 12) % 2 === 0)) {
+      const bubble = this.actors.next(this.tex('ring'));
+      bubble.position.set(p.x, p.y - 2);
+      bubble.scale.set((14 + Math.sin(this.clock * 6)) / CIRCLE_RADIUS);
+      bubble.tint = 0x9fe8a0;
+      bubble.alpha = 0.8;
+      const glow = this.actors.next(this.tex('disc'));
+      glow.position.copyFrom(bubble.position);
+      glow.scale.copyFrom(bubble.scale);
+      glow.tint = 0x9fe8a0;
+      glow.alpha = 0.15;
+    }
     if (dying !== null) {
       const fade = Math.max(0, 1 - dying * 1.15);
       if (w.completed) {
@@ -666,7 +685,7 @@ export class Renderer {
         glow.position.set(shot.x + cx * mid, shot.y + cy * mid);
         glow.rotation = shot.angle;
         glow.scale.set(shot.orbitR / 2, shot.radius * 0.9);
-        glow.tint = 0x4fd6e8;
+        glow.tint = shot.sprite === 'x_starburst' ? 0xffc94a : 0x4fd6e8;
         glow.alpha = 0.55 + Math.sin(this.clock * 30) * 0.1;
         const core = pool.next(this.tex('px'));
         core.position.set(glow.x, glow.y);
@@ -705,6 +724,55 @@ export class Renderer {
         s.scale.set(shot.radius / 20, shot.radius / 14);
         // Muy ampliado se vuelve translúcido para no tapar la escena.
         s.alpha = (1 - t) * (shot.radius > 60 ? 0.35 : 1);
+        return;
+      }
+      case 'axe':
+      case 'spin': {
+        const speed = Math.hypot(shot.vx, shot.vy) || 1;
+        this.trail(shot, shot.vx / speed, shot.vy / speed, shot.angle, 2, 5);
+        const s = pool.next(this.tex(shot.sprite));
+        s.position.set(shot.x, shot.y);
+        s.rotation = shot.angle;
+        s.scale.set(Math.max(1, shot.radius / 8));
+        return;
+      }
+      case 'bird': {
+        // Ave: sombra en el suelo, aleteo (estirar en vertical) y mirando hacia donde vuela.
+        const shadow = pool.next(this.tex('disc'));
+        shadow.position.set(shot.x, shot.y + 10);
+        shadow.scale.set(5 / CIRCLE_RADIUS, 2 / CIRCLE_RADIUS);
+        shadow.tint = 0x000000;
+        shadow.alpha = 0.25;
+        const s = pool.next(this.tex(shot.sprite));
+        const heading = shot.angle + (shot.vx > 0 ? Math.PI / 2 : -Math.PI / 2);
+        s.position.set(shot.x, shot.y + Math.sin(this.clock * 6 + shot.angle) * 1.5);
+        s.scale.set(Math.cos(heading) < 0 ? -1 : 1, 0.8 + 0.2 * Math.abs(Math.sin(this.clock * 14)));
+        s.alpha = Math.min(1, shot.life * 3);
+        return;
+      }
+      case 'critter': {
+        // Gato: trota (pequeño rebote), mira hacia donde camina y se desvanece al irse.
+        const s = pool.next(this.tex(shot.sprite));
+        s.position.set(shot.x, shot.y - Math.abs(Math.sin(this.clock * 12 + shot.angle)) * 1.5);
+        s.scale.set(shot.vx < 0 ? -1 : 1, 1);
+        s.alpha = Math.min(1, shot.life * 2);
+        return;
+      }
+      case 'column': {
+        // Columna de luz: franja vertical translúcida con un núcleo brillante y la runa flotando en el centro.
+        const fade = Math.min(1, shot.life * 4);
+        const band = pool.next(this.tex('px'));
+        band.position.set(shot.x, shot.y);
+        band.scale.set(shot.radius, COLUMN_HALF);
+        band.tint = shot.sprite === 'x_mana' ? 0x8fb8ff : 0xfff2b0;
+        band.alpha = (0.16 + Math.sin(this.clock * 10) * 0.03) * fade;
+        const core = pool.next(this.tex('px'));
+        core.position.set(shot.x, shot.y);
+        core.scale.set(shot.radius * 0.3, COLUMN_HALF);
+        core.alpha = 0.3 * fade;
+        const rune = pool.next(this.tex(shot.sprite));
+        rune.position.set(shot.x, shot.y - 18 + Math.sin(this.clock * 3) * 2);
+        rune.alpha = fade;
         return;
       }
       case 'enemyShot': {

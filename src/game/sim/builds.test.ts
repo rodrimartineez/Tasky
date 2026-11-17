@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ENEMY_BY_ID } from '../content/enemies';
-import { EVOLUTIONS } from '../content/evolutions';
+import { EVOLUTIONS, type EvolutionDef } from '../content/evolutions';
 import { PASSIVE_BY_ID, PASSIVES } from '../content/passives';
 import { WITHERED_WOODS } from '../content/stages';
 import { UPGRADE_BY_ID, withUpgrades } from '../content/upgrades';
@@ -35,14 +35,26 @@ const config = (weapon = 'spark', stats: Stats = BASE_STATS, seed = 1) => ({
   sprite: 'hero',
 });
 
-/** Partida con el arma indicada al nivel máximo (y, si se pide, con la pasiva). */
-function maxed(weapon: string, passive?: string, level = 7, slot = 1): World {
-  const w = createWorld(config(weapon === 'spark' ? 'lance' : 'spark'));
-  const ws = newWeapon(weapon);
+const passive = (w: World, id: string) => applyChoice(w, { kind: 'passive', id, name: '', icon: '', level: 1, text: '' });
+
+function put(w: World, id: string, level: number) {
+  const ws = newWeapon(id);
   ws.level = level;
-  ws.stats = weaponStatsAt(WEAPON_BY_ID.get(weapon)!, level);
-  w.player.weapons[slot] = ws;
-  if (passive) applyChoice(w, { kind: 'passive', id: passive, name: '', icon: '', level: 1, text: '' });
+  ws.stats = statsAt(WEAPON_BY_ID.get(id)!, level);
+  w.player.weapons.push(ws);
+  return ws;
+}
+
+/**
+ * Partida con el arma base de una evolución en el hueco 1 (al nivel indicado) y todo lo que pide su receta salvo
+ * `skip`: la otra arma de la fusión al máximo, el arma requerida y las pasivas.
+ */
+function recipeWorld(evo: EvolutionDef, skip?: string, level = 7): World {
+  const w = createWorld(config(evo.weapon === 'spark' ? 'lance' : 'spark'));
+  put(w, evo.weapon, level);
+  if (evo.union && evo.union !== skip) put(w, evo.union, 7);
+  if (evo.needs && evo.needs !== skip) put(w, evo.needs, 1);
+  for (const id of evo.passives) if (id !== skip) passive(w, id);
   return w;
 }
 
@@ -54,25 +66,26 @@ function levelUp(w: World) {
 }
 
 describe('contenido de las builds', () => {
-  it('16 armas y 14 pasivas, y cada arma tiene una sola evolución', () => {
-    expect(WEAPONS).toHaveLength(16);
-    expect(PASSIVES).toHaveLength(14);
-    expect(EVOLUTIONS).toHaveLength(WEAPONS.length);
+  it('28 armas y 23 pasivas, y cada arma pertenece a una sola evolución', () => {
+    expect(WEAPONS).toHaveLength(28);
+    expect(PASSIVES).toHaveLength(23);
+    expect(EVOLUTIONS).toHaveLength(26);
     for (const weapon of WEAPONS)
       expect(
-        EVOLUTIONS.filter((e) => e.weapon === weapon.id),
+        EVOLUTIONS.filter((e) => e.weapon === weapon.id || e.union === weapon.id),
         weapon.name,
       ).toHaveLength(1);
   });
 
   it('cada pasiva sirve para al menos una evolución y las evoluciones no están entre las armas que se ofrecen', () => {
-    for (const passive of PASSIVES)
+    for (const p of PASSIVES)
       expect(
-        EVOLUTIONS.some((e) => e.passive === passive.id),
-        passive.name,
+        EVOLUTIONS.some((e) => e.passives.includes(p.id)),
+        p.name,
       ).toBe(true);
     for (const e of EVOLUTIONS) {
-      expect(PASSIVE_BY_ID.has(e.passive), e.def.name).toBe(true);
+      for (const id of e.passives) expect(PASSIVE_BY_ID.has(id), e.def.name).toBe(true);
+      for (const id of [e.union, e.needs]) if (id) expect(WEAPON_BY_ID.has(id), e.def.name).toBe(true);
       expect(
         WEAPONS.some((x) => x.id === e.def.id),
         e.def.name,
@@ -84,13 +97,12 @@ describe('contenido de las builds', () => {
     expect(new Set(EVOLUTIONS.map((e) => e.def.id)).size).toBe(EVOLUTIONS.length);
   });
 
-  it('las armas, evoluciones y pasivas nuevas tienen todos sus sprites', () => {
+  it('las armas, evoluciones y pasivas tienen todos sus sprites', () => {
     const names = [
       ...EVOLUTIONS.flatMap((e) => [e.def.icon, e.def.proj ?? e.def.icon]),
-      ...['ricochet', 'drone', 'trail'].map((id) => WEAPON_BY_ID.get(id)!.icon),
-      ...['eye', 'fang'].map((id) => PASSIVE_BY_ID.get(id)!.icon),
-      'x_dronebolt',
-      'x_gunshipbolt',
+      ...WEAPONS.map((w) => w.icon),
+      ...PASSIVES.map((p) => p.icon),
+      ...['dronebolt', 'gunshipbolt', 'axe', 'fireball', 'dove', 'raven', 'bomblet', 'cardinal', 'saltire', 'cat', 'mana', 'clock', 'vento'].map((n) => `x_${n}`),
       'u_reroll',
       'u_banish',
     ];
@@ -101,43 +113,46 @@ describe('contenido de las builds', () => {
 describe('evoluciones (B1)', () => {
   for (const evo of EVOLUTIONS) {
     const base = WEAPON_BY_ID.get(evo.weapon)!;
-    it(`${base.name} + ${PASSIVE_BY_ID.get(evo.passive)!.name} → ${evo.def.name}, solo con nivel máximo y la pasiva`, () => {
-      // Sin la pasiva o sin el nivel máximo, el cofre no evoluciona.
-      for (const w of [maxed(evo.weapon), maxed(evo.weapon, evo.passive, 6)]) {
+    const missing = [...(evo.union ? [evo.union] : []), ...(evo.needs ? [evo.needs] : []), ...evo.passives];
+    it(`${base.name} → ${evo.def.name}, solo con nivel máximo y toda su receta`, () => {
+      // Sin cualquiera de sus ingredientes o sin el nivel máximo, el cofre no evoluciona.
+      for (const w of [...missing.map((id) => recipeWorld(evo, id)), recipeWorld(evo, undefined, 6)]) {
         expect(evolutionReady(w, w.player.weapons[1])).toBeNull();
         openChest(w);
-        expect(w.player.weapons.map((x) => x.id)).toContain(evo.weapon);
         expect(w.player.weapons.map((x) => x.id)).not.toContain(evo.def.id);
         expect(w.chestRewards.every((r) => r.kind !== 'evolution')).toBe(true);
       }
-      // Con las dos cosas, el siguiente cofre la sustituye en el mismo hueco.
-      const w = maxed(evo.weapon, evo.passive);
-      const dealt = 123;
-      w.player.weapons[1].dealt = dealt;
+      // Con todo, el siguiente cofre la sustituye en el mismo hueco; una fusión libera el hueco de la otra arma.
+      const w = recipeWorld(evo);
+      w.player.weapons[1].dealt = 123;
       expect(evolutionReady(w, w.player.weapons[1])).toBe(evo);
       openChest(w);
       expect(w.player.weapons[1].id).toBe(evo.def.id);
-      expect(w.player.weapons[1].dealt).toBe(dealt);
-      expect(w.player.weapons.map((x) => x.id)).not.toContain(evo.weapon);
-      expect(w.player.weapons).toHaveLength(2);
+      expect(w.player.weapons[1].dealt).toBe(123);
+      const ids = w.player.weapons.map((x) => x.id);
+      expect(ids).not.toContain(evo.weapon);
+      if (evo.union) expect(ids).not.toContain(evo.union);
+      if (evo.needs) expect(ids).toContain(evo.needs);
+      expect(w.player.weapons).toHaveLength(evo.needs ? 3 : 2);
       expect(w.chestRewards[0]).toMatchObject({ kind: 'evolution', id: evo.def.id, name: evo.def.name });
       expect(w.player.weapons[1].stats).toEqual(evo.def.base);
     });
   }
 
-  it('las evoluciones no se ofrecen al subir de nivel, y su arma base tampoco vuelve a salir', () => {
+  it('las evoluciones no se ofrecen al subir de nivel, y sus armas base tampoco vuelven a salir', () => {
     const evolvedIds = new Set(EVOLUTIONS.map((e) => e.def.id));
     for (const evo of EVOLUTIONS) {
-      const w = maxed(evo.weapon, evo.passive);
+      const w = recipeWorld(evo);
       openChest(w);
       for (let i = 0; i < 40; i++) {
-        w.player.passives.length = 1; // siempre hay hueco para opciones nuevas
+        w.player.passives.splice(1); // siempre hay hueco para opciones nuevas
         const ids = rollChoices(w).map((c) => c.id);
         expect(
           ids.some((id) => evolvedIds.has(id)),
           evo.def.name,
         ).toBe(false);
         expect(ids, evo.def.name).not.toContain(evo.weapon);
+        if (evo.union) expect(ids, evo.def.name).not.toContain(evo.union);
       }
       expect(w.player.weapons.length).toBeLessThan(MAX_WEAPONS);
     }
@@ -146,17 +161,35 @@ describe('evoluciones (B1)', () => {
   it('avisa en la opción que completa una evolución', () => {
     const evo = EVOLUTIONS.find((e) => e.weapon === 'spark')!;
     // Arma al nivel 6 con la pasiva: subirla al 7 completa la evolución.
-    const w = maxed('spark', evo.passive, 6, 0);
-    const choices = Array.from({ length: 30 }, () => rollChoices(w)).flat();
+    const w = recipeWorld(evo, undefined, 6);
+    const choices = Array.from({ length: 300 }, () => rollChoices(w)).flat();
     expect(choices.find((c) => c.id === 'spark')).toMatchObject({ level: 7, evolves: evo.def.name });
     // Arma al máximo sin la pasiva: la pasiva nueva la completa.
-    const v = maxed('spark', undefined, 7, 0);
-    const passive = Array.from({ length: 30 }, () => rollChoices(v))
+    const v = recipeWorld(evo, evo.passives[0]);
+    const offered = Array.from({ length: 300 }, () => rollChoices(v))
       .flat()
-      .find((c) => c.id === evo.passive);
-    expect(passive).toMatchObject({ level: 1, evolves: evo.def.name });
+      .find((c) => c.id === evo.passives[0]);
+    expect(offered).toMatchObject({ level: 1, evolves: evo.def.name });
     // Una opción que no completa nada no lleva el aviso.
-    expect(choices.filter((c) => c.id !== 'spark' && c.id !== evo.passive).every((c) => !c.evolves)).toBe(true);
+    expect(choices.filter((c) => c.id !== 'spark' && c.id !== evo.passives[0]).every((c) => !c.evolves)).toBe(true);
+
+    // Recetas de dos pasivas: la primera no completa nada; la segunda, sí.
+    const rings = EVOLUTIONS.find((e) => e.def.id === 'eternal')!;
+    const r = recipeWorld(rings, 'goldring');
+    r.player.passives.length = 0;
+    const first = Array.from({ length: 300 }, () => rollChoices(r)).flat();
+    expect(first.filter((c) => c.id === 'silverring' || c.id === 'goldring').every((c) => !c.evolves)).toBe(true);
+    passive(r, 'silverring');
+    const second = Array.from({ length: 300 }, () => rollChoices(r)).flat();
+    expect(second.find((c) => c.id === 'goldring')).toMatchObject({ evolves: rings.def.name });
+
+    // Fusión: subir la segunda arma al máximo con la primera ya al máximo completa la evolución.
+    const birds = EVOLUTIONS.find((e) => e.def.id === 'twinwings')!;
+    const b = createWorld(config('spark'));
+    put(b, 'dove', 7);
+    put(b, 'raven', 6);
+    const birdChoices = Array.from({ length: 300 }, () => rollChoices(b)).flat();
+    expect(birdChoices.find((c) => c.id === 'raven')).toMatchObject({ level: 7, evolves: birds.def.name });
   });
 });
 
@@ -167,8 +200,8 @@ describe('Repetir y Descartar (C1)', () => {
     const stats = withUpgrades(BASE_STATS, { rerolls: 2, banishes: 3 });
     expect(stats).toMatchObject({ rerolls: 2, banishes: 3 });
     expect(BASE_STATS).toMatchObject({ rerolls: 0, banishes: 0 });
-    expect([1, 2, 3].map(UPGRADE_BY_ID.get('rerolls')!.cost)).toEqual([150, 450, 1350]);
-    expect([1, 2, 3].map(UPGRADE_BY_ID.get('banishes')!.cost)).toEqual([200, 600, 1800]);
+    expect([1, 2, 3].map(UPGRADE_BY_ID.get('rerolls')!.cost)).toEqual([37_500, 112_500, 337_500]);
+    expect([1, 2, 3].map(UPGRADE_BY_ID.get('banishes')!.cost)).toEqual([50_000, 150_000, 450_000]);
   });
 
   it('se copian de las estadísticas al empezar y las partidas guardadas sin esos campos no fallan', () => {
@@ -307,6 +340,9 @@ describe('armas y pasivas nuevas (B2)', () => {
   });
 });
 
+/** Armas de apoyo sin daño propio (escudo): fuera de las comparaciones de daño. */
+const UTILITY = ['laurel'];
+
 /** Dureza de los enemigos en la medida de daño de las armas (la que daba el nivel 20 000 antes de la Fase 8). */
 const SWARM_HARDNESS = 52.74;
 
@@ -345,13 +381,14 @@ describe('equilibrio de builds (daño)', () => {
     const best = Math.max(...base.values());
     const wrong: string[] = [];
     for (const evo of EVOLUTIONS) {
+      if (UTILITY.includes(evo.weapon)) continue;
       const evolved = swarmDamage(evo.def.id);
       const ratio = evolved / base.get(evo.weapon)!;
       if (ratio < 1.55 || ratio > 2.8 || evolved > best * 2.5) wrong.push(`${evo.def.name} (${evo.weapon}): ×${ratio.toFixed(2)}`);
     }
     expect(wrong).toEqual([]);
     for (const id of ['ricochet', 'drone', 'trail']) expect(base.get(id)!, id).toBeLessThanOrEqual(best * 2.5);
-  }, 240_000);
+  }, 480_000);
 
   it('en una partida de 5 minutos con el bot, ninguna evolución ni arma nueva supera 2,5 veces a la mejor arma base', () => {
     // Las armas base empiezan al nivel máximo y las evoluciones ya son lo que son; el resto de mejoras las elige el bot.
@@ -371,7 +408,7 @@ describe('equilibrio de builds (daño)', () => {
       expect(d, evo.def.name).toBeGreaterThan(0);
       expect(d, evo.def.name).toBeLessThanOrEqual(best * 2.5);
     }
-  }, 240_000);
+  }, 480_000);
 });
 
 describe('niveles de armas y pasivas (7 + hasta 999)', () => {
@@ -383,7 +420,7 @@ describe('niveles de armas y pasivas (7 + hasta 999)', () => {
     return false;
   };
 
-  it('un arma al 7 solo sigue subiendo con las 5 armas y las 5 pasivas al 7; las pasivas nunca pasan del 7', () => {
+  it('un arma al 7 solo sigue subiendo con las 6 armas y las 6 pasivas al 7; las pasivas nunca pasan del 7', () => {
     const w = createWorld(config('spark'));
     w.purgeAt = undefined;
     const at7 = (id: string) => {
@@ -397,8 +434,8 @@ describe('niveles de armas y pasivas (7 + hasta 999)', () => {
     // Todo lo que se lleva está al 7, pero faltan huecos por llenar.
     expect(buildComplete(w)).toBe(false);
     expect(offered(w, 'spark')).toBe(false);
-    w.player.weapons = ['spark', 'lance', 'orbs', 'ember', 'storm'].map(at7);
-    w.player.passives = ['whetstone', 'hourglass', 'lens', 'boots', 'tiramisu'].map((id) => ({ id, level: 7 }));
+    w.player.weapons = ['spark', 'lance', 'orbs', 'ember', 'storm', 'whip'].map(at7);
+    w.player.passives = ['whetstone', 'hourglass', 'lens', 'boots', 'tiramisu', 'eye'].map((id) => ({ id, level: 7 }));
     w.player.passives[4].level = 1;
     expect(buildComplete(w)).toBe(false);
     expect(offered(w, 'spark')).toBe(false);

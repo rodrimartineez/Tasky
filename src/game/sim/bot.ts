@@ -67,11 +67,11 @@ export function botPick(w: World): number {
   const score = (c: UpgradeChoice) => {
     if (c.kind === 'evolution' || c.evolves) return 100;
     if (c.kind === 'weapon') {
-      const evo = EVOLUTIONS.find((e) => e.weapon === c.id);
-      if (owned.has(c.id)) return evo && passives.has(evo.passive) ? 60 : 40;
+      const evo = EVOLUTIONS.find((e) => e.weapon === c.id || e.union === c.id);
+      if (owned.has(c.id)) return evo && evo.passives.every((id) => passives.has(id)) ? 60 : 40;
       return evo ? 35 : 20;
     }
-    if (c.kind === 'passive') return EVOLUTIONS.some((e) => e.passive === c.id && owned.has(e.weapon)) ? 50 : 15;
+    if (c.kind === 'passive') return EVOLUTIONS.some((e) => e.passives.includes(c.id) && owned.has(e.weapon)) ? 50 : 15;
     return c.kind === 'purge' ? -1 : 0;
   };
   let best = 0;

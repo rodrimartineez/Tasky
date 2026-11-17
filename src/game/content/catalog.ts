@@ -1,5 +1,5 @@
 import { BASE_STATS, type PassiveDef, type Stats, type WeaponDef, type WeaponStats } from '../sim/types';
-import { EVOLUTIONS, type EvolutionDef } from './evolutions';
+import { EVOLUTIONS, ingredientsOf, type EvolutionDef } from './evolutions';
 import { PASSIVE_BY_ID, PASSIVES } from './passives';
 import { WEAPON_BY_ID, WEAPONS, weaponStatsAt } from './weapons';
 
@@ -31,6 +31,7 @@ const STAT_INFO: Record<keyof Stats, { label: string; format: StatFormat; unit?:
   rerolls: { label: 'Repetir elección', format: 'absolute' },
   banishes: { label: 'Descartar', format: 'absolute' },
   leech: { label: 'Robo de vida', format: 'fraction' },
+  curse: { label: 'Maldición', format: 'relative' },
 };
 
 const num = (n: number, digits = 2) => n.toLocaleString('es-ES', { maximumFractionDigits: digits });
@@ -131,7 +132,7 @@ export function weaponEntries(): WeaponEntry[] {
       first: figuresOf(weaponStatsAt(def, 1)),
       last: figuresOf(weaponStatsAt(def, maxLevel)),
       levels: def.levels.map((l, i) => ({ level: i + 2, text: l.text })),
-      evolutions: EVOLUTIONS.filter((e) => e.weapon === def.id),
+      evolutions: EVOLUTIONS.filter((e) => e.weapon === def.id || e.union === def.id || e.needs === def.id),
     };
   });
 }
@@ -144,12 +145,33 @@ export interface PassiveEntry {
 }
 
 export const passiveEntries = (): PassiveEntry[] =>
-  PASSIVES.map((def) => ({ def, changes: passiveChanges(def), evolutions: EVOLUTIONS.filter((e) => e.passive === def.id) }));
+  PASSIVES.map((def) => ({ def, changes: passiveChanges(def), evolutions: EVOLUTIONS.filter((e) => e.passives.includes(def.id)) }));
+
+/** Ingrediente de una receta de evolución (pasiva o arma), con su nombre e icono. */
+export interface Ingredient {
+  kind: 'passive' | 'weapon';
+  id: string;
+  name: string;
+  icon: string;
+}
+
+export const ingredientEntries = (e: EvolutionDef): Ingredient[] =>
+  ingredientsOf(e).map((i) => {
+    const def = i.kind === 'passive' ? PASSIVE_BY_ID.get(i.id)! : WEAPON_BY_ID.get(i.id)!;
+    return { ...i, name: def.name, icon: def.icon };
+  });
+
+/** Receta en texto, sin el arma desde la que se mira («Corazón de roble», «Sortija lunar y Sortija solar»…). */
+export function recipeText(e: EvolutionDef, from: string): string {
+  const names = [WEAPON_BY_ID.get(e.weapon)!, ...ingredientEntries(e)].filter((i) => i.id !== from).map((i) => i.name);
+  return names.length > 1 ? `${names.slice(0, -1).join(', ')} y ${names.at(-1)}` : names[0];
+}
 
 export interface EvolutionEntry {
   evolution: EvolutionDef;
   weapon: WeaponDef;
-  passive: PassiveDef;
+  /** Lo que pide además del arma base al máximo. */
+  ingredients: Ingredient[];
   attack: string;
   /** Arma base a su nivel máximo frente a la evolución. */
   before: WeaponFigures;
@@ -162,7 +184,7 @@ export function evolutionEntries(): EvolutionEntry[] {
     return {
       evolution,
       weapon,
-      passive: PASSIVE_BY_ID.get(evolution.passive)!,
+      ingredients: ingredientEntries(evolution),
       attack: attackOf(evolution.def),
       before: figuresOf(weaponStatsAt(weapon, weapon.levels.length + 1)),
       after: figuresOf(weaponStatsAt(evolution.def, 1)),

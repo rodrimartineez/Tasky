@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { Play } from 'lucide-react';
 import { EVOLUTIONS } from '../../../game/content/evolutions';
+import { ingredientEntries } from '../../../game/content/catalog';
 import { PASSIVE_BY_ID } from '../../../game/content/passives';
 import { WEAPON_BY_ID } from '../../../game/content/weapons';
 import type { Hud } from '../../../game/Game';
@@ -13,7 +14,7 @@ const Sprite = ({ name, className }: { name: string; className?: string }) => (
   <img className={className} src={spriteDataUrl(name)} alt="" draggable={false} />
 );
 
-/** Las cinco armas y las cinco pasivas que se llevan, con su nivel y lo que hacen (los huecos libres, vacíos). */
+/** Las seis armas y las seis pasivas que se llevan, con su nivel y lo que hacen (los huecos libres, vacíos). */
 function Loadout({ hud }: { hud: Hud }) {
   const rows = (items: { id: string; level: number }[], total: number, passive: boolean) =>
     Array.from({ length: total }, (_, i) => {
@@ -63,13 +64,17 @@ function Evolutions({ hud }: { hud: Hud }) {
     <ul className={styles.evolutions}>
       {EVOLUTIONS.map((e) => {
         const base = WEAPON_BY_ID.get(e.weapon)!;
-        const passive = PASSIVE_BY_ID.get(e.passive)!;
+        const parts = ingredientEntries(e);
         const evolved = weapons.has(e.def.id);
         return (
-          <li key={e.def.id} className={styles.evolution} aria-label={`${base.name} + ${passive.name} = ${e.def.name}`}>
+          <li key={e.def.id} className={styles.evolution} aria-label={`${[base, ...parts].map((x) => x.name).join(' + ')} = ${e.def.name}`}>
             {cell(base.icon, base.name, evolved || weapons.has(e.weapon))}
-            <i>+</i>
-            {cell(passive.icon, passive.name, passives.has(e.passive))}
+            {parts.map((x) => (
+              <Fragment key={x.id}>
+                <i>+</i>
+                {cell(x.icon, x.name, (x.kind === 'passive' ? passives : weapons).has(x.id) || (evolved && x.id === e.union))}
+              </Fragment>
+            ))}
             <i>=</i>
             {cell(e.def.icon, e.def.name, evolved)}
             <span className={styles.evoName}>{e.def.name}</span>

@@ -1,4 +1,4 @@
-import { EVOLUTION_BY_WEAPON, type EvolutionDef } from '../content/evolutions';
+import { EVOLUTION_BY_WEAPON, EVOLUTIONS, type EvolutionDef } from '../content/evolutions';
 import { PASSIVE_BY_ID, PASSIVES } from '../content/passives';
 import { WEAPON_BY_ID, WEAPONS, weaponStatsAt } from '../content/weapons';
 import { emit, rand } from './core';
@@ -46,7 +46,7 @@ export function statsAt(def: WeaponDef, level: number) {
 }
 
 /**
- * Build completa: las cinco armas y las cinco pasivas, todas al nivel 7. Solo entonces las armas siguen subiendo
+ * Build completa: las seis armas y las seis pasivas, todas al nivel 7. Solo entonces las armas siguen subiendo
  * (hasta el 999); las pasivas nunca pasan del 7.
  */
 export const buildComplete = (w: World) =>
@@ -81,14 +81,33 @@ export function recomputeStats(w: World) {
   p.hp = Math.min(p.hp, stats.maxHp);
 }
 
-/** Evolución que el arma tiene lista: nivel máximo, con la pasiva necesaria y sin haber evolucionado ya. */
+const hasPassive = (w: World, id: string) => w.player.passives.some((x) => x.id === id);
+const maxedWeapon = (w: World, id: string) => w.player.weapons.find((x) => x.id === id && x.level >= MAX_WEAPON_LEVEL);
+
+/**
+ * Receta completa salvo, si se indica, una pasiva o un arma que aún no se lleva (`assume`): sirve para avisar en la
+ * opción de nivel que la completaría.
+ */
+function recipeMet(w: World, evo: EvolutionDef, assume?: string): boolean {
+  const weapons = [evo.weapon, ...(evo.union ? [evo.union] : [])];
+  return (
+    weapons.every((id) => id === assume || maxedWeapon(w, id)) &&
+    (!evo.needs || evo.needs === assume || w.player.weapons.some((x) => x.id === evo.needs)) &&
+    evo.passives.every((id) => id === assume || hasPassive(w, id))
+  );
+}
+
+/** Evolución que el arma tiene lista: nivel máximo y todo lo que pide su receta, sin haber evolucionado ya. */
 export function evolutionReady(w: World, ws: WeaponState): EvolutionDef | null {
   const evo = EVOLUTION_BY_WEAPON.get(ws.id);
   if (!evo || ws.level < MAX_WEAPON_LEVEL) return null;
-  return w.player.passives.some((x) => x.id === evo.passive) ? evo : null;
+  return recipeMet(w, evo) ? evo : null;
 }
 
-/** Evoluciona el arma en su mismo hueco (conserva el daño acumulado para el resumen) y devuelve lo que se muestra. */
+/**
+ * Evoluciona el arma en su mismo hueco (conserva el daño acumulado para el resumen) y devuelve lo que se muestra.
+ * En una fusión, la otra arma desaparece y deja libre su hueco.
+ */
 function evolve(w: World, ws: WeaponState, evo: EvolutionDef): UpgradeChoice {
   const p = w.player;
   const next = newWeapon(evo.def.id);
@@ -97,6 +116,11 @@ function evolve(w: World, ws: WeaponState, evo: EvolutionDef): UpgradeChoice {
   next.dealt = ws.dealt;
   next.timer = ws.timer;
   p.weapons[p.weapons.indexOf(ws)] = next;
+  const partner = evo.union && p.weapons.find((x) => x !== next && (x.id === evo.union || x.id === evo.weapon));
+  if (partner) {
+    next.dealt += partner.dealt;
+    p.weapons.splice(p.weapons.indexOf(partner), 1);
+  }
   emit(w, { type: 'ring', x: p.x, y: p.y, radius: 90, color: 0xffe08a });
   emit(w, { type: 'ring', x: p.x, y: p.y, radius: 55, color: 0xffffff });
   emit(w, { type: 'shake', power: 3 });
@@ -112,7 +136,8 @@ function evolve(w: World, ws: WeaponState, evo: EvolutionDef): UpgradeChoice {
 
 function weaponChoice(w: World, def: WeaponDef, level: number): UpgradeChoice {
   const evo = EVOLUTION_BY_WEAPON.get(def.id);
-  const completes = level === MAX_WEAPON_LEVEL && evo && w.player.passives.some((x) => x.id === evo.passive);
+  // Subir esta arma al máximo completa la receta (en una fusión, si la otra arma ya está al máximo).
+  const completes = level === MAX_WEAPON_LEVEL && evo && recipeMet(w, evo, def.id);
   return {
     kind: 'weapon',
     id: def.id,
@@ -143,7 +168,7 @@ function pool(w: World): { choice: UpgradeChoice; weight: number }[] {
       if (owned.level < MAX_WEAPON_LEVEL) out.push({ choice: weaponChoice(w, def, owned.level + 1), weight: 3 });
       else if (complete && owned.level < WEAPON_LEVEL_CAP) out.push({ choice: weaponChoice(w, def, owned.level + 1), weight: 2 });
     } else if (p.weapons.length < MAX_WEAPONS) {
-      // Una evolución ocupa el lugar de su arma base, que no vuelve a ofrecerse como nueva.
+      // Una evolución ocupa el lugar de su arma base (y de la otra de una fusión), que no vuelve a ofrecerse como nueva.
       const evolvedId = EVOLUTION_BY_WEAPON.get(def.id)?.def.id;
       if (!p.weapons.some((x) => x.id === evolvedId)) out.push({ choice: weaponChoice(w, def, 1), weight: 2 });
     }
@@ -153,12 +178,8 @@ function pool(w: World): { choice: UpgradeChoice; weight: number }[] {
     const owned = p.passives.find((x) => x.id === def.id);
     const level = (owned?.level ?? 0) + 1;
     if (level > def.maxLevel || (!owned && p.passives.length >= MAX_PASSIVES)) continue;
-    // Una pasiva nueva que completa la evolución de un arma que ya está al máximo se avisa en la opción.
-    const completes = owned
-      ? undefined
-      : p.weapons
-          .map((ws) => EVOLUTION_BY_WEAPON.get(ws.id))
-          .find((evo) => evo?.passive === def.id && p.weapons.some((ws) => ws.id === evo.weapon && ws.level >= MAX_WEAPON_LEVEL));
+    // Una pasiva nueva que completa la receta de una evolución se avisa en la opción.
+    const completes = owned ? undefined : EVOLUTIONS.find((evo) => evo.passives.includes(def.id) && recipeMet(w, evo, def.id));
     out.push({
       choice: {
         kind: 'passive',

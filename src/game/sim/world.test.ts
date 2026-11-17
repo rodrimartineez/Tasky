@@ -116,8 +116,10 @@ describe('simulación', () => {
   it('todas las armas funcionan como arma inicial', () => {
     for (const weapon of WEAPONS) {
       const w = createWorld(config(11, { ...BASE_STATS, maxHp: 1e6 }, weapon.id));
+      let shielded = false;
       // Camina en línea recta hacia los enemigos (las armas direccionales disparan hacia donde se mira).
       for (let i = 0; i < 60 / DT && w.phase !== 'dead'; i++) {
+        shielded ||= (w.player.shield ?? 0) > 0;
         if (w.phase === 'levelup')
           chooseUpgrade(
             w,
@@ -129,7 +131,9 @@ describe('simulación', () => {
         else if (w.phase === 'purge') purgeItems(w, [], []);
         else step(w, DT, 1, 0);
       }
-      expect(w.player.weapons[0].dealt, weapon.name).toBeGreaterThan(0);
+      // La Égida de hiedra no hace daño: protege con su escudo.
+      if (weapon.base.damage === 0) expect(shielded, weapon.name).toBe(true);
+      else expect(w.player.weapons[0].dealt, weapon.name).toBeGreaterThan(0);
       expect(finite(w)).toBe(true);
     }
   }, 60_000);
@@ -139,7 +143,8 @@ describe('simulación', () => {
       expect(weapon.levels).toHaveLength(6);
       const max = weaponStatsAt(weapon, 7);
       expect(max.cooldown).toBeGreaterThan(0.1);
-      expect(max.damage).toBeGreaterThan(weapon.base.damage);
+      if (weapon.base.damage === 0) expect(max.cooldown, weapon.name).toBeLessThan(weapon.base.cooldown);
+      else expect(max.damage, weapon.name).toBeGreaterThan(weapon.base.damage);
     }
   });
 
@@ -171,9 +176,9 @@ describe('escalada dentro de la partida (Fase 8)', () => {
 
   it('la vida y el daño de los enemigos suben con los minutos sobre la base del nivel', () => {
     expect(timeHpScale(at(0))).toBe(1);
-    expect(timeHpScale(at(1))).toBeCloseTo(1.3084, 5);
-    expect(timeHpScale(at(15))).toBeCloseTo(19.99, 5);
-    expect(damageScale(at(15)) / damageScale(at(0))).toBeCloseTo(6.001, 5);
+    expect(timeHpScale(at(1))).toBeCloseTo(1.19, 5);
+    expect(timeHpScale(at(15))).toBeCloseTo(10.15, 5);
+    expect(damageScale(at(15)) / damageScale(at(0))).toBeCloseTo(2.5, 5);
     // El nivel siguiente empieza más arriba y vuelve a escalar igual.
     const next = { ...at(0), config: { ...config(3), level: 2 } };
     expect(hpScale(next)).toBeGreaterThan(hpScale(at(0)));

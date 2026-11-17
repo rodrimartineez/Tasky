@@ -156,7 +156,7 @@ Movimiento (joystick virtual flotante: aparece donde se apoya el pulgar, no tapa
 escritorio) · ataque automático · gemas de experiencia con imán · subida de nivel → elegir 1 de 3–4 (armas nuevas,
 niveles de arma, pasivas) · cofres de élites y jefes (mejoras, evoluciones, oro) · oleadas guionizadas por minuto
 por escenario · jefes en minutos fijos · **minuto 30: llega La Muerte**, imparable, que cierra la partida (llegar a
-ella supera el nivel; §11). Máximo 5 armas y 5 pasivas, de 7 niveles (§12).
+ella supera el nivel; §11). Máximo 6 armas y 6 pasivas (5 + 5 hasta el 17/11/2026), de 7 niveles (§12).
 
 ### 5.2 Contenido inicial (objetivo, por fases)
 - **Armas (~16 base + evoluciones):** proyectil que busca, lanza que atraviesa, orbe que orbita, aura de daño
@@ -371,7 +371,7 @@ Vale para cualquier arma futura sin hacer nada más.
 **Niveles de armas y pasivas** (`sim/upgrades.ts`, tablas en `content/weapons.ts` y `content/passives.ts`).
 - 7 niveles; cada uno se nota y el 7 es un gran salto (un arma al 7 rinde de 4 a 12 veces su nivel 1, algo más que el antiguo nivel 8).
 - Al llegar al 7, un objeto deja de ofrecerse. Las pasivas no pasan nunca del 7. Ninguna arma pasa del 7 hasta
-  llevar **las 5 armas y las 5 pasivas, todas al 7**.
+  llevar **las 6 armas y las 6 pasivas, todas al 7**.
 - Con la build completa (`buildComplete`), las armas siguen subiendo hasta el **999** (`OVERLEVEL`): cada nivel +5 % de
   daño y algo más de área (hasta ×1,6), cadencia, velocidad y duración; +1 proyectil cada 50 niveles (5 como mucho)
   y +1 de perforación cada 30. Las pasivas se quedan en el 7. Vale en todas las modalidades, pensado sobre todo para
@@ -380,7 +380,7 @@ Vale para cualquier arma futura sin hacer nada más.
 
 **Purga** (mejora especial). En ~1 de cada 5 partidas (decidido por la semilla, `PURGE` en `sim/world.ts`) se
 ofrece una vez, entre los niveles 8 y 37 del personaje, en lugar de una de las opciones, aunque el inventario esté
-lleno. Abre el inventario completo (5 armas y 5 pasivas por separado): se marcan las que se quieren eliminar y se
+lleno. Abre el inventario completo (6 armas y 6 pasivas por separado): se marcan las que se quieren eliminar y se
 confirma. Sus huecos quedan libres. No hay red de seguridad: se pueden quitar todas las armas.
 
 **Ritmo y oleadas** (`sim/core.ts` `WAVES`, `sim/world.ts` `SPAWN_RATE`, `XP_SCALE`).
@@ -437,11 +437,11 @@ saltos, invocaciones, lluvias y anillos, cada jefe tiene ataques propios avisado
 ## 15. Ajustes previos a la Fase 9 (12/11/2026)
 
 - **Derrota:** la pantalla final dice «Has muerto» (sin mencionar el minuto 30).
-- **Pausa:** Continuar · Ver equipamiento (las 5 armas y las 5 pasivas con su nivel y lo que hacen) · Tabla de
+- **Pausa:** Continuar · Ver equipamiento (las 6 armas y las 6 pasivas con su nivel y lo que hacen) · Tabla de
   evoluciones (arma + pasiva = evolución; lo que se lleva se ilumina en dorado, lo que falta se ve apagado) ·
   Guardar y salir. Se quitó «Terminar» (`PauseMenu.tsx`).
-- **Niveles:** las pasivas tienen un máximo absoluto de 7. Las armas pasan del 7 (hasta el 999) solo con las 5 armas
-  y las 5 pasivas equipadas al 7 (`buildComplete`); a partir de ahí las mejoras son solo de armas.
+- **Niveles:** las pasivas tienen un máximo absoluto de 7. Las armas pasan del 7 (hasta el 999) solo con las 6 armas
+  y las 6 pasivas equipadas al 7 (`buildComplete`); a partir de ahí las mejoras son solo de armas.
 - **Cofres** (`openChest`, `CHEST`): de 1 a 5 mejoras (probabilidades de 5/4/3/2 mejoras: 3/5/10/17 % × suerte) y
   oro que crece con ellas (×0,8 · 1,1 · 1,4 · 1,8 · 2,4 sobre 20 + 1 por cada 30 s). La media es la misma que antes
   (test), así que la economía no cambia. La partida se detiene durante la presentación (`ChestReveal.tsx`): cofre en

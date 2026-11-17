@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Plus } from 'lucide-react';
 import { GAME_BUILD } from '../core/release';
-import { evolutionEntries, passiveEntries, WEAPON_FIGURE_LABELS, weaponEntries, type WeaponFigures } from '../../game/content/catalog';
+import { evolutionEntries, passiveEntries, recipeText, WEAPON_FIGURE_LABELS, weaponEntries, type WeaponFigures } from '../../game/content/catalog';
+import { WEAPON_BY_ID } from '../../game/content/weapons';
 import { spriteDataUrl } from '../../game/sprites/atlas';
 import styles from './CatalogPage.module.css';
 
@@ -57,7 +58,8 @@ export function CatalogPage() {
     <div className={styles.page}>
       <p className={styles.intro}>
         Todo lo que puede aparecer en una partida, lo hayas usado o no. Las armas y pasivas se eligen al subir de nivel; las evoluciones
-        aparecen al abrir un cofre con el arma al nivel máximo y su pasiva.
+        aparecen al abrir un cofre con el arma al nivel máximo y lo que pida su receta (una o dos pasivas, otra arma o
+        una evolución).
         {GAME_BUILD.devTools && (
           <>
             {' '}
@@ -105,7 +107,7 @@ export function CatalogPage() {
               </details>
               {w.evolutions.map((e) => (
                 <p key={e.def.id} className={styles.evolves}>
-                  Evoluciona en <b>{e.def.name}</b> con {passives.find((p) => p.def.id === e.passive)?.def.name}.
+                  Evoluciona en <b>{e.def.name}</b> con {recipeText(e, w.def.id)}.
                 </p>
               ))}
             </li>
@@ -162,14 +164,17 @@ export function CatalogPage() {
                   <span className={styles.tag}>{e.attack}</span>
                 </div>
               </div>
-              <div className={styles.recipe} aria-label={`${e.weapon.name} al nivel máximo más ${e.passive.name}`}>
+              <div className={styles.recipe} aria-label={`${e.weapon.name} al nivel máximo más ${recipeText(e.evolution, e.weapon.id)}`}>
                 <span className={styles.ingredient}>
                   <Icon name={e.weapon.icon} size={28} /> {e.weapon.name} <small>nivel {e.weapon.levels.length + 1}</small>
                 </span>
-                <Plus className={styles.op} />
-                <span className={styles.ingredient}>
-                  <Icon name={e.passive.icon} size={28} /> {e.passive.name}
-                </span>
+                {e.ingredients.map((i) => (
+                  <span key={i.id} className={styles.ingredient}>
+                    <Plus className={styles.op} />
+                    <Icon name={i.icon} size={28} /> {i.name}
+                    {i.id === e.evolution.union && <small>nivel {WEAPON_BY_ID.get(i.id)!.levels.length + 1}</small>}
+                  </span>
+                ))}
                 <ArrowRight className={styles.op} />
                 <span className={styles.ingredient}>
                   <Icon name={e.evolution.def.icon} size={28} /> {e.evolution.def.name}
@@ -177,7 +182,13 @@ export function CatalogPage() {
               </div>
               <p className={styles.text}>{e.evolution.def.description}</p>
               <Figures from={e.before} to={e.after} fromLabel={`${e.weapon.name} (máx.)`} toLabel="Evolución" />
-              <p className={styles.evolves}>Ocupa el mismo hueco que el arma y ya no sube de nivel.</p>
+              <p className={styles.evolves}>
+                {e.evolution.union
+                  ? 'Fusiona las dos armas en un solo hueco y ya no sube de nivel.'
+                  : e.evolution.needs
+                    ? `Ocupa el mismo hueco que el arma, sin gastar ${WEAPON_BY_ID.get(e.evolution.needs)!.name}, y ya no sube de nivel.`
+                    : 'Ocupa el mismo hueco que el arma y ya no sube de nivel.'}
+              </p>
             </li>
           ))}
         </ul>

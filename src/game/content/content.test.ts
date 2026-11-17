@@ -65,9 +65,9 @@ describe('contenido', () => {
     for (const p of PASSIVES) expect(SPRITES[p.icon], p.name).toBeDefined();
   });
 
-  it('hay 5 huecos de armas y de pasivas y variedad de armas y pasivas', () => {
-    expect(MAX_WEAPONS).toBe(5);
-    expect(MAX_PASSIVES).toBe(5);
+  it('hay 6 huecos de armas y de pasivas y variedad de armas y pasivas', () => {
+    expect(MAX_WEAPONS).toBe(6);
+    expect(MAX_PASSIVES).toBe(6);
     expect(WEAPONS.length).toBeGreaterThanOrEqual(12);
     expect(PASSIVES.length).toBeGreaterThanOrEqual(10);
   });
@@ -113,17 +113,21 @@ describe('equilibrio de armas', () => {
       sprite: 'hero',
     });
     botPlay(w, 300, undefined, firstPick);
-    return w.player.weapons.find((x) => x.id === weapon)?.dealt ?? 0;
+    // Si llega a evolucionar en estos 5 minutos, su daño incluye el de la evolución: solo cuenta que haga daño
+    // (las evoluciones tienen su propia prueba en sim/builds.test.ts).
+    const ws = w.player.weapons.find((x) => x.id === weapon || WEAPON_BY_ID.get(x.id)?.evolvedFrom === weapon);
+    return { dealt: ws?.dealt ?? 0, evolved: ws?.id !== weapon };
   };
 
   // Margen ×2,25 (antes ×2): desde que las élites tienen ×10 de vida (12/11/2026) absorben más daño de las armas de
   // área, que ya no lo desperdician, y Nova sube a ~×2,2 en este total de 5 minutos.
   it('ninguna arma nueva supera 2,25 veces la mejor original', () => {
-    const results = new Map(WEAPONS.map((w) => [w.id, dealt(w.id)]));
-    const best = Math.max(...ORIGINAL.map((id) => results.get(id)!));
-    for (const [id, d] of results) {
+    // La Égida de hiedra es un escudo: no hace daño.
+    const results = new Map(WEAPONS.filter((w) => w.id !== 'laurel').map((w) => [w.id, dealt(w.id)]));
+    const best = Math.max(...ORIGINAL.map((id) => results.get(id)!.dealt));
+    for (const [id, { dealt: d, evolved }] of results) {
       expect(d, id).toBeGreaterThan(0);
-      expect(d, id).toBeLessThan(best * 2.25);
+      if (!evolved) expect(d, id).toBeLessThan(best * 2.25);
     }
   }, 120_000);
 });

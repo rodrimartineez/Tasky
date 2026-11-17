@@ -1,7 +1,7 @@
 import { CYCLE_BOSS_AT } from '../content/bosses';
 import { ENEMY_BY_ID } from '../content/enemies';
 import { EGG_HATCH, reaperStrike, spawnCycleBoss, spawnReaper, updateCycleBoss, updateHazards } from './bosses';
-import { championChance, emit, hurtPlayer, maxEnemies, near, queryNear, rand, rebuildGrid, ringPoint, spawnEnemy, WAVES, waveFactor } from './core';
+import { championChance, curseOf, emit, hurtPlayer, maxEnemies, near, queryNear, rand, rebuildGrid, ringPoint, spawnEnemy, WAVES, waveFactor } from './core';
 import { runDensity, survivalBonus } from './difficulty';
 import { MAX_WEAPONS, RUN_SECONDS, TIMELINE, type Enemy, type RunConfig, type RunResult, type World } from './types';
 import { applyChoice, newWeapon, openChest, recomputeStats, rollChoices } from './upgrades';
@@ -81,7 +81,7 @@ function updateSpawns(w: World, dt: number) {
   const real = (w.time * TIMELINE) / 60;
   const minute = real < 30 ? real : LOOP_FROM + ((real - LOOP_FROM) % 10);
   const cap = maxEnemies(w);
-  const density = runDensity(w.config) * SPAWN_RATE * waveFactor(w);
+  const density = runDensity(w.config) * SPAWN_RATE * waveFactor(w) * curseOf(w);
   // Comienzo de cada oleada: anillo del último enemigo en aparecer del escenario.
   const wave = Math.floor((w.time - WAVES.from) / 60);
   if (wave >= (w.waves ?? 0) && w.time >= WAVES.from) {
@@ -143,6 +143,17 @@ function updateEnemy(w: World, e: Enemy, dt: number) {
   const { player } = w;
   e.flash -= dt;
   e.contactCd -= dt;
+  if (e.chill) e.chill = Math.max(0, e.chill - dt);
+  if (e.freeze && e.freeze > 0) {
+    // Congelado: ni se mueve ni hace daño; solo le afecta el retroceso.
+    e.freeze -= dt;
+    e.x += e.kx * dt;
+    e.y += e.ky * dt;
+    const decay = Math.exp(-9 * dt);
+    e.kx *= decay;
+    e.ky *= decay;
+    return;
+  }
   let dx = player.x - e.x;
   let dy = player.y - e.y;
   let dist = Math.hypot(dx, dy) || 1;
@@ -270,6 +281,10 @@ function updateEnemy(w: World, e: Enemy, dt: number) {
       break;
   }
 
+  if (e.chill) {
+    vx *= 0.5;
+    vy *= 0.5;
+  }
   // Retroceso de los golpes, que se amortigua enseguida.
   e.x += (vx + e.kx) * dt;
   e.y += (vy + e.ky) * dt;
@@ -368,6 +383,9 @@ export function step(w: World, dt: number, moveX: number, moveY: number) {
     p.dirY = moveY / length;
   }
   p.hurtTimer -= dt;
+  if (p.shield) p.shield = Math.max(0, p.shield - dt);
+  p.moveTime = p.moving ? (p.moveTime ?? 0) + dt : 0;
+  p.healPool = Math.min(p.stats.maxHp * 0.03, (p.healPool ?? 0) + p.stats.maxHp * 0.03 * dt);
   if (p.stats.regen > 0) p.hp = Math.min(p.stats.maxHp, p.hp + p.stats.regen * dt);
   if (p.stats.leech > 0) p.leechPool = Math.min(p.stats.maxHp * 0.01, (p.leechPool ?? 0) + p.stats.maxHp * 0.01 * dt);
 

@@ -48,11 +48,11 @@ contraste), sin copiar personajes, enemigos ni arte de ningún juego existente.
 
 | Familia | Colores | Armas |
 |---|---|---|
-| Fuego | `F` `o` `y` `h` `R` | Aura de ascuas, Lluvia de meteoritos, Estela de fuego |
-| Rayo | `y` `h` `w` `u` | Chispa errante, Tormenta en cadena, Haz prismático |
-| Arcano | `p` `P` `m` `x` `c` | Lunas guardianas, Onda de choque, Cuchillas rebotantes |
+| Fuego | `F` `o` `y` `h` `R` | Aura de ascuas, Lluvia de meteoritos, Estela de fuego, Cetro de brasas, Revólver de la rosa |
+| Rayo | `y` `h` `w` `u` | Chispa errante, Tormenta en cadena, Haz prismático, Revólver del aspa, Saeta del reloj |
+| Arcano | `p` `P` `m` `x` `c` | Lunas guardianas, Onda de choque, Cuchillas rebotantes, Sello del vacío, Paloma de tiza, Cuervo de tinta, Pilar lunar |
 | Veneno | `l` `g` `G` `v` | Frasco volátil, Nube venenosa, Minas de resina |
-| Acero | `W` `s` `S` `L` `b` | Lanza solar, Látigo de sauce, Búmeran de hueso, Dron centinela |
+| Acero | `W` `s` `S` `L` `b` | Lanza solar, Látigo de sauce, Búmeran de hueso, Dron centinela, Segur giratoria, Gatos callejeros, Filo errante |
 
 Las evoluciones mantienen la familia de su arma, con más brillo, una forma ampliada y el marco dorado en el icono.
 

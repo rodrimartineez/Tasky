@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { evolutionEntries, passiveChanges, passiveEntries, weaponEntries } from './catalog';
+import { evolutionEntries, passiveChanges, passiveEntries, recipeText, weaponEntries } from './catalog';
 import { EVOLUTIONS } from './evolutions';
 import { PASSIVE_BY_ID, PASSIVES } from './passives';
 import { WEAPON_BY_ID, WEAPONS } from './weapons';
@@ -20,8 +20,8 @@ describe('catálogo', () => {
     const spark = weaponEntries().find((w) => w.def.id === 'spark')!;
     expect(spark.maxLevel).toBe(7);
     expect(spark.first.damage).toBe('10');
-    // 10 + 11 + 8 + 8 de los niveles 3, 5 y 7.
-    expect(spark.last.damage).toBe('37');
+    // 10 + 12 + 8 + 8 de los niveles 3, 5 y 7.
+    expect(spark.last.damage).toBe('38');
     expect(spark.levels).toHaveLength(6);
     expect(weaponEntries().find((w) => w.def.id === 'lance')!.first.pierce).toBe('Todos');
   });
@@ -34,15 +34,20 @@ describe('catálogo', () => {
     expect([horn.perLevel, horn.atMax]).toEqual(['+1', '+2']);
     const tiramisu = passiveChanges(PASSIVE_BY_ID.get('tiramisu')!)[0];
     expect([tiramisu.stat, tiramisu.perLevel, tiramisu.atMax]).toEqual(['revival', '+1', '+2']);
-    expect(passiveChanges(PASSIVE_BY_ID.get('oakheart')!).map((c) => c.stat)).toEqual(['maxHp', 'regen']);
+    expect(passiveChanges(PASSIVE_BY_ID.get('oakheart')!).map((c) => c.stat)).toEqual(['maxHp']);
     for (const p of PASSIVES) expect(passiveChanges(p).length, p.name).toBeGreaterThan(0);
   });
 
-  it('cada evolución indica su arma base y la pasiva que necesita', () => {
+  it('cada evolución indica su arma base y todo lo que pide su receta', () => {
     for (const e of evolutionEntries()) {
       expect(e.weapon.id).toBe(e.evolution.weapon);
-      expect(e.passive.id).toBe(e.evolution.passive);
+      expect(e.ingredients.length, e.evolution.def.name).toBeGreaterThan(0);
     }
-    expect(evolutionEntries().find((e) => e.evolution.def.id === 'luckyblades')?.passive.id).toBe('tiramisu');
+    const ids = (id: string) => evolutionEntries().find((e) => e.evolution.def.id === id)?.ingredients.map((i) => i.id);
+    expect(ids('luckyblades')).toEqual(['scales']);
+    expect(ids('eternal')).toEqual(['silverring', 'goldring']);
+    expect(ids('starburst')).toEqual(['saltire', 'tiramisu']);
+    expect(ids('galedance')).toEqual(['galewhip']);
+    expect(recipeText(EVOLUTIONS.find((e) => e.def.id === 'twinwings')!, 'raven')).toBe('Paloma de tiza');
   });
 });

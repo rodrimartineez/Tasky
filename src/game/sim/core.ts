@@ -89,23 +89,26 @@ export function nearestEnemy(w: World, x: number, y: number, range: number, skip
 const minutes = (w: World) => (w.time * TIMELINE) / 60;
 /**
  * Escalada dentro de cada partida (se multiplica por la dureza del nivel, así cada nivel empieza más arriba y vuelve
- * a subir durante sus 15 minutos). Minutos reales, respecto al minuto 0:
- * - Vida: ×1,3 en el minuto 1, ×5,7 en el 7 y ×20 en el 15.
- * - Daño: ×1,2 / ×3 / ×6 (12/11/2026: subido para que quedarse quieto no baste).
- * - Veteranos: desde el minuto 2,5, una parte creciente de las apariciones normales sale reforzada (hasta 1 de cada 6
+ * a subir durante sus 15 minutos). Ritmo del género (17/11/2026): los primeros minutos son un respiro para montar la
+ * build, la presión llega sobre todo por número de enemigos y el personaje, bien mejorado, va por delante de la vida
+ * de los enemigos a mitad de partida. Minutos reales, respecto al minuto 0:
+ * - Vida: ×1,2 en el minuto 1, ×3,3 en el 7 y ×10 en el 15.
+ * - Daño: ×1,1 / ×1,6 / ×2,5 (antes ×6 al final: un par de golpes bastaban para morir).
+ * - Veteranos: desde el minuto 4, una parte creciente de las apariciones normales sale reforzada (hasta 1 de cada 8
  *   en el 15), con más vida y daño.
  */
 export const RAMP = {
-  hp: [0.12, 0.0171],
-  damage: [0.08, 0.00289],
+  hp: [0.08, 0.0075],
+  damage: [0.035, 0.0005],
   /** Veteranos: minuto en que empiezan, fracción en el 30 y refuerzo (vida, daño, tamaño, experiencia). */
-  champion: { from: 5, share: 1 / 6, hp: 3, damage: 1.3, radius: 1.2, xp: 3 },
+  champion: { from: 8, share: 1 / 8, hp: 3, damage: 1.3, radius: 1.2, xp: 3 },
 };
 /**
- * Vida extra de los enemigos especiales (12/11/2026, a petición del usuario: eran demasiado blandos). Los jefes (de
- * escenario y de ciclo) tienen ×10 y las élites que sueltan cofre ×25, sobre la escalada de la partida.
+ * Vida extra de los enemigos especiales sobre la escalada de la partida: los jefes (de escenario y de ciclo) ×10 y las
+ * élites que sueltan cofre ×15 (17/11/2026: con ×25 la primera élite, al minuto 0:45, era casi imposible de abatir y el
+ * cofre es la principal fuente de mejoras al principio).
  */
-export const TOUGHNESS = { boss: 10, elite: 25 };
+export const TOUGHNESS = { boss: 10, elite: 15 };
 const ramp = ([a, b]: number[], m: number) => 1 + a * m + b * m * m;
 /** Multiplicador de vida por los minutos de partida (sin el del nivel). */
 export const timeHpScale = (w: World) => ramp(RAMP.hp, minutes(w));
@@ -124,7 +127,7 @@ export const maxEnemies = (w: World) => Math.min(450, (70 + minutes(w) * 16) * r
  * Oleadas: cada minuto tiene un tramo normal, una oleada (más apariciones y un anillo de enemigos alrededor) y un
  * respiro corto. Segundos dentro de cada minuto.
  */
-export const WAVES = { from: 34, to: 50, surge: 2.6, lull: 0.45, cap: 1.3, ring: 14, ringPerMinute: 1.2 };
+export const WAVES = { from: 34, to: 50, surge: 2, lull: 0.5, cap: 1.25, ring: 10, ringPerMinute: 1 };
 export const inWave = (w: World) => {
   const s = w.time % 60;
   return s >= WAVES.from && s < WAVES.to;
@@ -138,9 +141,12 @@ export const waveFactor = (w: World) => {
 // ── Enemigos ────────────────────────────────────────────────────────────────────────────────────
 const SPAWN_RADIUS = 310;
 
+/** Maldición del jugador (las partidas guardadas antes de ella no tienen el campo). */
+export const curseOf = (w: World) => w.player.stats.curse ?? 1;
+
 export function spawnEnemy(w: World, def: EnemyDef, x: number, y: number, elite = false, champion = false): Enemy {
   const c = champion && !elite ? RAMP.champion : null;
-  const hp = def.hp * hpScale(w) * (elite ? TOUGHNESS.elite : 1) * (def.ai === 'boss' ? TOUGHNESS.boss : 1) * (c?.hp ?? 1);
+  const hp = def.hp * hpScale(w) * curseOf(w) * (elite ? TOUGHNESS.elite : 1) * (def.ai === 'boss' ? TOUGHNESS.boss : 1) * (c?.hp ?? 1);
   const e: Enemy = {
     uid: w.nextUid++,
     def,
@@ -149,7 +155,7 @@ export function spawnEnemy(w: World, def: EnemyDef, x: number, y: number, elite 
     hp,
     maxHp: hp,
     damage: def.damage * damageScale(w) * (elite ? 1.5 : 1) * (c?.damage ?? 1),
-    speed: def.speed * speedScale(w),
+    speed: def.speed * speedScale(w) * (1 + (curseOf(w) - 1) / 2),
     radius: def.radius * (elite ? 1.5 : c?.radius ?? 1),
     elite,
     ...(c ? { champion: true } : {}),
@@ -192,7 +198,7 @@ export function dropPickup(w: World, kind: PickupKind, x: number, y: number, val
   w.pickups.push({ kind, x, y, value, pulled: false, dead: false });
 }
 
-function killEnemy(w: World, e: Enemy) {
+export function killEnemy(w: World, e: Enemy) {
   e.dead = true;
   w.kills += 1;
   const luck = w.player.stats.luck;
@@ -223,6 +229,17 @@ function killEnemy(w: World, e: Enemy) {
   emit(w, { type: 'puff', x: e.x, y: e.y, color: 0xffffff, count: boss ? 24 : e.elite ? 12 : 4 });
 }
 
+/** Efectos propios de algunas armas al golpear (congelar, curar…), por id del arma: los registra sim/weapons.ts. */
+export const ON_HIT: Record<string, (w: World, e: Enemy, dmg: number, weapon: number) => void> = {};
+
+/** Cura de las armas (Azote del viento, Pira del fénix): con tope por segundo, como el robo de vida. */
+export function healPlayer(w: World, amount: number) {
+  const p = w.player;
+  const heal = Math.min(amount, p.healPool ?? 0);
+  p.healPool = (p.healPool ?? 0) - heal;
+  p.hp = Math.min(p.stats.maxHp, p.hp + heal);
+}
+
 /**
  * Daño de un arma a un enemigo: aplica poder y críticos, retroceso y, si muere, el botín.
  * (kx, ky) es la dirección del retroceso multiplicada por su fuerza.
@@ -246,13 +263,36 @@ export function damageEnemy(w: World, e: Enemy, base: number, weapon: number, kx
   const ws = w.player.weapons[weapon];
   if (ws) ws.dealt += dmg;
   emit(w, { type: 'number', x: e.x, y: e.y - e.radius, value: dmg, crit, player: false });
-  if (e.hp <= 0) killEnemy(w, e);
+  if (ws) ON_HIT[ws.id]?.(w, e, dmg, weapon);
+  if (e.hp <= 0 && !e.dead) killEnemy(w, e);
 }
+
+/** Coraza de espinas: tope de daño por golpe y daño devuelto alrededor. */
+const THORNS = { cap: 10 };
 
 export function hurtPlayer(w: World, amount: number) {
   const p = w.player;
   if (p.hurtTimer > 0 || w.phase !== 'playing') return;
-  const dmg = Math.max(1, Math.round(amount - p.stats.armor));
+  const thorns = p.weapons.findIndex((x) => x.id === 'thornmail');
+  if (thorns >= 0) {
+    // Devuelve el golpe (también si el escudo lo bloquea) a todo lo que rodea al jugador.
+    const ws = p.weapons[thorns];
+    const radius = ws.stats.area * p.stats.area;
+    const count = queryNear(p.x, p.y, radius);
+    const targets = near.slice(0, count);
+    for (const e of targets) {
+      const d = Math.hypot(e.x - p.x, e.y - p.y) || 1;
+      damageEnemy(w, e, ws.stats.damage, thorns, ((e.x - p.x) / d) * ws.stats.knockback, ((e.y - p.y) / d) * ws.stats.knockback);
+    }
+    emit(w, { type: 'ring', x: p.x, y: p.y, radius, color: 0xff5a6a });
+  }
+  if ((p.shield ?? 0) > 0) {
+    p.hurtTimer = 0.5;
+    emit(w, { type: 'ring', x: p.x, y: p.y, radius: 16, color: 0x9fe8a0 });
+    return;
+  }
+  let dmg = Math.max(1, Math.round(amount - p.stats.armor));
+  if (thorns >= 0) dmg = Math.min(dmg, THORNS.cap);
   p.hp -= dmg;
   p.hurtTimer = 0.5;
   emit(w, { type: 'number', x: p.x, y: p.y - 10, value: dmg, crit: false, player: true });

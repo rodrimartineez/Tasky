@@ -38,12 +38,17 @@ export const PASSIVES: PassiveDef[] = [
     id: 'oakheart',
     name: 'Corazón de roble',
     icon: 'p_heart',
-    text: '+20 de vida máxima y algo de regeneración',
+    text: '+20 de vida máxima',
     maxLevel: 7,
-    apply: (s, n) => {
-      s.maxHp += 20 * n + (n >= 7 ? 30 : 0);
-      s.regen += 0.1 * n + (n >= 7 ? 0.1 : 0);
-    },
+    apply: (s, n) => void (s.maxHp += 20 * n + (n >= 7 ? 30 : 0)),
+  },
+  {
+    id: 'herb',
+    name: 'Hierba vital',
+    icon: 'p_herb',
+    text: '+0,2 de vida por segundo',
+    maxLevel: 7,
+    apply: (s, n) => void (s.regen += 0.2 * n + (n >= 7 ? 0.2 : 0)),
   },
   {
     id: 'lodestone',
@@ -120,6 +125,89 @@ export const PASSIVES: PassiveDef[] = [
     maxLevel: 7,
     // `?? 0`: las partidas guardadas antes de esta pasiva no tienen el campo.
     apply: (s, n) => void (s.leech = (s.leech ?? 0) + 0.0015 * n + (n >= 7 ? 0.0015 : 0)),
+  },
+  {
+    id: 'clover',
+    name: 'Trébol de cuatro hojas',
+    icon: 'p_clover',
+    text: '+10 % de suerte',
+    maxLevel: 7,
+    apply: (s, n) => void (s.luck += 0.1 * n + (n >= 7 ? 0.1 : 0)),
+  },
+  {
+    id: 'mask',
+    name: 'Máscara avara',
+    icon: 'p_mask',
+    text: '+10 % de oro',
+    maxLevel: 7,
+    apply: (s, n) => void (s.greed += 0.1 * n + (n >= 7 ? 0.1 : 0)),
+  },
+  {
+    id: 'skull',
+    name: 'Calavera maldita',
+    icon: 'p_skull',
+    text: '+10 % de maldición: más enemigos, más rápidos y más resistentes',
+    maxLevel: 5,
+    // `?? 1`: las partidas guardadas antes de la maldición no tienen el campo.
+    apply: (s, n) => void (s.curse = (s.curse ?? 1) + 0.1 * n),
+  },
+  {
+    id: 'silverring',
+    name: 'Sortija lunar',
+    icon: 'p_silverring',
+    text: '+5 % de área y de duración',
+    maxLevel: 7,
+    apply: (s, n) => {
+      s.area += 0.05 * n;
+      s.duration += 0.05 * n;
+    },
+  },
+  {
+    id: 'goldring',
+    name: 'Sortija solar',
+    icon: 'p_goldring',
+    text: '+5 % de experiencia y de oro',
+    maxLevel: 7,
+    apply: (s, n) => {
+      s.growth += 0.05 * n;
+      s.greed += 0.05 * n;
+    },
+  },
+  {
+    id: 'medalleft',
+    name: 'Medalla del ocaso',
+    icon: 'p_medalleft',
+    text: '+10 de vida máxima y +0,05 de vida por segundo',
+    maxLevel: 7,
+    apply: (s, n) => {
+      s.maxHp += 10 * n;
+      s.regen += 0.05 * n;
+    },
+  },
+  {
+    id: 'medalright',
+    name: 'Medalla del alba',
+    icon: 'p_medalright',
+    text: '+4 % de daño y +4 % de maldición',
+    maxLevel: 7,
+    apply: (s, n) => {
+      s.might += 0.04 * n;
+      s.curse = (s.curse ?? 1) + 0.04 * n;
+    },
+  },
+  {
+    id: 'puzzlebox',
+    name: 'Caja de engranajes',
+    icon: 'p_puzzlebox',
+    text: '+3 % de daño, área, duración y velocidad de proyectiles; al máximo, +10 % de maldición',
+    maxLevel: 7,
+    apply: (s, n) => {
+      s.might += 0.03 * n;
+      s.area += 0.03 * n;
+      s.duration += 0.03 * n;
+      s.projSpeed += 0.03 * n;
+      if (n >= 7) s.curse = (s.curse ?? 1) + 0.1;
+    },
   },
 ];
 

@@ -42,6 +42,8 @@ export interface Stats {
   banishes: number;
   /** Fracción del daño causado que se recupera como vida. */
   leech: number;
+  /** Maldición: multiplica la vida, la velocidad y el número de enemigos (las partidas guardadas antiguas no la tienen). */
+  curse: number;
 }
 
 export const BASE_STATS: Stats = {
@@ -65,6 +67,7 @@ export const BASE_STATS: Stats = {
   rerolls: 0,
   banishes: 0,
   leech: 0,
+  curse: 1,
 };
 
 /** Valores de un arma en su nivel actual (cada comportamiento usa los que necesita). */
@@ -237,6 +240,8 @@ export interface WeaponState {
   timer: number;
   /** Daño total causado en la partida (resumen final). */
   dealt: number;
+  /** Contador propio de algunas armas (Saeta del reloj: hora a la que apunta). */
+  step?: number;
 }
 
 export interface Player {
@@ -249,6 +254,12 @@ export interface Player {
   moving: boolean;
   /** Segundos de invulnerabilidad tras un golpe. */
   hurtTimer: number;
+  /** Segundos de escudo (Égida de hiedra): bloquea todo el daño. */
+  shield?: number;
+  /** Segundos seguidos en movimiento (Filo errante). */
+  moveTime?: number;
+  /** Curación de las armas que aún puede aplicarse este segundo (tope por segundo, como el robo de vida). */
+  healPool?: number;
   /** Robo de vida que aún puede curar este segundo (tope: 1 % de la vida máxima por segundo). */
   leechPool?: number;
   level: number;
@@ -289,6 +300,10 @@ export interface Enemy {
   state: number;
   vx: number;
   vy: number;
+  /** Segundos congelado (no se mueve ni hace daño). */
+  freeze?: number;
+  /** Segundos ralentizado (mitad de velocidad). */
+  chill?: number;
   /** Segundos hasta que un arma de contacto continuo (orbes, aura) puede volver a golpearlo. */
   contactCd: number;
   /** Marca de la última consulta espacial que lo devolvió (evita repetidos). */
@@ -319,7 +334,17 @@ export type ProjKind =
   /** Dron que orbita al jugador y dispara al enemigo más cercano. */
   | 'drone'
   /** Llama que queda en el suelo y quema a quien la pisa. */
-  | 'flame';
+  | 'flame'
+  /** Hacha: sube en arco y cae por gravedad, atravesando. */
+  | 'axe'
+  /** Proyectil recto que gira sobre sí mismo. */
+  | 'spin'
+  /** Ave que orbita lejos del jugador y suelta bombas. */
+  | 'bird'
+  /** Criatura que vaga al azar y daña al tocar. */
+  | 'critter'
+  /** Columna vertical de luz que sigue al jugador. */
+  | 'column';
 
 export interface Projectile {
   kind: ProjKind;
@@ -469,5 +494,5 @@ export const RUN_SECONDS = 15 * 60;
  * reloj de la partida avanza ×2 sobre ellas (`w.time * TIMELINE` = segundos de esas tablas).
  */
 export const TIMELINE = 2;
-export const MAX_WEAPONS = 5;
-export const MAX_PASSIVES = 5;
+export const MAX_WEAPONS = 6;
+export const MAX_PASSIVES = 6;

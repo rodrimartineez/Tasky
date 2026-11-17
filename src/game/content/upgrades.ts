@@ -1,9 +1,10 @@
 import type { Stats } from '../sim/types';
 
 /**
- * Mejoras permanentes del personaje (se compran con puntos de hábitos). Sin nivel máximo:
- * el coste de cada nivel crece (`cost`) y cada nivel suma lo mismo que el anterior o algo menos,
- * así ninguna mejora se «completa» y ninguna deja obsoletas a las demás. Ver ANALISIS_ECONOMIA.md.
+ * Mejoras permanentes del personaje. Se compran con puntos de habilidad: 1 punto por cada paso (ANALISIS_ECONOMIA.md
+ * §15). Hasta el nivel 999 (`MAX_UPGRADE_LEVEL`): el coste de cada nivel crece (`cost`) y cada nivel suma lo mismo
+ * que el anterior o algo menos, así ninguna deja obsoletas a las demás. Las muy potentes (proyectiles, revivir,
+ * repeticiones, descartes) tienen coste exponencial: en la práctica solo se compran unas pocas.
  */
 export interface UpgradeDef {
   id: string;
@@ -16,39 +17,26 @@ export interface UpgradeDef {
   cost(level: number): number;
   /** Aplica `level` niveles a las estadísticas. */
   apply(stats: Stats, level: number): void;
-  /** Nivel máximo (solo las mejoras que lo tienen; las de combate no tienen límite). */
-  maxLevel?: number;
+  /** Nivel máximo. */
+  maxLevel: number;
 }
 
-/** Coste polinómico: base · nivel^exp. Con exp ≈ 1,5 el precio crece sin dispararse. */
-const poly = (base: number, exp: number) => (level: number) => Math.ceil(base * Math.pow(level, exp));
+export const MAX_UPGRADE_LEVEL = 999;
+/**
+ * Escala de precios (1 punto por paso): con ~7.000 pasos al día, el primer nivel de cada mejora cuesta 750–1.250 puntos
+ * (unas seis compras el primer día), el nivel 5 de Poder ~11.200 (día y medio), el 10 ~31.600 (4–5 días) y el 20
+ * ~89.500 (casi dos semanas). Repartiendo entre todas, un año caminando deja cada mejora hacia el nivel 12–13.
+ */
+export const PRICE = 250;
+/** Coste polinómico redondeado a decenas: PRICE · base · nivel^exp. Con exp ≈ 1,5 crece sin dispararse. */
+const poly = (base: number, exp: number) => (level: number) => Math.ceil((PRICE * base * Math.pow(level, exp)) / 10) * 10;
 /** Coste exponencial para mejoras muy potentes (proyectiles extra): en la práctica, pocas unidades en años. */
-const expo = (base: number, factor: number) => (level: number) => Math.ceil(base * Math.pow(factor, level - 1));
+const expo = (base: number, factor: number) => (level: number) => PRICE * Math.ceil(base * Math.pow(factor, level - 1));
 
 const pct = (n: number) => `${Math.round(n * 100)} %`;
 const fixed = (n: number) => (Math.round(n * 10) / 10).toLocaleString('es-ES');
 
-/**
- * Mejora de recompensas «Constancia» (ANALISIS_ECONOMIA.md §13; se aplica al conceder las recompensas en habits/core/habits.ts): cada nivel suma +1 punto
- * a cada hábito diario cumplido y +3 a cada semanal, hasta el nivel 4 (5 y 15 puntos de base). Las bonificaciones de
- * racha se suman aparte. Costes en BOUNTY.costs (el primero, 21 exactos).
- */
-export const BOUNTY = { id: 'bounty', costs: [21, 75, 200, 450], daily: 1, weekly: 3 };
-export const BOUNTY_MAX = BOUNTY.costs.length;
-export const bountyDaily = (level: number) => Math.min(level, BOUNTY_MAX) * BOUNTY.daily;
-export const bountyWeekly = (level: number) => Math.min(level, BOUNTY_MAX) * BOUNTY.weekly;
-
-export const UPGRADES: UpgradeDef[] = [
-  {
-    // No toca el combate: sube los puntos que dan los hábitos (habits/core/rewards.ts, BOUNTY).
-    id: BOUNTY.id,
-    name: 'Constancia',
-    icon: 'u_bounty',
-    effect: (n) => `Cada hábito diario positivo da ${1 + bountyDaily(n)} puntos y cada semanal ${3 + bountyWeekly(n)} (más las rachas)`,
-    cost: (n) => BOUNTY.costs[n - 1] ?? Infinity,
-    apply: () => {},
-    maxLevel: BOUNTY_MAX,
-  },
+const DEFS: Omit<UpgradeDef, 'maxLevel'>[] = [
   {
     id: 'might',
     name: 'Poder',
@@ -206,6 +194,8 @@ export const UPGRADES: UpgradeDef[] = [
     apply: (s, n) => void (s.banishes += n),
   },
 ];
+
+export const UPGRADES: UpgradeDef[] = DEFS.map((u) => ({ ...u, maxLevel: MAX_UPGRADE_LEVEL }));
 
 export const UPGRADE_BY_ID = new Map(UPGRADES.map((u) => [u.id, u]));
 
