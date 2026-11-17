@@ -57,7 +57,7 @@ export const BASE_STATS: Stats = {
   projSpeed: 1,
   duration: 1,
   amount: 0,
-  pickup: 28,
+  pickup: 30,
   luck: 1,
   growth: 1,
   greed: 1,
