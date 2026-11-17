@@ -383,8 +383,17 @@ export default function GameScreen({ level, attempt, config, resume, onFinish, o
       {choices && !result && (
         <div className={styles.overlay}>
           <div className={styles.panel} role="dialog" aria-label="Subida de nivel">
-            <h2 className={styles.title}>¡Nivel {hud?.level ?? ''}!</h2>
-            <p className={styles.subtitle}>{banishing ? 'Elige la opción que no quieres volver a ver' : 'Elige una mejora'}</p>
+            {choices.some((c) => c.kind === 'form') ? (
+              <>
+                <h2 className={styles.title}>¡El atún evoluciona!</h2>
+                <p className={styles.subtitle}>Elige su nueva forma: hereda las mejoras de las anteriores</p>
+              </>
+            ) : (
+              <>
+                <h2 className={styles.title}>¡Nivel {hud?.level ?? ''}!</h2>
+                <p className={styles.subtitle}>{banishing ? 'Elige la opción que no quieres volver a ver' : 'Elige una mejora'}</p>
+              </>
+            )}
             {hud?.weapons.some((x) => x.ready) && <p className={styles.evoNote}>★ ¡Evolución lista! Abre un cofre de élite o jefe.</p>}
             {choices.map((c, i) => (
               <button
@@ -410,7 +419,7 @@ export default function GameScreen({ level, attempt, config, resume, onFinish, o
                 <kbd className={styles.key}>{i + 1}</kbd>
               </button>
             ))}
-            {(tools.rerolls > 0 || tools.banishes > 0) && (
+            {(tools.rerolls > 0 || tools.banishes > 0) && !choices.some((c) => c.kind === 'form') && (
               <div className={styles.tools}>
                 {tools.rerolls > 0 && (
                   <button type="button" className={styles.tool} disabled={!hud?.rerolls} onClick={reroll}>

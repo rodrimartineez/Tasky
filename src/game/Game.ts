@@ -4,7 +4,7 @@ import type { RunConfig, RunResult, UpgradeChoice, World } from './sim/types';
 import { GameAudio } from './audio/listener';
 import { inWave, timeHpScale } from './sim/core';
 import { banishChoice, evolutionReady, rerollChoices } from './sim/upgrades';
-import { chooseUpgrade, createWorld, purgeItems, runResult, step } from './sim/world';
+import { chooseUpgrade, createWorld, migrateWorld, purgeItems, runResult, step } from './sim/world';
 
 /**
  * Partida en pantalla: une la simulación, el render y los controles con un bucle de paso fijo.
@@ -94,7 +94,7 @@ export class Game {
     private callbacks: GameCallbacks,
     resume: World | null,
   ) {
-    this.world = resume ?? createWorld(config);
+    this.world = resume ? migrateWorld(resume) : createWorld(config);
     // Una partida reanudada empieza en pausa: el jugador decide cuándo seguir.
     if (resume && resume.phase === 'playing') this.paused = true;
     this.sound = new GameAudio(this.world);

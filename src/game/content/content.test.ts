@@ -34,7 +34,7 @@ describe('contenido', () => {
 
   it('los legendarios empiezan con varias armas y el Sol Eterno revive dos veces', () => {
     const sun = createWorld(buildRunConfig(1, 'sun_avatar', 'withered_woods', {}));
-    expect(sun.player.weapons.map((w) => w.id)).toEqual(['storm', 'beam', 'nova', 'meteors']);
+    expect(sun.player.weapons.map((w) => w.id)).toEqual(['storm', 'phaser', 'pentagram', 'firewand']);
     expect(sun.player.stats.revival).toBe(2);
   });
 
@@ -102,7 +102,7 @@ describe('escenarios', () => {
 
 describe('equilibrio de armas', () => {
   // Daño de cada arma como inicial en 5 min con un personaje sin mejoras y casi inmortal: ninguna debe pasar de ~2× la mejor de las originales.
-  const ORIGINAL = ['spark', 'lance', 'orbs', 'ember', 'storm', 'flask'];
+  const ORIGINAL = ['spark', 'lance', 'orbs', 'ember', 'storm', 'firewand'];
   const dealt = (weapon: string) => {
     const w = createWorld({
       seed: 21,
@@ -122,8 +122,8 @@ describe('equilibrio de armas', () => {
   // Margen ×2,25 (antes ×2): desde que las élites tienen ×10 de vida (12/11/2026) absorben más daño de las armas de
   // área, que ya no lo desperdician, y Nova sube a ~×2,2 en este total de 5 minutos.
   it('ninguna arma nueva supera 2,25 veces la mejor original', () => {
-    // La Égida de hiedra es un escudo: no hace daño.
-    const results = new Map(WEAPONS.filter((w) => w.id !== 'laurel').map((w) => [w.id, dealt(w.id)]));
+    // El Laurel (escudo) y la Lanceta (congela) no hacen daño.
+    const results = new Map(WEAPONS.filter((w) => w.base.damage > 0).map((w) => [w.id, dealt(w.id)]));
     const best = Math.max(...ORIGINAL.map((id) => results.get(id)!.dealt));
     for (const [id, { dealt: d, evolved }] of results) {
       expect(d, id).toBeGreaterThan(0);

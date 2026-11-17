@@ -48,11 +48,14 @@ contraste), sin copiar personajes, enemigos ni arte de ningún juego existente.
 
 | Familia | Colores | Armas |
 |---|---|---|
-| Fuego | `F` `o` `y` `h` `R` | Aura de ascuas, Lluvia de meteoritos, Estela de fuego, Cetro de brasas, Revólver de la rosa |
-| Rayo | `y` `h` `w` `u` | Chispa errante, Tormenta en cadena, Haz prismático, Revólver del aspa, Saeta del reloj |
-| Arcano | `p` `P` `m` `x` `c` | Lunas guardianas, Onda de choque, Cuchillas rebotantes, Sello del vacío, Paloma de tiza, Cuervo de tinta, Pilar lunar |
-| Veneno | `l` `g` `G` `v` | Frasco volátil, Nube venenosa, Minas de resina |
-| Acero | `W` `s` `S` `L` `b` | Lanza solar, Látigo de sauce, Búmeran de hueso, Dron centinela, Segur giratoria, Gatos callejeros, Filo errante |
+| Fuego | `F` `o` `y` `h` `R` | Varita Ígnea, Llamas de Hechizografía |
+| Rayo | `y` `h` `w` `u` | Anillo Relámpago, Lanceta Temporal, Fasor |
+| Arcano | `p` `P` `m` `x` `c` | Varita Mágica, Biblia del Rey, Agua Bendita, Runa Trazadora, Pentáculo, Canción de Maná, formas del atún |
+| Veneno | `l` `g` `G` `v` | Ajo, Rayo Sobrenatural |
+| Acero | `W` `s` `S` `L` `b` | Látigo, Cuchillo, Hacha, Cruz, Viento Sacro, Espada de la Victoria, Munición Espantosa, Atún Insuperable |
+
+Las armas del 17/11/2026 tienen su arte en `sprites/art/arsenal.ts`; los haces, rayos, llamaradas, charcos, la
+galaxia y el dragón se dibujan además con efectos en `render/renderer.ts` (`drawShot`).
 
 Las evoluciones mantienen la familia de su arma, con más brillo, una forma ampliada y el marco dorado en el icono.
 

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, Plus } from 'lucide-react';
 import { GAME_BUILD } from '../core/release';
 import { evolutionEntries, passiveEntries, recipeText, WEAPON_FIGURE_LABELS, weaponEntries, type WeaponFigures } from '../../game/content/catalog';
+import { PASSIVE_BY_ID } from '../../game/content/passives';
 import { WEAPON_BY_ID } from '../../game/content/weapons';
 import { spriteDataUrl } from '../../game/sprites/atlas';
 import styles from './CatalogPage.module.css';
@@ -58,8 +59,8 @@ export function CatalogPage() {
     <div className={styles.page}>
       <p className={styles.intro}>
         Todo lo que puede aparecer en una partida, lo hayas usado o no. Las armas y pasivas se eligen al subir de nivel; las evoluciones
-        aparecen al abrir un cofre con el arma al nivel máximo y lo que pida su receta (una o dos pasivas, otra arma o
-        una evolución).
+        aparecen al abrir un cofre con el arma al nivel máximo y lo que pida su receta (una o dos pasivas, a veces al
+        máximo, o fusionarse con otra arma). Las formas del atún evolucionan sin pasiva y eliges la siguiente.
         {GAME_BUILD.devTools && (
           <>
             {' '}
@@ -173,6 +174,7 @@ export function CatalogPage() {
                     <Plus className={styles.op} />
                     <Icon name={i.icon} size={28} /> {i.name}
                     {i.id === e.evolution.union && <small>nivel {WEAPON_BY_ID.get(i.id)!.levels.length + 1}</small>}
+                    {i.kind === 'passive' && e.evolution.maxed && <small>nivel {PASSIVE_BY_ID.get(i.id)!.maxLevel}</small>}
                   </span>
                 ))}
                 <ArrowRight className={styles.op} />
@@ -185,8 +187,8 @@ export function CatalogPage() {
               <p className={styles.evolves}>
                 {e.evolution.union
                   ? 'Fusiona las dos armas en un solo hueco y ya no sube de nivel.'
-                  : e.evolution.needs
-                    ? `Ocupa el mismo hueco que el arma, sin gastar ${WEAPON_BY_ID.get(e.evolution.needs)!.name}, y ya no sube de nivel.`
+                  : e.evolution.def.gift
+                    ? 'Es un regalo: se suma a tus armas sin quitarte la base ni ocupar hueco.'
                     : 'Ocupa el mismo hueco que el arma y ya no sube de nivel.'}
               </p>
             </li>

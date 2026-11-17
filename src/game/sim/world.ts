@@ -4,7 +4,9 @@ import { EGG_HATCH, reaperStrike, spawnCycleBoss, spawnReaper, updateCycleBoss, 
 import { championChance, curseOf, emit, hurtPlayer, maxEnemies, near, queryNear, rand, rebuildGrid, ringPoint, spawnEnemy, WAVES, waveFactor } from './core';
 import { runDensity, survivalBonus } from './difficulty';
 import { MAX_WEAPONS, RUN_SECONDS, TIMELINE, type Enemy, type RunConfig, type RunResult, type World } from './types';
-import { applyChoice, newWeapon, openChest, recomputeStats, rollChoices } from './upgrades';
+import { WEAPON_BY_ID } from '../content/weapons';
+import { PASSIVE_BY_ID } from '../content/passives';
+import { applyChoice, applyForm, formChoices, newWeapon, openChest, recomputeStats, rollChoices, statsAt } from './upgrades';
 import { enemyShot, updateProjectiles, updateWeapons } from './weapons';
 
 /** Estado inicial de una partida. */
@@ -281,10 +283,10 @@ function updateEnemy(w: World, e: Enemy, dt: number) {
       break;
   }
 
-  if (e.chill) {
-    vx *= 0.5;
-    vy *= 0.5;
-  }
+  // Ralentización permanente (Partitura de Maná): acumulada en `sap`, hasta un 20 % de su velocidad.
+  const slow = (e.chill ? 0.5 : 1) * (e.sap ?? 1);
+  vx *= slow;
+  vy *= slow;
   // Retroceso de los golpes, que se amortigua enseguida.
   e.x += (vx + e.kx) * dt;
   e.y += (vy + e.ky) * dt;
@@ -383,7 +385,6 @@ export function step(w: World, dt: number, moveX: number, moveY: number) {
     p.dirY = moveY / length;
   }
   p.hurtTimer -= dt;
-  if (p.shield) p.shield = Math.max(0, p.shield - dt);
   p.moveTime = p.moving ? (p.moveTime ?? 0) + dt : 0;
   p.healPool = Math.min(p.stats.maxHp * 0.03, (p.healPool ?? 0) + p.stats.maxHp * 0.03 * dt);
   if (p.stats.regen > 0) p.hp = Math.min(p.stats.maxHp, p.hp + p.stats.regen * dt);
@@ -409,10 +410,7 @@ export function step(w: World, dt: number, moveX: number, moveY: number) {
   }
   // Minuto 15: llega La Muerte (salvo en el modo infinito). La partida sigue hasta que alcanza al jugador.
   if (!w.completed && w.config.mode !== 'infinite' && w.time >= RUN_SECONDS) spawnReaper(w);
-  if (w.pendingLevels > 0) {
-    w.choices = rollChoices(w);
-    w.phase = 'levelup';
-  }
+  if ((w.pendingForms?.length ?? 0) > 0 || w.pendingLevels > 0) continueLevelUps(w);
 }
 
 /** Segundos de invulnerabilidad al revivir. */
@@ -423,6 +421,7 @@ const REVIVE_RADIUS = 160;
 function revive(w: World) {
   const p = w.player;
   p.stats.revival -= 1;
+  p.revivalsUsed = (p.revivalsUsed ?? 0) + 1;
   p.hp = p.stats.maxHp * 0.5;
   p.hurtTimer = REVIVE_GRACE;
   for (const e of w.enemies) {
@@ -441,6 +440,12 @@ export function chooseUpgrade(w: World, index: number) {
   if (w.phase !== 'levelup') return;
   const choice = w.choices[index];
   if (!choice) return;
+  if (choice.kind === 'form') {
+    applyForm(w, w.pendingForms!.shift()!, choice.id);
+    graceAfterChoice(w);
+    continueLevelUps(w);
+    return;
+  }
   if (w.choices.some((c) => c.kind === 'purge')) w.purgeAt = undefined;
   w.pendingLevels -= 1;
   if (choice.kind === 'purge') {
@@ -449,12 +454,21 @@ export function chooseUpgrade(w: World, index: number) {
     return;
   }
   applyChoice(w, choice);
+  graceAfterChoice(w);
   continueLevelUps(w);
 }
 
+/** Segundos de inmunidad tras cada elección de mejora (también si vienen varias pantallas seguidas). */
+export const UPGRADE_GRACE = 1;
+const graceAfterChoice = (w: World) => void (w.player.hurtTimer = Math.max(w.player.hurtTimer, UPGRADE_GRACE));
+
 /** Tras elegir: más subidas pendientes o vuelta a la partida. */
 function continueLevelUps(w: World) {
-  if (w.pendingLevels > 0) {
+  // Primero, la forma del atún que acaba de evolucionar.
+  if ((w.pendingForms?.length ?? 0) > 0) {
+    w.phase = 'levelup';
+    w.choices = formChoices(w, w.pendingForms![0]);
+  } else if (w.pendingLevels > 0) {
     w.phase = 'levelup';
     w.choices = rollChoices(w);
   } else {
@@ -473,6 +487,7 @@ export function purgeItems(w: World, weapons: number[], passives: number[]) {
   p.weapons = p.weapons.filter((_, i) => !weapons.includes(i));
   p.passives = p.passives.filter((_, i) => !passives.includes(i));
   recomputeStats(w);
+  graceAfterChoice(w);
   if (weapons.length + passives.length > 0) {
     emit(w, { type: 'ring', x: p.x, y: p.y, radius: 60, color: 0xb58cff });
     emit(w, { type: 'shake', power: 4 });
@@ -502,4 +517,56 @@ export function runResult(w: World): RunResult {
     survivalBonus: bonus,
     weapons: w.player.weapons.map((ws) => ({ id: ws.id, level: ws.level, dealt: ws.dealt })),
   };
+}
+
+/**
+ * Armas y pasivas retiradas del catálogo (17/11/2026) → su sustituta más parecida. Las partidas guardadas que las
+ * llevaban se reanudan con la sustituta al mismo nivel; las pasivas retiradas desaparecen.
+ */
+const RETIRED: Record<string, string> = {
+  flask: 'firewand',
+  elixir: 'hellfire',
+  mines: 'axe',
+  magnetmines: 'deathspiral',
+  beam: 'phaser',
+  prism: 'photonstorm',
+  meteors: 'firewand',
+  comets: 'hellfire',
+  nova: 'ember',
+  quake: 'pyre',
+  drone: 'spark',
+  gunship: 'constellation',
+  trail: 'cloud',
+  inferno: 'plague',
+  dove: 'orbs',
+  raven: 'orbs',
+  twinwings: 'eclipse',
+  cardinal: 'lance',
+  saltire: 'lance',
+  starburst: 'dawnlance',
+  cats: 'boomerang',
+  hunger: 'scythe',
+};
+
+/** Adapta una partida guardada al catálogo actual (sin duplicar armas) y recalcula sus valores. */
+export function migrateWorld(w: World): World {
+  const p = w.player;
+  const known = (id: string) => WEAPON_BY_ID.has(id);
+  const changed = p.weapons.some((ws) => !known(ws.id)) || p.passives.some((x) => !PASSIVE_BY_ID.has(x.id));
+  if (!changed) return w;
+  const kept: typeof p.weapons = [];
+  for (const ws of p.weapons) {
+    const id = known(ws.id) ? ws.id : RETIRED[ws.id];
+    if (!id || kept.some((x) => x.id === id)) continue;
+    const def = WEAPON_BY_ID.get(id)!;
+    const level = def.evolvedFrom ? ws.level : Math.min(ws.level, def.levels.length + 1);
+    kept.push({ ...newWeapon(id), level, stats: statsAt(def, level), dealt: ws.dealt });
+  }
+  p.weapons = kept.slice(0, MAX_WEAPONS);
+  p.passives = p.passives.filter((x) => PASSIVE_BY_ID.has(x.id)).map((x) => ({ ...x, level: Math.min(x.level, PASSIVE_BY_ID.get(x.id)!.maxLevel) }));
+  // Los proyectiles del jugador apuntan a posiciones de armas que han cambiado.
+  w.projectiles = w.projectiles.filter((x) => x.weapon < 0);
+  w.choices = w.phase === 'levelup' ? rollChoices(w) : w.choices;
+  recomputeStats(w);
+  return w;
 }

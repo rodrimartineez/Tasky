@@ -101,7 +101,7 @@ export const CHARACTERS: CharacterDef[] = [
     name: 'Alquimista',
     sprite: 'c_alchemist',
     price: 12_000,
-    weapon: 'flask',
+    weapon: 'misspell',
     trait: '+25 % de área y +20 % de oro, pero ataca un 10 % más despacio.',
     apply: (s) => {
       s.area *= 1.25;
@@ -126,7 +126,7 @@ export const CHARACTERS: CharacterDef[] = [
     name: 'Zapador',
     sprite: 'c_sapper',
     price: 40_000,
-    weapon: 'mines',
+    weapon: 'axe',
     trait: '+2 de armadura y +10 % de vida, pero un 15 % más lento.',
     apply: (s) => {
       s.armor += 2;
@@ -139,7 +139,7 @@ export const CHARACTERS: CharacterDef[] = [
     name: 'Astrónoma',
     sprite: 'c_astronomer',
     price: 50_000,
-    weapon: 'meteors',
+    weapon: 'unearthly',
     trait: '+25 % de experiencia, pero −25 % de vida.',
     apply: (s) => {
       s.growth *= 1.25;
@@ -151,7 +151,7 @@ export const CHARACTERS: CharacterDef[] = [
     name: 'Prismática',
     sprite: 'c_prism',
     price: 85_000,
-    weapon: 'beam',
+    weapon: 'phaser',
     trait: '+20 % de duración y de velocidad de proyectiles, pero −10 % de daño.',
     apply: (s) => {
       s.duration *= 1.2;
@@ -177,7 +177,7 @@ export const CHARACTERS: CharacterDef[] = [
     name: 'Saqueatumbas',
     sprite: 'c_thief',
     price: 190_000,
-    weapon: 'nova',
+    weapon: 'ammo',
     trait: '+50 % de oro y +30 % de suerte, pero −25 % de vida.',
     apply: (s) => {
       s.greed *= 1.5;
@@ -237,8 +237,8 @@ export const CHARACTERS: CharacterDef[] = [
     price: 750_000,
     legendary: true,
     weapon: 'ember',
-    bonusWeapons: ['meteors'],
-    trait: 'Revive una vez por partida y empieza también con Lluvia de meteoritos. +10 % de vida y de daño.',
+    bonusWeapons: ['firewand'],
+    trait: 'Revive una vez por partida y empieza también con Varita Ígnea. +10 % de vida y de daño.',
     apply: (s) => {
       s.revival += 1;
       s.maxHp *= 1.1;
@@ -265,7 +265,7 @@ export const CHARACTERS: CharacterDef[] = [
     sprite: 'c_chronomancer',
     price: 4_000_000,
     legendary: true,
-    weapon: 'beam',
+    weapon: 'clock',
     bonusWeapons: ['storm'],
     trait: 'Domina el tiempo: ataca un 25 % más rápido, +30 % de duración y +20 % de velocidad de proyectiles. Empieza con dos armas.',
     apply: (s) => {
@@ -281,7 +281,7 @@ export const CHARACTERS: CharacterDef[] = [
     price: 10_000_000,
     legendary: true,
     weapon: 'storm',
-    bonusWeapons: ['beam', 'nova', 'meteors'],
+    bonusWeapons: ['phaser', 'pentagram', 'firewand'],
     trait: 'El objetivo final: empieza con cuatro armas, revive dos veces, +30 % de daño y de vida, +20 % de área y +1 proyectil.',
     apply: (s) => {
       s.revival += 2;

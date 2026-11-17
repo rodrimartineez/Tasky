@@ -1,7 +1,7 @@
 import { BASE_STATS, type PassiveDef, type Stats, type WeaponDef, type WeaponStats } from '../sim/types';
 import { EVOLUTIONS, ingredientsOf, type EvolutionDef } from './evolutions';
 import { PASSIVE_BY_ID, PASSIVES } from './passives';
-import { WEAPON_BY_ID, WEAPONS, weaponStatsAt } from './weapons';
+import { TUNA_FORMS, WEAPON_BY_ID, WEAPONS, weaponStatsAt } from './weapons';
 
 /**
  * Catálogo del juego (apartado «Catálogo» de Hábitos). Todo se deriva de las definiciones centrales: un arma, pasiva
@@ -123,7 +123,8 @@ export const attackOf = (def: WeaponDef): string =>
   def.attack ?? (def.evolvedFrom ? WEAPON_BY_ID.get(def.evolvedFrom)?.attack : undefined) ?? 'Especial';
 
 export function weaponEntries(): WeaponEntry[] {
-  return WEAPONS.map((def) => {
+  // Las formas del atún que no se ofrecen al subir de nivel también salen (se consiguen evolucionándolo).
+  return [...WEAPONS, ...TUNA_FORMS.filter((f) => !WEAPONS.includes(f))].map((def) => {
     const maxLevel = def.levels.length + 1;
     return {
       def,
@@ -132,7 +133,7 @@ export function weaponEntries(): WeaponEntry[] {
       first: figuresOf(weaponStatsAt(def, 1)),
       last: figuresOf(weaponStatsAt(def, maxLevel)),
       levels: def.levels.map((l, i) => ({ level: i + 2, text: l.text })),
-      evolutions: EVOLUTIONS.filter((e) => e.weapon === def.id || e.union === def.id || e.needs === def.id),
+      evolutions: EVOLUTIONS.filter((e) => e.weapon === def.id || e.union === def.id),
     };
   });
 }

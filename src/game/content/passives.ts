@@ -1,77 +1,77 @@
-import type { PassiveDef } from '../sim/types';
+import type { PassiveDef, Stats } from '../sim/types';
 
-/** Objetos pasivos: mejoran las estadísticas durante la partida (se pierden al terminarla). */
+/**
+ * Objetos pasivos: mejoran las estadísticas durante la partida (se pierden al terminarla). Solo están los que piden
+ * las recetas de evolución del catálogo (content/evolutions.ts), con los valores y niveles de la referencia del género.
+ */
+
+// `?? 1`: las partidas guardadas antes de la maldición no tienen el campo.
+const curse = (s: Stats, amount: number) => void (s.curse = (s.curse ?? 1) + amount);
+
 export const PASSIVES: PassiveDef[] = [
   {
     id: 'whetstone',
     name: 'Piedra de afilar',
     icon: 'p_whetstone',
     text: '+10 % de daño',
-    maxLevel: 7,
-    apply: (s, n) => void (s.might += 0.1 * n + (n >= 7 ? 0.15 : 0)),
+    maxLevel: 5,
+    apply: (s, n) => void (s.might += 0.1 * n),
   },
   {
     id: 'hourglass',
     name: 'Reloj de arena',
     icon: 'p_hourglass',
-    text: 'Ataques un 6 % más rápidos',
-    maxLevel: 7,
-    apply: (s, n) => void (s.cooldown *= 1 - 0.06 * n - (n >= 7 ? 0.06 : 0)),
+    text: 'Ataques un 8 % más rápidos',
+    maxLevel: 5,
+    apply: (s, n) => void (s.cooldown *= 1 - 0.08 * n),
   },
   {
     id: 'lens',
     name: 'Lente ancha',
     icon: 'p_lens',
-    text: '+10 % de área efecto',
-    maxLevel: 7,
-    apply: (s, n) => void (s.area += 0.1 * n + (n >= 7 ? 0.15 : 0)),
-  },
-  {
-    id: 'boots',
-    name: 'Botas ligeras',
-    icon: 'p_boots',
-    text: '+8 % de velocidad',
-    maxLevel: 7,
-    apply: (s, n) => void (s.moveSpeed *= 1 + 0.08 * n + (n >= 7 ? 0.05 : 0)),
+    text: '+10 % de área de las armas',
+    maxLevel: 5,
+    apply: (s, n) => void (s.area += 0.1 * n),
   },
   {
     id: 'oakheart',
     name: 'Corazón de roble',
     icon: 'p_heart',
-    text: '+20 de vida máxima',
-    maxLevel: 7,
-    apply: (s, n) => void (s.maxHp += 20 * n + (n >= 7 ? 30 : 0)),
+    text: '+20 % de vida máxima',
+    maxLevel: 5,
+    apply: (s, n) => void (s.maxHp *= 1 + 0.2 * n),
   },
   {
     id: 'herb',
     name: 'Hierba vital',
     icon: 'p_herb',
     text: '+0,2 de vida por segundo',
-    maxLevel: 7,
-    apply: (s, n) => void (s.regen += 0.2 * n + (n >= 7 ? 0.2 : 0)),
+    maxLevel: 5,
+    apply: (s, n) => void (s.regen += 0.2 * n),
   },
   {
     id: 'lodestone',
     name: 'Piedra imán',
     icon: 'p_lodestone',
-    text: '+30 % de alcance de recogida',
-    maxLevel: 7,
-    apply: (s, n) => void (s.pickup *= 1 + 0.3 * n + (n >= 7 ? 0.4 : 0)),
+    text: 'Más alcance de recogida (+50 % el primer nivel, +25 % los siguientes)',
+    maxLevel: 5,
+    apply: (s, n) => void (s.pickup *= 1 + (n > 0 ? 0.5 + 0.25 * (n - 1) : 0)),
   },
   {
     id: 'tome',
     name: 'Tomo de sabiduría',
     icon: 'p_tome',
     text: '+8 % de experiencia',
-    maxLevel: 7,
-    apply: (s, n) => void (s.growth += 0.08 * n + (n >= 7 ? 0.1 : 0)),
+    maxLevel: 5,
+    apply: (s, n) => void (s.growth += 0.08 * n),
   },
   {
     id: 'scales',
     name: 'Coraza de escamas',
     icon: 'p_scales',
-    text: '+1 de armadura',
-    maxLevel: 7,
+    text: '+1 de armadura y +10 % de daño devuelto',
+    maxLevel: 5,
+    // El daño devuelto (Sudario Carmesí) lo calcula sim/core.ts con el nivel de esta pasiva.
     apply: (s, n) => void (s.armor += n),
   },
   {
@@ -79,68 +79,32 @@ export const PASSIVES: PassiveDef[] = [
     name: 'Pluma de halcón',
     icon: 'p_feather',
     text: '+10 % de velocidad de proyectiles',
-    maxLevel: 7,
-    apply: (s, n) => void (s.projSpeed += 0.1 * n + (n >= 7 ? 0.15 : 0)),
+    maxLevel: 5,
+    apply: (s, n) => void (s.projSpeed += 0.1 * n),
   },
   {
     id: 'candle',
     name: 'Vela eterna',
     icon: 'p_candle',
     text: '+10 % de duración de los efectos',
-    maxLevel: 7,
-    apply: (s, n) => void (s.duration += 0.1 * n + (n >= 7 ? 0.15 : 0)),
+    maxLevel: 5,
+    apply: (s, n) => void (s.duration += 0.1 * n),
   },
   {
     id: 'horn',
     name: 'Cuerno gemelo',
     icon: 'p_horn',
-    text: '+1 proyectil en cada nivel',
+    text: '+1 proyectil en cada arma',
     maxLevel: 2,
     apply: (s, n) => void (s.amount += n),
-  },
-  {
-    id: 'tiramisu',
-    name: 'Tiramisú',
-    icon: 'p_tiramisu',
-    text: '+1 resurrección',
-    maxLevel: 2,
-    apply: (s, n) => void (s.revival += n),
-  },
-  {
-    id: 'eye',
-    name: 'Ojo de águila',
-    icon: 'p_eye',
-    text: '+4 % de crítico y +10 % de daño crítico',
-    maxLevel: 7,
-    apply: (s, n) => {
-      s.critChance = Math.min(1, s.critChance + 0.04 * n + (n >= 7 ? 0.05 : 0));
-      s.critMult += 0.1 * n + (n >= 7 ? 0.2 : 0);
-    },
-  },
-  {
-    id: 'fang',
-    name: 'Colmillo de sangre',
-    icon: 'p_fang',
-    text: 'Recuperas el 0,15 % del daño que causas (con un tope por segundo)',
-    maxLevel: 7,
-    // `?? 0`: las partidas guardadas antes de esta pasiva no tienen el campo.
-    apply: (s, n) => void (s.leech = (s.leech ?? 0) + 0.0015 * n + (n >= 7 ? 0.0015 : 0)),
   },
   {
     id: 'clover',
     name: 'Trébol de cuatro hojas',
     icon: 'p_clover',
     text: '+10 % de suerte',
-    maxLevel: 7,
-    apply: (s, n) => void (s.luck += 0.1 * n + (n >= 7 ? 0.1 : 0)),
-  },
-  {
-    id: 'mask',
-    name: 'Máscara avara',
-    icon: 'p_mask',
-    text: '+10 % de oro',
-    maxLevel: 7,
-    apply: (s, n) => void (s.greed += 0.1 * n + (n >= 7 ? 0.1 : 0)),
+    maxLevel: 5,
+    apply: (s, n) => void (s.luck += 0.1 * n),
   },
   {
     id: 'skull',
@@ -148,65 +112,68 @@ export const PASSIVES: PassiveDef[] = [
     icon: 'p_skull',
     text: '+10 % de maldición: más enemigos, más rápidos y más resistentes',
     maxLevel: 5,
-    // `?? 1`: las partidas guardadas antes de la maldición no tienen el campo.
-    apply: (s, n) => void (s.curse = (s.curse ?? 1) + 0.1 * n),
+    apply: (s, n) => curse(s, 0.1 * n),
+  },
+  {
+    id: 'tiramisu',
+    name: 'Tiramisú',
+    icon: 'p_tiramisu',
+    text: '+1 resurrección (revives con media vida)',
+    maxLevel: 2,
+    apply: (s, n) => void (s.revival += n),
   },
   {
     id: 'silverring',
     name: 'Sortija lunar',
     icon: 'p_silverring',
-    text: '+5 % de área y de duración',
-    maxLevel: 7,
+    text: '+5 % de área y de duración (desde el nivel 2)',
+    maxLevel: 9,
     apply: (s, n) => {
-      s.area += 0.05 * n;
-      s.duration += 0.05 * n;
+      s.area += 0.05 * Math.max(0, n - 1);
+      s.duration += 0.05 * Math.max(0, n - 1);
     },
   },
   {
     id: 'goldring',
     name: 'Sortija solar',
     icon: 'p_goldring',
-    text: '+5 % de experiencia y de oro',
-    maxLevel: 7,
-    apply: (s, n) => {
-      s.growth += 0.05 * n;
-      s.greed += 0.05 * n;
-    },
+    text: '+5 % de maldición (desde el nivel 2)',
+    maxLevel: 9,
+    apply: (s, n) => curse(s, 0.05 * Math.max(0, n - 1)),
   },
   {
     id: 'medalleft',
     name: 'Medalla del ocaso',
     icon: 'p_medalleft',
-    text: '+10 de vida máxima y +0,05 de vida por segundo',
-    maxLevel: 7,
+    text: '+5 % de vida máxima y +0,1 de vida por segundo (desde el nivel 2)',
+    maxLevel: 9,
     apply: (s, n) => {
-      s.maxHp += 10 * n;
-      s.regen += 0.05 * n;
+      const k = Math.max(0, n - 1);
+      s.maxHp *= 1.05 ** k;
+      s.regen += 0.1 * k;
     },
   },
   {
     id: 'medalright',
     name: 'Medalla del alba',
     icon: 'p_medalright',
-    text: '+4 % de daño y +4 % de maldición',
-    maxLevel: 7,
-    apply: (s, n) => {
-      s.might += 0.04 * n;
-      s.curse = (s.curse ?? 1) + 0.04 * n;
-    },
+    text: '+5 % de maldición (desde el nivel 2)',
+    maxLevel: 9,
+    apply: (s, n) => curse(s, 0.05 * Math.max(0, n - 1)),
   },
   {
     id: 'puzzlebox',
     name: 'Caja de engranajes',
     icon: 'p_puzzlebox',
-    text: '+3 % de daño, área, duración y velocidad de proyectiles; al máximo, +10 % de maldición',
-    maxLevel: 7,
+    text: 'Daño, área, duración y velocidad de proyectiles: +4 % el primer nivel y +3 % los siguientes; en el 9, +100 % de maldición',
+    maxLevel: 9,
     apply: (s, n) => {
-      s.might += 0.03 * n;
-      s.area += 0.03 * n;
-      s.duration += 0.03 * n;
-      s.projSpeed += 0.03 * n;
-      if (n >= 7) s.curse = (s.curse ?? 1) + 0.1;
+      const bonus = n > 0 ? 0.04 + 0.03 * (Math.min(n, 8) - 1) : 0;
+      s.might += bonus;
+      s.area += bonus;
+      s.duration += bonus;
+      s.projSpeed += bonus;
+      if (n >= 9) curse(s, 1);
     },
   },
 ];

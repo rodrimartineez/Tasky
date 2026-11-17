@@ -1,4 +1,5 @@
 import { ENEMY_BY_ID } from '../content/enemies';
+import { WEAPON_BY_ID } from '../content/weapons';
 import { runDamage, runDensity, runGold, runHp } from './difficulty';
 import { TIMELINE, type Enemy, type EnemyDef, type Fx, type PickupKind, type World } from './types';
 
@@ -229,10 +230,23 @@ export function killEnemy(w: World, e: Enemy) {
   emit(w, { type: 'puff', x: e.x, y: e.y, color: 0xffffff, count: boss ? 24 : e.elite ? 12 : 4 });
 }
 
-/** Efectos propios de algunas armas al golpear (congelar, curar…), por id del arma: los registra sim/weapons.ts. */
-export const ON_HIT: Record<string, (w: World, e: Enemy, dmg: number, weapon: number) => void> = {};
+/**
+ * Efectos propios de algunas armas al golpear (curar, ralentizar, estallar con los críticos…), por id del arma: los
+ * registra sim/weapons.ts. No pueden consultar la rejilla (quien los llama puede estar recorriendo `near`).
+ */
+export const ON_HIT: Record<string, (w: World, e: Enemy, dmg: number, weapon: number, crit: boolean) => void> = {};
 
-/** Cura de las armas (Azote del viento, Pira del fénix): con tope por segundo, como el robo de vida. */
+/** Ganchos que registra sim/weapons.ts: al recibir un golpe (contraataques) y críticos especiales por arma. */
+export const HOOKS: {
+  hurt?: (w: World, amount: number) => void;
+  /** Probabilidad de crítico extra del arma en su estado actual. */
+  crit?: (w: World, weapon: number) => number;
+} = {};
+
+/** Armas cuyos críticos no multiplican el daño (estallan en su lugar: Rayo Sobrenatural). */
+const FLAT_CRITS = new Set(['unearthly', 'spirit']);
+
+/** Cura de las armas (Látigo de Sangre, Engullealmas…): con tope por segundo, como el robo de vida. */
 export function healPlayer(w: World, amount: number) {
   const p = w.player;
   const heal = Math.min(amount, p.healPool ?? 0);
@@ -242,14 +256,18 @@ export function healPlayer(w: World, amount: number) {
 
 /**
  * Daño de un arma a un enemigo: aplica poder y críticos, retroceso y, si muere, el botín.
- * (kx, ky) es la dirección del retroceso multiplicada por su fuerza.
+ * (kx, ky) es la dirección del retroceso multiplicada por su fuerza. `secondary`: daño derivado (explosiones de un
+ * crítico, represalias) que no vuelve a disparar los efectos al golpear.
  */
-export function damageEnemy(w: World, e: Enemy, base: number, weapon: number, kx: number, ky: number) {
+export function damageEnemy(w: World, e: Enemy, base: number, weapon: number, kx: number, ky: number, secondary = false) {
   // La Muerte no recibe daño.
   if (e.dead || e.def.ai === 'reaper') return;
   const stats = w.player.stats;
-  const crit = rand(w) < stats.critChance;
-  const dmg = Math.max(1, Math.round(base * stats.might * (crit ? stats.critMult : 1)));
+  const ws = w.player.weapons[weapon];
+  const extra = ws && !secondary ? (WEAPON_BY_ID.get(ws.id)?.crit ?? 0) + (HOOKS.crit?.(w, weapon) ?? 0) : 0;
+  const crit = rand(w) < stats.critChance * stats.luck + extra;
+  const mult = crit && !(ws && FLAT_CRITS.has(ws.id)) ? stats.critMult : 1;
+  const dmg = Math.max(1, Math.round(base * stats.might * mult));
   e.hp -= dmg;
   e.flash = 0.1;
   if (stats.leech > 0) {
@@ -260,39 +278,52 @@ export function damageEnemy(w: World, e: Enemy, base: number, weapon: number, kx
   const resist = 1 - e.def.knockResist;
   e.kx += kx * resist;
   e.ky += ky * resist;
-  const ws = w.player.weapons[weapon];
   if (ws) ws.dealt += dmg;
   emit(w, { type: 'number', x: e.x, y: e.y - e.radius, value: dmg, crit, player: false });
-  if (ws) ON_HIT[ws.id]?.(w, e, dmg, weapon);
+  if (ws && !secondary) ON_HIT[ws.id]?.(w, e, dmg, weapon, crit);
   if (e.hp <= 0 && !e.dead) killEnemy(w, e);
 }
 
-/** Coraza de espinas: tope de daño por golpe y daño devuelto alrededor. */
-const THORNS = { cap: 10 };
+/** Sudario Carmesí: tope de daño por golpe y represalia (daño recibido, con tope, +10 % por nivel de Coraza). */
+const SHROUD = { cap: 10, retaliationCap: 100, armorBonus: 0.1 };
 
+/**
+ * Golpe al jugador. El Laurel (y el Sudario) gastan una carga en vez de recibir el daño; el Sudario además limita el
+ * daño y, con cada carga gastada, estalla devolviéndolo.
+ */
 export function hurtPlayer(w: World, amount: number) {
   const p = w.player;
   if (p.hurtTimer > 0 || w.phase !== 'playing') return;
-  const thorns = p.weapons.findIndex((x) => x.id === 'thornmail');
-  if (thorns >= 0) {
-    // Devuelve el golpe (también si el escudo lo bloquea) a todo lo que rodea al jugador.
-    const ws = p.weapons[thorns];
-    const radius = ws.stats.area * p.stats.area;
-    const count = queryNear(p.x, p.y, radius);
-    const targets = near.slice(0, count);
-    for (const e of targets) {
-      const d = Math.hypot(e.x - p.x, e.y - p.y) || 1;
-      damageEnemy(w, e, ws.stats.damage, thorns, ((e.x - p.x) / d) * ws.stats.knockback, ((e.y - p.y) / d) * ws.stats.knockback);
+  HOOKS.hurt?.(w, amount);
+  const shroud = p.weapons.findIndex((x) => x.id === 'thornmail');
+  const laurel = shroud >= 0 ? shroud : p.weapons.findIndex((x) => x.id === 'laurel');
+  if (laurel >= 0 && (p.shield ?? 0) >= 1) {
+    const ws = p.weapons[laurel];
+    p.shield = (p.shield ?? 1) - 1;
+    p.hurtTimer = 0.5 + ws.stats.duration * p.stats.duration;
+    emit(w, { type: 'ring', x: p.x, y: p.y, radius: 16, color: shroud >= 0 ? 0xff5a6a : 0x9fe8a0 });
+    if (shroud >= 0) {
+      const armor = p.passives.find((x) => x.id === 'scales')?.level ?? 0;
+      const dmg = Math.min(SHROUD.retaliationCap, amount) * (1 + SHROUD.armorBonus * armor) * (p.stats.curse ?? 1);
+      const radius = ws.stats.area * p.stats.area;
+      for (let k = 0; k < 1 + p.stats.amount; k++) {
+        const cx = p.x + (k === 0 ? 0 : (rand(w) - 0.5) * radius);
+        const cy = p.y - 8 + (k === 0 ? 0 : (rand(w) - 0.5) * radius);
+        const count = queryNear(cx, cy, radius);
+        const targets = near.slice(0, count);
+        for (const e of targets) {
+          const d = Math.hypot(e.x - cx, e.y - cy) || 1;
+          damageEnemy(w, e, dmg, laurel, ((e.x - cx) / d) * ws.stats.knockback, ((e.y - cy) / d) * ws.stats.knockback, true);
+        }
+        emit(w, { type: 'ring', x: cx, y: cy, radius, color: 0xff5a6a });
+        emit(w, { type: 'ring', x: cx, y: cy, radius: radius * 0.55, color: 0xffd0d6 });
+      }
+      emit(w, { type: 'shake', power: 3 });
     }
-    emit(w, { type: 'ring', x: p.x, y: p.y, radius, color: 0xff5a6a });
-  }
-  if ((p.shield ?? 0) > 0) {
-    p.hurtTimer = 0.5;
-    emit(w, { type: 'ring', x: p.x, y: p.y, radius: 16, color: 0x9fe8a0 });
     return;
   }
   let dmg = Math.max(1, Math.round(amount - p.stats.armor));
-  if (thorns >= 0) dmg = Math.min(dmg, THORNS.cap);
+  if (shroud >= 0) dmg = Math.min(dmg, SHROUD.cap);
   p.hp -= dmg;
   p.hurtTimer = 0.5;
   emit(w, { type: 'number', x: p.x, y: p.y - 10, value: dmg, crit: false, player: true });

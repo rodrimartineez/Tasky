@@ -109,6 +109,12 @@ export interface WeaponDef {
   color?: number;
   /** Evoluciones: id del arma base, de la que heredan el comportamiento. */
   evolvedFrom?: string;
+  /** Segundos entre proyectiles de una misma ráfaga (sin esto, salen todos a la vez). */
+  interval?: number;
+  /** Probabilidad de crítico propia del arma (se suma a la del jugador). */
+  crit?: number;
+  /** Regalo: se añade junto al arma base, que se conserva, y no ocupa hueco. */
+  gift?: boolean;
 }
 
 export interface PassiveDef {
@@ -240,8 +246,20 @@ export interface WeaponState {
   timer: number;
   /** Daño total causado en la partida (resumen final). */
   dealt: number;
-  /** Contador propio de algunas armas (Saeta del reloj: hora a la que apunta). */
+  /** Contador propio de algunas armas (Lanceta: hora a la que apunta; Espada: tajos del combo; Munición: balas guardadas). */
   step?: number;
+  /** Ráfaga en curso: proyectiles que faltan y segundos hasta el siguiente. */
+  burst?: number;
+  burstT?: number;
+  /** Combo de críticos (Rayo Sobrenatural): daño extra acumulado y segundos que le quedan. */
+  combo?: number;
+  comboT?: number;
+  /** Atún Cambiante: mejoras de nivel heredadas de las formas anteriores, evoluciones hechas y formas usadas. */
+  carry?: Partial<WeaponStats>;
+  evos?: number;
+  forms?: string[];
+  /** Milagro: cronómetro de cada forma. */
+  timers?: number[];
 }
 
 export interface Player {
@@ -254,9 +272,11 @@ export interface Player {
   moving: boolean;
   /** Segundos de invulnerabilidad tras un golpe. */
   hurtTimer: number;
-  /** Segundos de escudo (Égida de hiedra): bloquea todo el daño. */
+  /** Resurrecciones ya gastadas (recomputeStats las descuenta de las que dan las pasivas). */
+  revivalsUsed?: number;
+  /** Cargas del escudo (Laurel): cada una absorbe un golpe entero. */
   shield?: number;
-  /** Segundos seguidos en movimiento (Filo errante). */
+  /** Segundos seguidos en movimiento (Viento Sacro). */
   moveTime?: number;
   /** Curación de las armas que aún puede aplicarse este segundo (tope por segundo, como el robo de vida). */
   healPool?: number;
@@ -304,6 +324,8 @@ export interface Enemy {
   freeze?: number;
   /** Segundos ralentizado (mitad de velocidad). */
   chill?: number;
+  /** Multiplicador permanente de velocidad (Partitura de Maná: −5 % por golpe, hasta 0,2). */
+  sap?: number;
   /** Segundos hasta que un arma de contacto continuo (orbes, aura) puede volver a golpearlo. */
   contactCd: number;
   /** Marca de la última consulta espacial que lo devolvió (evita repetidos). */
@@ -321,30 +343,33 @@ export type ProjKind =
   | 'orbit'
   | 'bomb'
   | 'enemyShot'
-  /** Látigo: daño instantáneo en un sector; el proyectil es solo el destello. */
+  /** Látigo y tajos: daño instantáneo en un sector; el proyectil es solo el destello. */
   | 'slash'
   | 'boomerang'
-  | 'mine'
-  /** Haz giratorio alrededor del jugador. */
-  | 'beam'
+  /** Cae del cielo (o en diagonal) y, al llegar, estalla o deja un charco. */
   | 'meteor'
+  /** Zona en el suelo que daña cada cierto tiempo a lo que hay dentro. */
   | 'cloud'
-  /** Cuchilla que rebota de un enemigo a otro. */
-  | 'ricochet'
-  /** Dron que orbita al jugador y dispara al enemigo más cercano. */
-  | 'drone'
-  /** Llama que queda en el suelo y quema a quien la pisa. */
-  | 'flame'
+  /** Atraviesa y rebota en los bordes de la pantalla. */
+  | 'bounce'
   /** Hacha: sube en arco y cae por gravedad, atravesando. */
   | 'axe'
   /** Proyectil recto que gira sobre sí mismo. */
   | 'spin'
-  /** Ave que orbita lejos del jugador y suelta bombas. */
-  | 'bird'
-  /** Criatura que vaga al azar y daña al tocar. */
+  /** Remolino que persigue enemigos y daña al tocar. */
   | 'critter'
   /** Columna vertical de luz que sigue al jugador. */
-  | 'column';
+  | 'column'
+  /** Haz o rayo instantáneo (el daño ya se ha hecho): solo se dibuja de (sx, sy) a (tx, ty). */
+  | 'ray'
+  /** Llamarada que avanza, crece y se apaga. */
+  | 'flare'
+  /** Atún que salta desde abajo, rebota en los lados y luego se queda junto al jugador. */
+  | 'leap'
+  /** Dragón que vuela en ocho sobre el jugador y lanza rayos. */
+  | 'dragon'
+  /** Galaxia que gira sobre toda la pantalla. */
+  | 'galaxy';
 
 export interface Projectile {
   kind: ProjKind;
@@ -371,6 +396,10 @@ export interface Projectile {
   total: number;
   /** Enemigos ya golpeados por este proyectil. */
   hit: number[];
+  /** Color del haz (rayos) o del charco. */
+  color?: number;
+  /** Al golpear o al caer deja un charco de este radio (formas del atún). */
+  splash?: number;
   dead: boolean;
 }
 
@@ -417,7 +446,8 @@ export interface Hazard {
 }
 
 export interface UpgradeChoice {
-  kind: 'weapon' | 'passive' | 'gold' | 'heal' | 'evolution' | 'purge';
+  /** `form`: forma del Atún Cambiante que se elige tras su evolución. */
+  kind: 'weapon' | 'passive' | 'gold' | 'heal' | 'evolution' | 'purge' | 'form';
   id: string;
   name: string;
   icon: string;
@@ -447,6 +477,8 @@ export interface World {
   gold: number;
   /** Subidas de nivel pendientes de elegir. */
   pendingLevels: number;
+  /** Evoluciones del Atún Cambiante pendientes de elegir forma (índice del arma en `player.weapons`). */
+  pendingForms?: number[];
   choices: UpgradeChoice[];
   /** Últimas mejoras concedidas por un cofre (la interfaz las muestra y las vacía). */
   chestRewards: UpgradeChoice[];

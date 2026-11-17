@@ -156,7 +156,7 @@ Movimiento (joystick virtual flotante: aparece donde se apoya el pulgar, no tapa
 escritorio) · ataque automático · gemas de experiencia con imán · subida de nivel → elegir 1 de 3–4 (armas nuevas,
 niveles de arma, pasivas) · cofres de élites y jefes (mejoras, evoluciones, oro) · oleadas guionizadas por minuto
 por escenario · jefes en minutos fijos · **minuto 30: llega La Muerte**, imparable, que cierra la partida (llegar a
-ella supera el nivel; §11). Máximo 6 armas y 6 pasivas (5 + 5 hasta el 17/11/2026), de 7 niveles (§12).
+ella supera el nivel; §11). Máximo 6 armas y 6 pasivas (5 + 5 hasta el 17/11/2026), cada una con sus niveles (§12).
 
 ### 5.2 Contenido inicial (objetivo, por fases)
 - **Armas (~16 base + evoluciones):** proyectil que busca, lanza que atraviesa, orbe que orbita, aura de daño
@@ -369,14 +369,32 @@ Pedido por el usuario el 11/11/2026.
 Vale para cualquier arma futura sin hacer nada más.
 
 **Niveles de armas y pasivas** (`sim/upgrades.ts`, tablas en `content/weapons.ts` y `content/passives.ts`).
-- 7 niveles; cada uno se nota y el 7 es un gran salto (un arma al 7 rinde de 4 a 12 veces su nivel 1, algo más que el antiguo nivel 8).
-- Al llegar al 7, un objeto deja de ofrecerse. Las pasivas no pasan nunca del 7. Ninguna arma pasa del 7 hasta
-  llevar **las 6 armas y las 6 pasivas, todas al 7**.
+- Desde el 17/11/2026 cada objeto tiene los niveles de su referencia (`maxLevelOf`): casi todas las armas 8, la
+  Lanceta y el Laurel 7, la Espada de la Victoria 12 y las formas del atún 6; las pasivas 5 (Cuerno y Tiramisú 2;
+  sortijas, medallas y Caja de engranajes 9). Las evoluciones conservan el máximo de su base.
+- Al llegar a su máximo, un objeto deja de ofrecerse. Las pasivas no lo pasan nunca. Ninguna arma lo pasa hasta
+  llevar **las 6 armas y las 6 pasivas, todas al máximo**.
 - Con la build completa (`buildComplete`), las armas siguen subiendo hasta el **999** (`OVERLEVEL`): cada nivel +5 % de
   daño y algo más de área (hasta ×1,6), cadencia, velocidad y duración; +1 proyectil cada 50 niveles (5 como mucho)
-  y +1 de perforación cada 30. Las pasivas se quedan en el 7. Vale en todas las modalidades, pensado sobre todo para
+  y +1 de perforación cada 30. Las pasivas se quedan en su máximo. Vale en todas las modalidades, pensado sobre todo para
   el infinito.
-- Las evoluciones siguen igual: arma al 7 + su pasiva + cofre. La evolucionada conserva el nivel del arma.
+- Las evoluciones: arma al máximo + su receta + cofre. La evolucionada conserva el nivel del arma.
+
+**Catálogo cerrado (17/11/2026).** Solo existen las armas, evoluciones y pasivas de la lista del usuario, con las
+mecánicas y recetas de la referencia del género (Vampire Survivors) y nombres, arte y efectos propios:
+`content/weapons.ts`, `content/evolutions.ts` y `content/passives.ts` (19 pasivas: las que piden las recetas).
+- Recetas con pasiva **al máximo** (`maxed`): Corredor del Infinito, Sudario Carmesí, Solución Única, Cenizas de
+  Exizografía, Tormenta de Fotones, Interrupción Espiritual y Pistolastrofe. Fusión: Viento Sacro + Látigo de Sangre.
+  **Regalo** (`gift`): la Solución Única se suma a la Espada de la Victoria sin quitarla ni ocupar hueco.
+- **Atún Cambiante** (referencia: Penshin Fatcha): sus seis formas evolucionan sin pasiva; tras el cofre se elige
+  forma (pantalla de mejora, sin repetir ni descartar): las ya desbloqueadas o la siguiente, que heredan las mejoras
+  de nivel de las anteriores. Desde la sexta evolución, el Milagro del Banco usa todas las formas a la vez.
+- Ráfagas (`interval`), críticos propios del arma (`crit`), cargas del Laurel (`player.shield`), ralentización
+  permanente (`enemy.sap`) y contraataque de la Espada (`HOOKS.hurt`).
+- Las partidas guardadas con armas retiradas se reanudan con su sustituta (`migrateWorld`, `RETIRED`).
+- **Inmunidad tras elegir:** cada elección de mejora (también la Purga y la forma del atún) da 1 s sin recibir daño
+  (`UPGRADE_GRACE`), así que varias subidas seguidas no dejan al jugador indefenso entre pantallas.
+- Las resurrecciones gastadas ya no vuelven al recalcular las pasivas (`revivalsUsed`).
 
 **Purga** (mejora especial). En ~1 de cada 5 partidas (decidido por la semilla, `PURGE` en `sim/world.ts`) se
 ofrece una vez, entre los niveles 8 y 37 del personaje, en lugar de una de las opciones, aunque el inventario esté

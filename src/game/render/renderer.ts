@@ -2,7 +2,7 @@
 import 'pixi.js/unsafe-eval';
 import { Application, Container, Rectangle, Sprite, Texture, TilingSprite, type ApplicationOptions } from 'pixi.js';
 import { behaviourOf, WEAPON_BY_ID } from '../content/weapons';
-import { COLUMN_HALF, emberRadius, MINE_ARM } from '../sim/weapons';
+import { COLUMN_HALF, emberRadius } from '../sim/weapons';
 import type { Fx, Projectile, World } from '../sim/types';
 import { buildAtlas, buildGroundTile, CIRCLE_RADIUS, WHITE } from '../sprites/atlas';
 import { GROUNDS } from '../sprites/grounds';
@@ -382,7 +382,7 @@ export class Renderer {
     this.under.begin();
     const ember = p.weapons.find((ws) => behaviourOf(ws.id) === 'ember');
     if (ember) {
-      const emberColor = WEAPON_BY_ID.get(ember.id)?.color ?? 0xff8a3c;
+      const emberColor = WEAPON_BY_ID.get(ember.id)?.color ?? 0xdff0b0;
       const s = this.under.next(this.tex('disc'));
       s.position.set(p.x, p.y);
       s.scale.set(emberRadius(w, ember) / CIRCLE_RADIUS);
@@ -391,7 +391,7 @@ export class Renderer {
       const edge = this.under.next(this.tex('ring'));
       edge.position.set(p.x, p.y);
       edge.scale.set(emberRadius(w, ember) / CIRCLE_RADIUS);
-      edge.tint = 0xffb347;
+      edge.tint = emberColor;
       edge.alpha = 0.22;
     }
     // Zonas marcadas por los jefes de ciclo: se intensifican hasta estallar (sim/bosses.ts).
@@ -530,18 +530,19 @@ export class Renderer {
     if (skin) hero.tint = skin.tint;
     // Al recibir daño destella en rojo, sin volverse transparente: el personaje se ve siempre.
     if (p.hurtTimer > 0 && dying === null && Math.floor(this.clock * 20) % 2 === 0) hero.tint = 0xff7a7a;
-    // Escudo de la Égida de hiedra: burbuja verde que parpadea al acabarse.
+    // Escudo del Laurel: burbuja verde mientras le quede alguna carga (roja con el Sudario Carmesí).
     const shield = p.shield ?? 0;
-    if (shield > 0 && dying === null && (shield > 0.6 || Math.floor(this.clock * 12) % 2 === 0)) {
+    const shroud = p.weapons.some((x) => x.id === 'thornmail');
+    if (shield >= 1 && dying === null) {
       const bubble = this.actors.next(this.tex('ring'));
       bubble.position.set(p.x, p.y - 2);
       bubble.scale.set((14 + Math.sin(this.clock * 6)) / CIRCLE_RADIUS);
-      bubble.tint = 0x9fe8a0;
-      bubble.alpha = 0.8;
+      bubble.tint = shroud ? 0xff5a6a : 0x9fe8a0;
+      bubble.alpha = 0.5 + 0.15 * Math.min(3, shield);
       const glow = this.actors.next(this.tex('disc'));
       glow.position.copyFrom(bubble.position);
       glow.scale.copyFrom(bubble.scale);
-      glow.tint = 0x9fe8a0;
+      glow.tint = bubble.tint;
       glow.alpha = 0.15;
     }
     if (dying !== null) {
@@ -578,7 +579,8 @@ export class Renderer {
 
     this.shots.begin();
     for (const shot of w.projectiles) {
-      if (!visible(shot.x, shot.y)) continue;
+      // Los haces y la galaxia empiezan fuera de la pantalla o la cubren entera.
+      if (shot.kind !== 'ray' && shot.kind !== 'galaxy' && !visible(shot.x, shot.y)) continue;
       this.drawShot(shot);
     }
     this.shots.end();
@@ -610,18 +612,18 @@ export class Renderer {
         return;
       }
       case 'meteor': {
-        // Sombra en el suelo que se concreta al caer, y la roca con su cola de fuego.
+        // Cae del cielo: sombra en el suelo que se concreta al caer y el atún dando vueltas con su estela.
         const t = 1 - Math.max(0, shot.life) / shot.total;
         const shadow = pool.next(this.tex('disc'));
         shadow.position.set(shot.tx, shot.ty);
         shadow.scale.set((shot.radius * (0.3 + 0.7 * t)) / CIRCLE_RADIUS);
-        shadow.tint = 0x1a0d0a;
+        shadow.tint = 0x0b1a2a;
         shadow.alpha = 0.2 + 0.25 * t;
         const rot = Math.atan2(shot.ty - shot.sy, shot.tx - shot.sx);
-        this.trail(shot, Math.cos(rot), Math.sin(rot), rot, 4, 6);
+        this.trail(shot, Math.cos(rot), Math.sin(rot), shot.angle, 3, 6);
         const s = pool.next(this.tex(shot.sprite));
         s.position.set(shot.x, shot.y);
-        s.rotation = rot;
+        s.rotation = shot.angle;
         return;
       }
       case 'boomerang': {
@@ -632,98 +634,58 @@ export class Renderer {
         s.rotation = shot.angle;
         return;
       }
-      case 'ricochet': {
-        // Cuchilla giratoria con estela corta en la dirección de vuelo.
+      case 'bounce': {
+        // Runa o pistola que rebota: gira con una estela larga y un halo.
         const speed = Math.hypot(shot.vx, shot.vy) || 1;
-        this.trail(shot, shot.vx / speed, shot.vy / speed, shot.angle, 3, 5);
+        const halo = pool.next(this.tex('disc'));
+        halo.position.set(shot.x, shot.y);
+        halo.scale.set((shot.radius * 1.6) / CIRCLE_RADIUS);
+        halo.tint = shot.sprite === 'x_gun' ? 0xf6c945 : shot.sprite === 'x_luckyblades' ? 0xff4f9a : 0x7ee8e0;
+        halo.alpha = 0.18;
+        this.trail(shot, shot.vx / speed, shot.vy / speed, shot.angle, 4, 5);
         const s = pool.next(this.tex(shot.sprite));
         s.position.set(shot.x, shot.y);
         s.rotation = shot.angle;
         return;
       }
-      case 'drone': {
-        // Dron: flota con un vaivén suave; aparece y se retira encogiéndose.
-        const s = pool.next(this.tex(shot.sprite));
-        s.position.set(shot.x, shot.y + Math.sin(this.clock * 5 + shot.angle * 3) * 1.5);
-        s.scale.set(Math.min(1, shot.life * 3));
-        return;
-      }
-      case 'flame': {
-        // Llama: halo en el suelo y dos lenguas verticales que nacen del suelo y parpadean; se apaga al final.
-        const fade = Math.min(1, shot.life * 1.5);
-        const halo = pool.next(this.tex('disc'));
-        halo.position.set(shot.x, shot.y);
-        halo.scale.set(shot.radius / CIRCLE_RADIUS);
-        halo.tint = shot.sprite === 'x_flame' ? 0xff7a2c : 0x3f8cff;
-        halo.alpha = 0.1 * fade;
-        for (let i = 0; i < 2; i++) {
-          const flick = Math.sin(this.clock * 14 + shot.x * 0.7 + i * 2.4);
-          const tongue = pool.next(this.tex(shot.sprite));
-          const size = Math.max(0.8, shot.radius / 16);
-          tongue.anchor.set(0.5, 1);
-          tongue.position.set(shot.x + (i - 0.5) * shot.radius * 0.6, shot.y + shot.radius * 0.35);
-          // Crecen hacia arriba al parpadear, con la base fija en el suelo.
-          tongue.scale.set(size, size * (0.85 + 0.2 * flick));
-          tongue.alpha = 0.9 * fade;
-        }
-        return;
-      }
-      case 'mine': {
-        const s = pool.next(this.tex(shot.sprite));
-        s.position.set(shot.x, shot.y);
-        // Armada: parpadea en rojo; si va a desaparecer, titila.
-        if (shot.total - shot.life >= MINE_ARM && Math.floor(this.clock * 4) % 2 === 0) s.tint = 0xff8888;
-        if (shot.life < 1.5) s.alpha = Math.floor(this.clock * 10) % 2 === 0 ? 0.4 : 1;
-        return;
-      }
-      case 'beam': {
-        // Rayo: núcleo blanco sobre un halo cian, con un destello en la punta.
-        const cx = Math.cos(shot.angle);
-        const cy = Math.sin(shot.angle);
-        const mid = shot.orbitR / 2;
-        const glow = pool.next(this.tex('px'));
-        glow.position.set(shot.x + cx * mid, shot.y + cy * mid);
-        glow.rotation = shot.angle;
-        glow.scale.set(shot.orbitR / 2, shot.radius * 0.9);
-        glow.tint = shot.sprite === 'x_starburst' ? 0xffc94a : 0x4fd6e8;
-        glow.alpha = 0.55 + Math.sin(this.clock * 30) * 0.1;
-        const core = pool.next(this.tex('px'));
-        core.position.set(glow.x, glow.y);
-        core.rotation = shot.angle;
-        core.scale.set(shot.orbitR / 2, shot.radius * 0.35);
-        const tip = pool.next(this.tex(shot.sprite));
-        tip.position.set(shot.x + cx * shot.orbitR, shot.y + cy * shot.orbitR);
-        tip.rotation = this.clock * 6;
-        return;
-      }
       case 'cloud': {
-        // Nube: disco tenue con tres bocanadas que giran despacio.
+        // Charco: disco tenue del color del arma con un borde y bocanadas (o burbujas) que giran despacio.
         const pulse = 1 + Math.sin(this.clock * 3 + shot.x) * 0.04;
+        const color = shot.color ?? 0x6bc5ff;
+        const fade = Math.min(1, shot.life * 2);
         const base = pool.next(this.tex('disc'));
         base.position.set(shot.x, shot.y);
         base.scale.set((shot.radius * pulse) / CIRCLE_RADIUS);
-        base.tint = 0x5ee08a;
-        // Varias nubes grandes se solapan: el disco va tenue para no teñir toda la pantalla.
-        base.alpha = Math.min(shot.radius > 60 ? 0.1 : 0.22, shot.life * 0.4);
-        for (let i = 0; i < 3; i++) {
+        base.tint = color;
+        // Varios charcos grandes se solapan: el disco va tenue para no teñir toda la pantalla.
+        base.alpha = (shot.radius > 60 ? 0.12 : 0.22) * fade;
+        const rim = pool.next(this.tex('ring'));
+        rim.position.set(shot.x, shot.y);
+        rim.scale.set((shot.radius * pulse) / CIRCLE_RADIUS);
+        rim.tint = 0xffffff;
+        rim.alpha = 0.3 * fade;
+        const bubbles = shot.sprite === 'x_bubble';
+        for (let i = 0; i < (bubbles ? 5 : 3); i++) {
           const a = this.clock * 0.8 + i * 2.1 + shot.x;
+          const rise = bubbles ? (this.clock * 0.7 + i * 0.37) % 1 : 0;
           const puff = pool.next(this.tex(shot.sprite));
-          puff.position.set(shot.x + Math.cos(a) * shot.radius * 0.5, shot.y + Math.sin(a) * shot.radius * 0.4);
+          puff.position.set(shot.x + Math.cos(a) * shot.radius * 0.5, shot.y + Math.sin(a) * shot.radius * 0.4 - rise * 10);
           // Con mucha área, las bocanadas no crecen más (se verían como bloques que tapan a los enemigos).
-          puff.scale.set(Math.min(3, Math.max(1, shot.radius / 22)));
-          puff.alpha = Math.min(0.45, shot.life * 0.8);
+          puff.scale.set(bubbles ? 1 : Math.min(3, Math.max(1, shot.radius / 22)));
+          puff.alpha = Math.min(0.55, shot.life * 0.8) * (1 - rise * 0.6);
         }
         return;
       }
       case 'slash': {
-        // Destello del látigo: la media luna se estira y se desvanece.
+        // Destello del tajo: la media luna se estira y se desvanece.
         const t = 1 - Math.max(0, shot.life) / shot.total;
         const s = pool.next(this.tex(shot.sprite));
         s.position.set(shot.x, shot.y);
         s.rotation = shot.angle;
-        s.scale.set(shot.radius / 20, shot.radius / 14);
+        if (shot.sprite === 'x_finisher') s.scale.set(Math.max(1, shot.radius / 40) * (1 + t * 0.5), shot.radius / 11);
+        else s.scale.set(shot.radius / 20, shot.radius / 14);
         // Muy ampliado se vuelve translúcido para no tapar la escena.
-        s.alpha = (1 - t) * (shot.radius > 60 ? 0.35 : 1);
+        s.alpha = (1 - t) * (shot.radius > 60 ? 0.45 : 1);
         return;
       }
       case 'axe':
@@ -736,43 +698,153 @@ export class Renderer {
         s.scale.set(Math.max(1, shot.radius / 8));
         return;
       }
-      case 'bird': {
-        // Ave: sombra en el suelo, aleteo (estirar en vertical) y mirando hacia donde vuela.
-        const shadow = pool.next(this.tex('disc'));
-        shadow.position.set(shot.x, shot.y + 10);
-        shadow.scale.set(5 / CIRCLE_RADIUS, 2 / CIRCLE_RADIUS);
-        shadow.tint = 0x000000;
-        shadow.alpha = 0.25;
-        const s = pool.next(this.tex(shot.sprite));
-        const heading = shot.angle + (shot.vx > 0 ? Math.PI / 2 : -Math.PI / 2);
-        s.position.set(shot.x, shot.y + Math.sin(this.clock * 6 + shot.angle) * 1.5);
-        s.scale.set(Math.cos(heading) < 0 ? -1 : 1, 0.8 + 0.2 * Math.abs(Math.sin(this.clock * 14)));
-        s.alpha = Math.min(1, shot.life * 3);
-        return;
-      }
       case 'critter': {
-        // Gato: trota (pequeño rebote), mira hacia donde camina y se desvanece al irse.
+        // Remolino: gira deformándose, con polvo en la base y un atún dando vueltas dentro.
+        const base = pool.next(this.tex('disc'));
+        base.position.set(shot.x, shot.y + 7);
+        base.scale.set(9 / CIRCLE_RADIUS, 3 / CIRCLE_RADIUS);
+        base.tint = 0xd8f0ff;
+        base.alpha = 0.3;
         const s = pool.next(this.tex(shot.sprite));
-        s.position.set(shot.x, shot.y - Math.abs(Math.sin(this.clock * 12 + shot.angle)) * 1.5);
-        s.scale.set(shot.vx < 0 ? -1 : 1, 1);
-        s.alpha = Math.min(1, shot.life * 2);
+        const size = Math.max(1, shot.radius / 8);
+        s.position.set(shot.x + Math.sin(this.clock * 18) * 1.5, shot.y);
+        s.scale.set((Math.sin(this.clock * 20) > 0 ? 1 : -1) * size, size);
+        s.alpha = Math.min(1, shot.life * 3);
+        const fish = pool.next(this.tex('x_tuna'));
+        fish.position.set(shot.x + Math.cos(this.clock * 9) * 4, shot.y - 2 + Math.sin(this.clock * 9) * 2);
+        fish.rotation = this.clock * 9;
+        fish.scale.set(0.6);
+        fish.alpha = s.alpha;
         return;
       }
       case 'column': {
-        // Columna de luz: franja vertical translúcida con un núcleo brillante y la runa flotando en el centro.
+        // Columna de energía: franja vertical translúcida con un núcleo brillante y notas que suben por ella.
         const fade = Math.min(1, shot.life * 4);
         const band = pool.next(this.tex('px'));
         band.position.set(shot.x, shot.y);
         band.scale.set(shot.radius, COLUMN_HALF);
-        band.tint = shot.sprite === 'x_mana' ? 0x8fb8ff : 0xfff2b0;
+        band.tint = shot.sprite === 'x_mana' ? 0x8fb8ff : 0xc89bff;
         band.alpha = (0.16 + Math.sin(this.clock * 10) * 0.03) * fade;
         const core = pool.next(this.tex('px'));
         core.position.set(shot.x, shot.y);
         core.scale.set(shot.radius * 0.3, COLUMN_HALF);
         core.alpha = 0.3 * fade;
-        const rune = pool.next(this.tex(shot.sprite));
-        rune.position.set(shot.x, shot.y - 18 + Math.sin(this.clock * 3) * 2);
-        rune.alpha = fade;
+        for (let i = 0; i < 4; i++) {
+          const rise = (this.clock * 0.6 + i * 0.25) % 1;
+          const rune = pool.next(this.tex(shot.sprite));
+          rune.position.set(shot.x + Math.sin(this.clock * 3 + i * 1.7) * shot.radius * 0.5, shot.y + COLUMN_HALF * 0.8 - rise * COLUMN_HALF * 1.6);
+          rune.alpha = fade * (1 - Math.abs(rise - 0.5));
+        }
+        return;
+      }
+      case 'ray': {
+        // Haz o rayo: halo del color del arma y núcleo blanco que se estrechan al apagarse; los rayos finos, quebrados.
+        const t = Math.max(0, shot.life) / shot.total;
+        const color = shot.color ?? 0xffffff;
+        const dx = shot.tx - shot.x;
+        const dy = shot.ty - shot.y;
+        const len = Math.hypot(dx, dy) || 1;
+        const jagged = shot.radius < 3.5 && len > 30;
+        const parts = jagged ? 5 : 1;
+        let px = shot.x;
+        let py = shot.y;
+        for (let k = 1; k <= parts; k++) {
+          const f = k / parts;
+          const off = k < parts ? Math.sin(shot.sx * 0.37 + k * 2.3 + this.clock * 40) * 6 : 0;
+          const nx = shot.x + dx * f - (dy / len) * off;
+          const ny = shot.y + dy * f + (dx / len) * off;
+          const sdx = nx - px;
+          const sdy = ny - py;
+          const glow = pool.next(this.tex('px'));
+          glow.position.set(px + sdx / 2, py + sdy / 2);
+          glow.rotation = Math.atan2(sdy, sdx);
+          glow.scale.set(Math.hypot(sdx, sdy) / 2 + 0.5, shot.radius * (0.5 + t * 0.5));
+          glow.tint = color;
+          glow.alpha = (shot.radius > 6 ? 0.35 : 0.55) * t + 0.15;
+          const core = pool.next(this.tex('px'));
+          core.position.copyFrom(glow.position);
+          core.rotation = glow.rotation;
+          core.scale.set(glow.scale.x, Math.max(0.5, shot.radius * 0.35 * t));
+          core.alpha = Math.min(1, t * 1.4);
+          px = nx;
+          py = ny;
+        }
+        if (jagged) {
+          const spark = pool.next(this.tex('disc'));
+          spark.position.set(shot.tx, shot.ty);
+          spark.scale.set((6 * t + 2) / CIRCLE_RADIUS);
+          spark.tint = color;
+          spark.alpha = t;
+        }
+        return;
+      }
+      case 'flare': {
+        // Llamarada: crece, sube un poco y se apaga, con un resplandor cálido (rojo oscuro en las Cenizas).
+        const t = 1 - Math.max(0, shot.life) / shot.total;
+        const ash = shot.sprite === 'x_ashflame';
+        const glow = pool.next(this.tex('disc'));
+        glow.position.set(shot.x, shot.y);
+        glow.scale.set((shot.radius * 1.3) / CIRCLE_RADIUS);
+        glow.tint = ash ? 0x7a1a24 : 0xff6a2a;
+        glow.alpha = 0.25 * (1 - t);
+        const s = pool.next(this.tex(shot.sprite));
+        s.position.set(shot.x, shot.y - t * 4);
+        s.rotation = Math.sin(shot.sx * 0.3) * 0.5;
+        s.scale.set(Math.max(0.6, shot.radius / 5));
+        s.alpha = 1 - t * t;
+        return;
+      }
+      case 'leap': {
+        // Atún saltarín: gira en el aire, se mece junto al jugador y suelta burbujas.
+        const s = pool.next(this.tex(shot.sprite));
+        s.position.set(shot.x, shot.y);
+        s.rotation = shot.total === 0 ? Math.atan2(shot.vy, shot.vx || 0.001) : Math.sin(this.clock * 6) * 0.3;
+        s.scale.set(Math.max(1, shot.radius / 8));
+        s.alpha = Math.min(1, shot.life * 3);
+        const b = pool.next(this.tex('x_bubble'));
+        const rise = (this.clock * 1.5 + shot.sx) % 1;
+        b.position.set(shot.x - 5, shot.y - 4 - rise * 10);
+        b.alpha = (1 - rise) * s.alpha;
+        return;
+      }
+      case 'dragon': {
+        // Dragón espectral: anillos que siguen a la cabeza por su ocho, con un halo verde.
+        for (let k = 6; k >= 1; k--) {
+          const a = shot.angle - k * 0.12;
+          const seg = pool.next(this.tex('disc'));
+          seg.position.set(shot.x + (Math.sin(a) - Math.sin(shot.angle)) * 110, shot.y + (Math.sin(a * 2) - Math.sin(shot.angle * 2)) * 25);
+          seg.scale.set((7 - k * 0.7) / CIRCLE_RADIUS);
+          seg.tint = k % 2 ? 0x2c9a56 : 0x5ee08a;
+          seg.alpha = 0.75;
+        }
+        const halo = pool.next(this.tex('disc'));
+        halo.position.set(shot.x, shot.y);
+        halo.scale.set(14 / CIRCLE_RADIUS);
+        halo.tint = 0x5ee08a;
+        halo.alpha = 0.18 + Math.sin(this.clock * 8) * 0.06;
+        const s = pool.next(this.tex(shot.sprite));
+        s.position.set(shot.x, shot.y);
+        s.scale.set(Math.cos(shot.angle) >= 0 ? 1 : -1, 1);
+        return;
+      }
+      case 'galaxy': {
+        // Galaxia: brazos de estrellas que giran sobre toda la pantalla y se recogen al final.
+        const fade = Math.min(1, shot.life, (10 - shot.life) * 2);
+        for (let arm = 0; arm < 4; arm++)
+          for (let k = 0; k < 14; k++) {
+            const r = 12 + k * 15;
+            const a = shot.angle + arm * (Math.PI / 2) + k * 0.32;
+            const star = pool.next(this.tex(k % 3 === 0 ? 'disc' : 'px'));
+            star.position.set(shot.x + Math.cos(a) * r, shot.y + Math.sin(a) * r * 0.62);
+            star.scale.set(k % 3 === 0 ? (3 + (k % 2)) / CIRCLE_RADIUS : 1);
+            star.tint = [0x8f7bff, 0x6bc5ff, 0xff7ac3, 0xffffff][(arm + k) % 4];
+            star.alpha = fade * (0.9 - k * 0.04);
+          }
+        const veil = pool.next(this.tex('disc'));
+        veil.position.set(shot.x, shot.y);
+        veil.scale.set(230 / CIRCLE_RADIUS, 140 / CIRCLE_RADIUS);
+        veil.tint = 0x3a2f5c;
+        veil.alpha = 0.18 * fade;
         return;
       }
       case 'enemyShot': {
