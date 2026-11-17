@@ -1,60 +1,49 @@
 import { Link } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 import { UPGRADES } from '../../game/content/upgrades';
-import { useEconomy } from '../state/store';
+import { useEconomy, useHabits } from '../state/store';
 import { GemIcon } from './PointsBadge';
-import { useOutlook } from './view';
 import styles from './HabitBridge.module.css';
 
-const pts = (n: number) => `${n.toLocaleString('es-ES')} ${n === 1 ? 'punto' : 'puntos'}`;
+const n = (v: number) => v.toLocaleString('es-ES');
 
 /**
- * Puente hábito → juego (M1): lo que darán hoy los hábitos y qué mejora permanente se podrá comprar con ello.
- * Se muestra en «Hábitos» y en el campamento para que el vínculo se vea cada día.
+ * Puente hábitos/pasos → juego (M1): los hábitos dan intentos y los pasos, puntos de habilidad (1 por paso) para las
+ * mejoras permanentes. Se muestra en «Hábitos» y en el campamento para que el vínculo se vea cada día.
  */
 export function HabitBridge() {
-  const { secured, pending } = useOutlook();
   const eco = useEconomy();
+  const today = useHabits((s) => s.today);
+  const stepsToday = eco.steps.get(today);
 
   // La mejora más barata de comprar ahora mismo.
   const next = UPGRADES.map((u) => {
     const level = (eco.upgrades[u.id] ?? 0) + 1;
     return { name: u.name, level, cost: u.cost(level) };
   }).reduce((a, b) => (b.cost < a.cost ? b : a));
-
-  const affordableNow = next.cost <= eco.points;
-  const missingNow = next.cost - eco.points;
-  const missingAfterToday = next.cost - eco.points - secured - pending;
-
-  let goal: string;
-  if (affordableNow) goal = `Ya puedes mejorar ${next.name} a nivel ${next.level}.`;
-  else if (missingNow <= secured) goal = `Con lo que ya has cumplido, al cerrar el día podrás mejorar ${next.name} a nivel ${next.level}.`;
-  else if (missingAfterToday <= 0) goal = `Si cumples todo, mañana podrás mejorar ${next.name} a nivel ${next.level}.`;
-  else goal = `Te faltan ${pts(missingNow)} para mejorar ${next.name} a nivel ${next.level}.`;
+  const missing = next.cost - eco.points;
 
   return (
     <Link to="/habits/upgrades" className={styles.bridge}>
       <GemIcon size={28} />
       <span className={styles.body}>
         <span className={styles.today}>
-          {secured + pending === 0 ? (
-            'Crea hábitos para conseguir puntos de mejora.'
+          {stepsToday === undefined ? (
+            'Hoy aún no se han recibido pasos del iPhone.'
           ) : (
             <>
-              Hoy: <b>+{secured}</b> asegurados
-              {pending > 0 && (
-                <>
-                  {' '}
-                  · <b>+{pending}</b> más si cumples el resto
-                </>
-              )}
+              Hoy: <b>{n(stepsToday)}</b> pasos → <b>+{n(stepsToday)}</b> puntos de habilidad
             </>
           )}
         </span>
-        <span className={styles.goal}>{goal}</span>
+        <span className={styles.goal}>
+          {missing <= 0
+            ? `Ya puedes mejorar ${next.name} a nivel ${next.level}.`
+            : `Te faltan ${n(missing)} puntos (pasos) para mejorar ${next.name} a nivel ${next.level}.`}
+        </span>
         {!eco.testMode && (
           <span className={styles.goal}>
-            Intentos para jugar: <b>{eco.available.toLocaleString('es-ES')}</b> · cada hábito diario cumplido da +1 y cada semanal +3.
+            Intentos para jugar: <b>{n(eco.available)}</b> · cada hábito diario cumplido da +1 al cerrar el día.
           </span>
         )}
       </span>

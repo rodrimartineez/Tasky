@@ -113,3 +113,29 @@
   color: var(--text-faint);
   cursor: default;
 }
+
+/* Código del Atajo de iOS (pasos → puntos). */
+.steps {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-3);
+  background: var(--hb-surface-1);
+  border-radius: var(--radius);
+  box-shadow: var(--hb-pixel-edge);
+}
+
+.stepsTitle {
+  flex-basis: 100%;
+  margin: 0;
+  font-weight: 600;
+}
+
+.token {
+  flex: 1 1 240px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  user-select: all;
+  font-size: var(--fs-sm);
+}

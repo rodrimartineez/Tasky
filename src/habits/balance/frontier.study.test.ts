@@ -5,7 +5,7 @@ import { botPlay } from '../../game/sim/bot';
 import { levelHp } from '../../game/sim/difficulty';
 import { BASE_STATS, RUN_SECONDS } from '../../game/sim/types';
 import { createWorld, runResult } from '../../game/sim/world';
-import { PROFILES, simulateEconomy, STREAK_RULES } from './economy';
+import { PROFILES, simulateEconomy } from './economy';
 
 /**
  * Estudio de la frontera de dificultad (ANALISIS_ECONOMIA.md §11). No es un test normal: tarda mucho. Se ejecuta con
@@ -30,7 +30,7 @@ describe.skipIf(!OUT)('frontera de dificultad', () => {
     'busca la dificultad máxima superable por día',
     async () => {
       const profile = PROFILES[0];
-      const days = simulateEconomy(profile, STREAK_RULES.hitos, Math.max(...DAYS), 7);
+      const days = simulateEconomy(profile, Math.max(...DAYS), 7);
       const out: unknown[] = [];
       for (const day of DAYS) {
         const snap = days[day - 1];
@@ -62,7 +62,7 @@ describe.skipIf(!OUT)('frontera de dificultad', () => {
           if (passes(Math.exp(mid))) lo = mid;
           else hi = mid;
         }
-        out.push({ day, points: snap.totalPoints, levels: snap.levels, frontier: Math.exp(lo), runs });
+        out.push({ day, points: snap.legacyPoints, levels: snap.levels, frontier: Math.exp(lo), runs });
       }
       // @ts-expect-error módulo de Node solo disponible al ejecutar el estudio
       (await import('node:fs')).writeFileSync(OUT, JSON.stringify(out));

@@ -13,7 +13,8 @@ import { GAME_RELEASE, type GameRelease } from './release';
 /**
  * Economía del juego: todo se calcula reproduciendo el ledger (HABITS_GUIDE §4). Nunca se guarda un saldo.
  *
- * - Puntos: los dan los hábitos y se gastan en mejoras permanentes.
+ * - Puntos de habilidad: 1 por cada paso registrado (asientos `steps`) y se gastan en mejoras permanentes. Los
+ *   asientos de hábitos anteriores a los pasos traían puntos y se siguen contando.
  * - Oro: lo dan las partidas y se gasta en personajes y escenarios.
  * - Intentos (HABITS_GUIDE §11): se ganan cumpliendo hábitos (+1 por cada diario cumplido, +3 por cada semanal) y no
  *   caducan. Cada partida gasta uno. El nivel solo sube al superar el actual (llegar al minuto 15 en modo normal).
@@ -40,6 +41,8 @@ export interface RunRecord {
 
 export interface Economy {
   points: number;
+  /** Pasos registrados por día (el mayor total enviado de cada día). */
+  steps: Map<LocalDate, number>;
   gold: number;
   /** Nivel comprado de cada mejora permanente. */
   upgrades: Record<string, number>;
@@ -146,6 +149,7 @@ export function economyOf(data: HabitsData, today: LocalDate, release: GameRelea
     data.profile && release.startsOn && release.startsOn > data.profile.startedOn ? release.startsOn : data.profile?.startedOn;
   const eco: Economy = {
     points: 0,
+    steps: new Map(),
     gold: 0,
     upgrades: {},
     unlocked: new Set(),
@@ -179,6 +183,18 @@ export function economyOf(data: HabitsData, today: LocalDate, release: GameRelea
         eco.points += e.points;
         eco.totalPointsEarned += e.points;
         break;
+
+      case 'steps': {
+        // Del mismo día vale el mayor total: un envío repetido o más bajo no suma nada.
+        const day = e.period ?? '';
+        const before = eco.steps.get(day) ?? 0;
+        const gain = e.points - before;
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || gain <= 0) break;
+        eco.steps.set(day, e.points);
+        eco.points += gain;
+        eco.totalPointsEarned += gain;
+        break;
+      }
 
       case 'upgrade': {
         const [, upgrade, levelText] = e.id.split(':');
@@ -288,7 +304,7 @@ const append = (data: HabitsData, e: LedgerEntry): HabitsData => ({ ...data, led
 
 export class EconomyError extends Error {}
 
-/** Compra el siguiente nivel de una mejora permanente con puntos de hábitos. */
+/** Compra el siguiente nivel de una mejora permanente con puntos de habilidad (pasos). */
 export function buyUpgrade(data: HabitsData, upgrade: string, today: LocalDate, now: Timestamp): HabitsData {
   const def = UPGRADE_BY_ID.get(upgrade);
   if (!def) throw new EconomyError('Mejora desconocida.');

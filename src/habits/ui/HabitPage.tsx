@@ -5,7 +5,7 @@ import { ConfirmDialog } from '../../ui/components/ConfirmDialog';
 import { Menu, type MenuItem } from '../../ui/components/Menu';
 import type { PeriodResult } from '../core/habits';
 import { addDays, mondayOf, periodKey, periodStart } from '../core/periods';
-import { nextMilestone, SHIELD_EVERY } from '../core/rewards';
+import { SHIELD_EVERY } from '../core/rewards';
 import { useHabits } from '../state/store';
 import { HabitCard } from './HabitCard';
 import { HabitFormDialog } from './HabitFormDialog';
@@ -22,7 +22,6 @@ export function HabitPage() {
   const today = useHabits((s) => s.today);
   const archiveHabit = useHabits((s) => s.archiveHabit);
   const deleteHabit = useHabits((s) => s.deleteHabit);
-  const earned = useHabits((s) => s.data.ledger.reduce((sum, e) => (e.habitId === habitId ? sum + e.points : sum), 0));
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -58,7 +57,7 @@ export function HabitPage() {
           {build ? 'objetivo' : 'límite'} {withUnit(target, habit.unit)}
         </span>
         <h1 className={styles.title}>{habit.name}</h1>
-        {archived && <p className={styles.archived}>Archivado: no se registra ni da puntos hasta que lo restaures.</p>}
+        {archived && <p className={styles.archived}>Archivado: no se registra ni da intentos hasta que lo restaures.</p>}
       </header>
 
       <HabitCard view={view} />
@@ -67,11 +66,10 @@ export function HabitPage() {
         <Stat label="Racha actual" value={streak} unit={unitWord} icon={<FlameIcon size={16} />} />
         <Stat label="Mejor racha" value={best} unit={unitWord} />
         <Stat label="Cumplidos" value={metCount} unit={`de ${closed.length}`} />
-        <Stat label="Puntos ganados" value={earned} unit="" />
       </div>
       {habit.period === 'daily' && !archived && (
         <p className={styles.milestone}>
-          <FlameIcon size={14} /> Próximo hito de racha: {nextMilestone(streak).days} días → {nextMilestone(streak).points} puntos por día cumplido.{' '}
+          <FlameIcon size={14} />{' '}
           {shield
             ? 'Tienes un escudo: si fallas un día, tu racha no se romperá.'
             : `Escudo de racha en ${SHIELD_EVERY - charge} ${SHIELD_EVERY - charge === 1 ? 'día cumplido' : 'días cumplidos'}.`}

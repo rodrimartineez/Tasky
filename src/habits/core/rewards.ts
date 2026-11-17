@@ -1,43 +1,7 @@
 /**
- * Puntos por hábito cumplido (ANALISIS_ECONOMIA.md §2, IDEAS_MEJORAS_JUEGO.md Fase 5b).
- *
- * Diarios: crecen con la racha por hitos, como una curva logarítmica pero con números fáciles de recordar.
- * Mantener un hábito siempre vale más, pero sin dispararse, y una racha rota se recupera deprisa
- * (en 2 semanas ya vuelve a dar 4 puntos).
+ * Rachas de los hábitos (IDEAS_MEJORAS_JUEGO.md Fase 5b). Los hábitos dan intentos (core/economy.ts); los puntos
+ * de habilidad salen de los pasos.
  */
-export const STREAK_MILESTONES = [3, 7, 14, 30, 60, 100, 180, 365];
-
-/** Puntos por cumplir un hábito diario con una racha de `streak` días (incluido el de hoy). */
-export function streakPoints(streak: number): number {
-  let points = 1;
-  for (const m of STREAK_MILESTONES) if (streak >= m) points += 1;
-  if (streak >= 730) points += Math.floor((streak - 365) / 365);
-  return points;
-}
-
-/** Siguiente hito de racha (pasados los fijos, cada aniversario suma uno). */
-export function nextMilestone(streak: number): { days: number; points: number } {
-  const next = STREAK_MILESTONES.find((m) => m > streak) ?? (Math.floor(streak / 365) + 1) * 365;
-  return { days: next, points: streakPoints(next) };
-}
-
-/** Mejora de recompensas «Constancia» (definida con las demás mejoras en game/content/upgrades.ts). */
-export { BOUNTY, BOUNTY_MAX, bountyDaily, bountyWeekly } from '../../game/content/upgrades';
-
-/** Puntos base por hábito semanal cumplido (sistema propio, independiente de las rachas diarias). */
-export const WEEKLY_REWARD = 3;
-/** Semanales: +1 punto por cada 4 semanas seguidas cumplidas, hasta +3 (como mucho 6 puntos por semana). */
-export const WEEKLY_STREAK_STEP = 4;
-export const WEEKLY_STREAK_MAX_BONUS = 3;
-
-export const weeklyPoints = (streak: number) => WEEKLY_REWARD + Math.min(WEEKLY_STREAK_MAX_BONUS, Math.floor(streak / WEEKLY_STREAK_STEP));
-
-/**
- * Límite contra hábitos inflados: los primeros 7 hábitos diarios (por antigüedad) dan sus puntos completos;
- * a partir del 8.º, la mitad (redondeando hacia arriba).
- */
-export const DAILY_FULL_LIMIT = 7;
-export const withDailyLimit = (points: number, rank: number) => (rank < DAILY_FULL_LIMIT ? points : Math.ceil(points / 2));
 
 /**
  * Escudo de racha (solo hábitos diarios): se gana uno cada 60 días cumplidos seguidos y se guarda como mucho

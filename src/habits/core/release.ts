@@ -11,7 +11,7 @@ import type { LocalDate } from '../../core/model';
  * Progresión normal (`testMode: false`):
  * - Una partida al día desde `startsOn` (acumulables), niveles progresivos, compras con oro.
  * - `season` separa la progresión del juego (partidas, oro y desbloqueos) de cualquier etapa anterior: los asientos
- *   de otra temporada se ignoran. Los puntos de hábitos y las mejoras permanentes nunca dependen de la temporada.
+ *   de otra temporada se ignoran. Los puntos de habilidad y las mejoras permanentes nunca dependen de la temporada.
  */
 export interface GameRelease {
   testMode: boolean;

@@ -9,7 +9,6 @@ import {
   evaluateRewards,
   history,
   logHabit,
-  outlook,
   streaks,
   targetFor,
   updateHabit,
@@ -20,7 +19,8 @@ import { dateInZone, periodKey, periodsBetween } from './periods';
 import { SHIELD_EVERY } from './rewards';
 import { mergeHabitsRemote, noHabitsRecords, pendingHabitsChanges, rememberHabitsVersions } from './sync';
 
-const pointsBalance = (d: HabitsData) => d.ledger.reduce((sum, e) => sum + e.points, 0);
+/** Recompensas concedidas (cada una da intentos; los puntos de habilidad salen de los pasos). */
+const pointsBalance = (d: HabitsData) => d.ledger.filter((e) => e.kind === 'habit_reward').length;
 
 const TZ = 'Europe/Madrid';
 const T0 = '2026-11-02T08:00:00.000Z'; // lunes 2 de noviembre, 09:00 en Madrid
@@ -90,11 +90,12 @@ describe('registro', () => {
 });
 
 describe('recompensas', () => {
-  it('concede 1 punto por diario cumplido y solo al cerrar el día', () => {
+  it('concede la recompensa del diario cumplido solo al cerrar el día, sin puntos', () => {
     const { data, ids } = setup(read);
     const d = log(data, ids[0], '2026-11-02', 3);
     expect(pointsBalance(evaluateRewards(d, '2026-11-02', T0))).toBe(0); // el día sigue abierto
     expect(pointsBalance(evaluateRewards(d, '2026-11-03', T0))).toBe(1);
+    expect(evaluateRewards(d, '2026-11-03', T0).ledger[0].points).toBe(0);
   });
 
   it('no concede nada si no se cumple el objetivo', () => {
@@ -128,14 +129,14 @@ describe('recompensas', () => {
     expect(d.ledger.map((e) => e.period)).toEqual(['2026-11-02', '2026-11-04']);
   });
 
-  it('semanal: 3 puntos al terminar el domingo, sin parciales', () => {
+  it('semanal: recompensa al terminar el domingo, sin parciales', () => {
     const { data, ids } = setup(gym, { ...gym, name: 'Caminar', target: 4 });
     let d = log(data, ids[0], '2026-11-03', 2);
     d = log(d, ids[0], '2026-11-08', 1); // domingo
     d = log(d, ids[1], '2026-11-04', 3); // 3 de 4: nada
     expect(pointsBalance(evaluateRewards(d, '2026-11-08', T0))).toBe(0);
     const closed = evaluateRewards(d, '2026-11-09', T0);
-    expect(pointsBalance(closed)).toBe(3);
+    expect(pointsBalance(closed)).toBe(1);
     expect(closed.ledger[0].id).toBe(`reward:${ids[0]}:W2026-11-02`);
   });
 
@@ -143,7 +144,7 @@ describe('recompensas', () => {
     const { data, ids } = setup(read, gym);
     let d = log(data, ids[0], '2026-11-08', 3);
     d = log(d, ids[1], '2026-11-08', 3);
-    expect(pointsBalance(evaluateRewards(d, '2026-11-09', T0))).toBe(4);
+    expect(pointsBalance(evaluateRewards(d, '2026-11-09', T0))).toBe(2);
   });
 
   it('cambiar el objetivo no reescribe el pasado', () => {
@@ -184,7 +185,7 @@ describe('recompensas', () => {
 });
 
 describe('hábitos de reducción', () => {
-  it('al cerrar el día dan 1 punto si no se pasa del límite (9 o 10 de 10) y nada con 11, una sola vez', () => {
+  it('al cerrar el día dan recompensa si no se pasa del límite (9 o 10 de 10) y nada con 11, una sola vez', () => {
     const { data, ids } = setup(face);
     let d = log(data, ids[0], '2026-11-02', 9);
     d = log(d, ids[0], '2026-11-03', 10);
@@ -194,68 +195,29 @@ describe('hábitos de reducción', () => {
     expect(evaluateRewards(log(data, ids[0], '2026-11-02', 3), '2026-11-02', T0).ledger).toHaveLength(0);
     const once = evaluateRewards(d, '2026-11-13', T0);
     expect(once.ledger.map((e) => e.period)).not.toContain('2026-11-04');
-    // Siempre 1 punto, sin bonificación de racha (8 días seguidos del 5 al 12).
-    expect(once.ledger.every((e) => e.points === 1)).toBe(true);
+    expect(once.ledger.every((e) => e.points === 0)).toBe(true);
     expect(once.ledger).toHaveLength(10);
     expect(evaluateRewards(once, '2026-11-13', T0).ledger).toHaveLength(10);
   });
 });
 
-describe('puntos por racha', () => {
-  it('un hábito diario da más puntos al pasar los hitos de racha', () => {
+describe('rachas en las recompensas', () => {
+  it('cada recompensa guarda la racha alcanzada, y romperla vuelve a 1', () => {
     const { data, ids } = setup(read);
     let d = data;
-    for (let i = 0; i < 8; i++) d = log(d, ids[0], `2026-11-${String(2 + i).padStart(2, '0')}`, 3);
-    d = evaluateRewards(d, '2026-11-10', T0);
-    // Días 1–2: 1 punto · días 3–6: 2 (hito de 3) · días 7–8: 3 (hito de 7).
-    expect(d.ledger.map((e) => e.points)).toEqual([1, 1, 2, 2, 2, 2, 3, 3]);
-    expect(d.ledger[7].details).toEqual({ streak: 8 });
-  });
-
-  it('romper la racha vuelve a 1 punto; los semanales siguen dando 3', () => {
-    const { data, ids } = setup(read, gym);
-    let d = data;
     for (const day of ['2026-11-02', '2026-11-03', '2026-11-04', '2026-11-06']) d = log(d, ids[0], day, 3);
-    d = log(d, ids[1], '2026-11-03', 3);
     d = evaluateRewards(d, '2026-11-09', T0);
-    const daily = d.ledger.filter((e) => e.habitId === ids[0]).map((e) => e.points);
-    expect(daily).toEqual([1, 1, 2, 1]);
-    expect(d.ledger.find((e) => e.habitId === ids[1])?.points).toBe(3);
+    expect(d.ledger.map((e) => e.details?.streak)).toEqual([1, 2, 3, 1]);
   });
 });
 
-describe('mejora Constancia', () => {
-  it('cada nivel suma +1 a los diarios y +3 a los semanales desde la compra (las rachas aparte)', () => {
-    const { data, ids } = setup(read, gym);
-    let d = log(data, ids[0], '2026-11-02', 3);
-    d = log(d, ids[1], '2026-11-03', 3);
-    // Nivel 2 comprado: diario 1 + 2 = 3 puntos; semanal 3 + 6 = 9.
-    const purchase = (level: number) => ({
-      id: `upgrade:bounty:${level}`,
-      kind: 'upgrade' as const,
-      points: -1,
-      gold: 0,
-      habitId: null,
-      period: null,
-      details: null,
-      createdAt: T0,
-      updatedAt: T0,
-      deletedAt: null,
-    });
-    d = { ...d, ledger: [...d.ledger, purchase(1), purchase(2)] };
-    d = evaluateRewards(d, '2026-11-09', T0);
-    expect(d.ledger.find((e) => e.habitId === ids[0])?.points).toBe(3);
-    expect(d.ledger.find((e) => e.habitId === ids[1])?.points).toBe(9);
-  });
-});
-
-describe('escudo de racha, semanales y límite de diarios (Fase 5b)', () => {
+describe('escudo de racha (Fase 5b)', () => {
   const days = (from: number, n: number) => Array.from({ length: n }, (_, i) => new Date(Date.UTC(2026, 10, from + i)).toISOString().slice(0, 10));
 
   const dayN = (n: number) => days(n, 1)[0];
   const N = SHIELD_EVERY;
 
-  it(`${SHIELD_EVERY} días cumplidos dan un escudo que salva un día fallado (sin puntos ese día)`, () => {
+  it(`${SHIELD_EVERY} días cumplidos dan un escudo que salva un día fallado (sin recompensa ese día)`, () => {
     const { data, ids } = setup(read);
     let d = data;
     // Cumple N días desde el 2 de noviembre, falla el siguiente y vuelve a cumplir 3.
@@ -282,40 +244,6 @@ describe('escudo de racha, semanales y límite de diarios (Fase 5b)', () => {
     for (const day of [...days(2, N), ...days(N + 4, 2)]) e = log(e, ids[0], day, 3); // falla 2 días seguidos
     e = evaluateRewards(e, dayN(N + 7), T0);
     expect(e.ledger.find((x) => x.period === dayN(N + 4))?.details).toEqual({ streak: 1 });
-  });
-
-  it('los semanales suman +1 cada 4 semanas seguidas, hasta 6 puntos', () => {
-    const { data, ids } = setup(gym);
-    let d = data;
-    // 17 semanas seguidas desde el lunes 2 de noviembre.
-    for (let w = 0; w < 17; w++) d = log(d, ids[0], new Date(Date.UTC(2026, 10, 2 + 7 * w)).toISOString().slice(0, 10), 3);
-    d = evaluateRewards(d, '2027-03-01', T0);
-    const points = d.ledger.map((e) => e.points);
-    expect(points.slice(0, 5)).toEqual([3, 3, 3, 4, 4]);
-    expect(points[16]).toBe(6);
-    expect(Math.max(...points)).toBe(6);
-  });
-
-  it('a partir del 8.º hábito diario, los más nuevos dan la mitad', () => {
-    const inputs = Array.from({ length: 9 }, (_, i) => ({ ...read, name: `Hábito ${i}` }));
-    const { data, ids } = setup(...inputs);
-    let d = data;
-    for (const id of ids) for (const day of days(2, 3)) d = log(d, id, day, 3);
-    d = evaluateRewards(d, '2026-11-05', T0);
-    const third = (id: string) => d.ledger.find((e) => e.habitId === id && e.period === '2026-11-04')?.points;
-    expect(ids.map(third)).toEqual([2, 2, 2, 2, 2, 2, 2, 1, 1]);
-  });
-
-  it('muestra lo que dará cada hábito hoy', () => {
-    const { data, ids } = setup(read, gym);
-    let d = log(data, ids[0], '2026-11-02', 3);
-    d = log(d, ids[0], '2026-11-03', 3);
-    d = log(d, ids[0], '2026-11-04', 1); // hoy, aún sin cumplir
-    const o = outlook(d, '2026-11-04');
-    expect(o.perHabit.get(ids[0])).toBe(2); // tercer día seguido: hito de 3
-    expect(o.perHabit.get(ids[1])).toBe(3);
-    expect([o.secured, o.pending]).toEqual([0, 5]);
-    expect(outlook(log(d, ids[0], '2026-11-04', 2), '2026-11-04').secured).toBe(2);
   });
 });
 

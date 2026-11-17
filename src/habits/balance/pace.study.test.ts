@@ -5,7 +5,7 @@ import { botPlay } from '../../game/sim/bot';
 import { levelHp } from '../../game/sim/difficulty';
 import { BASE_STATS } from '../../game/sim/types';
 import { createWorld, runResult } from '../../game/sim/world';
-import { PROFILES, simulateEconomy, STREAK_RULES } from './economy';
+import { PROFILES, simulateEconomy } from './economy';
 
 /**
  * Estudio de ritmo de partida (ANALISIS_ECONOMIA.md §12). No es un test normal. Se ejecuta con
@@ -26,7 +26,7 @@ describe.skipIf(!OUT)('ritmo de partida', () => {
   it('nivel del personaje al minuto 30', async () => {
     // @ts-expect-error módulo de Node solo disponible al ejecutar el estudio
     const fs = await import('node:fs');
-    const days = simulateEconomy(PROFILES[0], STREAK_RULES.hitos, Math.max(...DAYS), 7);
+    const days = simulateEconomy(PROFILES[0], Math.max(...DAYS), 7);
     const lines = [
       `## Ritmo de partida (${new Date().toISOString().slice(0, 10)}, dureza ${SHARE} × frontera)`,
       '',
@@ -36,7 +36,7 @@ describe.skipIf(!OUT)('ritmo de partida', () => {
     for (const day of DAYS) {
       const snap = days[day - 1];
       const stats = withUpgrades(BASE_STATS, snap.levels);
-      const F = frontier(snap.totalPoints) * SHARE;
+      const F = frontier(snap.legacyPoints) * SHARE;
       for (let seed = 1; seed <= SEEDS; seed++) {
         const w = createWorld({
           seed: seed * 977 + day,

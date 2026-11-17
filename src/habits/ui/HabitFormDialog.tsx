@@ -5,7 +5,6 @@ import { TextField } from '../../ui/components/Field';
 import { Segmented, type SegmentedOption } from '../../ui/components/Segmented';
 import { toast } from '../../ui/components/Toaster';
 import formStyles from '../../ui/components/Form.module.css';
-import { WEEKLY_REWARD } from '../core/rewards';
 import type { Habit, HabitKind, HabitPeriod } from '../core/model';
 import { useHabits } from '../state/store';
 import { formatAmount } from './view';
@@ -129,7 +128,7 @@ function HabitForm({ habit, currentTarget, onDone }: { habit?: Habit; currentTar
           </>
         ) : (
           <>
-            Cada porción da <strong>1 intento al cerrar el día</strong>; cumplirlo da <strong>{WEEKLY_REWARD} puntos</strong> al cerrar la semana (domingo a las 24:00).
+            Cada porción da <strong>1 intento al cerrar el día</strong>.
           </>
         )}
         {habit && ' Un objetivo nuevo vale desde el periodo actual.'}

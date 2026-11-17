@@ -54,7 +54,7 @@ export const habitLogSchema = z.object({
  * si dos dispositivos generan el mismo asiento, es el mismo registro y solo cuenta una vez.
  */
 export const ledgerKindSchema = z.enum([
-  /** `reward:<hábito>:<periodo>` — puntos por cumplir un hábito. */
+  /** `reward:<hábito>:<periodo>` — hábito cumplido: da intentos (los asientos antiguos traían además puntos). */
   'habit_reward',
   /** `run:<nivel>` — se empieza la partida de ese nivel (la partida queda consumida). */
   'run_start',
@@ -64,12 +64,18 @@ export const ledgerKindSchema = z.enum([
   'upgrade',
   /** `unlock:<tipo>:<id>` — desbloqueo de un personaje o escenario (oro negativo). */
   'unlock',
+  /**
+   * `steps:<día>:<total>` — pasos de un día enviados por el Atajo de iOS (supabase/schema.sql, `ingest_steps`).
+   * `points` = total de pasos de ese día. Cada envío es un asiento nuevo; del mismo día solo vale el mayor, así
+   * reenviar o enviar varias veces al día nunca suma dos veces los mismos pasos.
+   */
+  'steps',
 ]);
 const detailValue = z.union([z.string(), z.number(), z.boolean()]);
 export const ledgerEntrySchema = z.object({
   ...baseRecord,
   kind: ledgerKindSchema,
-  /** Puntos de hábitos (mejoras permanentes). */
+  /** Puntos de habilidad (mejoras permanentes): 1 por paso. */
   points: z.number().int(),
   /** Oro (contenido del juego). */
   gold: z.number().int(),

@@ -4,7 +4,6 @@ import { motion } from 'motion/react';
 import { Check, Minus, Plus, Undo2 } from 'lucide-react';
 import { useHabits } from '../state/store';
 import { FlameIcon } from './icons';
-import { GemIcon } from './PointsBadge';
 import { formatAmount, withUnit, type HabitView } from './view';
 import styles from './HabitCard.module.css';
 
@@ -44,12 +43,12 @@ export function HabitCard({ view }: { view: HabitView }) {
               title={
                 build
                   ? met
-                    ? `Asegurado: +${reward} al cerrar el periodo`
-                    : `Cumplirlo da +${reward}`
-                  : `+${reward} al cerrar el periodo si no pasas del límite`
+                    ? `Asegurado: +${reward} intento al cerrar el periodo`
+                    : `Cumplirlo da +${reward} intento`
+                  : `+${reward} intento al cerrar el periodo si no pasas del límite`
               }
             >
-              +{reward} <GemIcon size={12} />
+              +{reward} {reward === 1 ? 'intento' : 'intentos'}
             </span>
           )}
         </div>

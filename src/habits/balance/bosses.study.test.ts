@@ -6,7 +6,7 @@ import { botPlay } from '../../game/sim/bot';
 import { levelHp } from '../../game/sim/difficulty';
 import { BASE_STATS, RUN_SECONDS } from '../../game/sim/types';
 import { createWorld, runResult } from '../../game/sim/world';
-import { PROFILES, simulateEconomy, STREAK_RULES } from './economy';
+import { PROFILES, simulateEconomy } from './economy';
 
 /**
  * Estudio de los jefes de ciclo (ANALISIS_ECONOMIA.md §11). No es un test normal. Se ejecuta con
@@ -28,12 +28,12 @@ describe.skipIf(!OUT)('jefes de ciclo', () => {
   it(
     '¿se vence al jefe en la frontera?',
     async () => {
-      const days = simulateEconomy(PROFILES[0], STREAK_RULES.hitos, Math.max(...DAYS), 7);
+      const days = simulateEconomy(PROFILES[0], Math.max(...DAYS), 7);
       const boss = CYCLE_BOSSES[INDEX];
       const out: unknown[] = [];
       for (const day of DAYS) {
         const snap = days[day - 1];
-        const hard = FRONTIER(snap.totalPoints);
+        const hard = FRONTIER(snap.legacyPoints);
         for (let seed = 1; seed <= SEEDS; seed++) {
           const w = createWorld({
             seed: seed * 977 + day,

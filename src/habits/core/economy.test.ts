@@ -88,13 +88,13 @@ describe('intentos', () => {
     expect(economyOf(d, nextDay, PROD).available).toBe(1);
   });
 
-  it('el cierre semanal conserva los puntos, pero no concede intentos adicionales', () => {
+  it('el cierre semanal no da puntos ni intentos adicionales', () => {
     let d = createHabit(base(), { name: 'Ejercicio', kind: 'build', period: 'weekly', unit: 'veces', step: 1, target: 1 }, 'exercise', T(0), START);
     d = logHabit(d, 'exercise', 1, 'l1', T(1), START);
     const next = evaluateRewards(d, '2026-11-16', T(2));
     const eco = economyOf(next, '2026-11-16', PROD);
     expect(eco.available).toBe(1);
-    expect(eco.points).toBe(3);
+    expect(eco.points).toBe(0);
   });
 
   it('un hábito semanal de reducir da el intento al cerrar la semana si se cumple', () => {
@@ -106,7 +106,7 @@ describe('intentos', () => {
     const next = evaluateRewards(d, '2026-11-16', T(2));
     const eco = economyOf(next, '2026-11-16', PROD);
     expect(eco.available).toBe(1);
-    expect(eco.points).toBe(3);
+    expect(eco.points).toBe(0);
   });
 
   it('los intentos no caducan: se acumulan y cada partida gasta uno, gane o pierda', () => {
@@ -179,22 +179,45 @@ describe('mejoras y desbloqueos', () => {
     expect(() => buyUpgrade(d, 'might', START, T(3))).toThrow(EconomyError);
   });
 
-  it('las mejoras de combate no tienen nivel máximo y los costes siguen siendo finitos', () => {
+  it('las mejoras llegan al nivel 999, con costes finitos y crecientes; la primera cuesta 500–1.500 puntos', () => {
+    // Las muy potentes (proyectiles, revivir, repeticiones, descartes) son caras desde el primer nivel.
+    const premium = new Set(['amount', 'revival', 'rerolls', 'banishes']);
     for (const u of UPGRADE_BY_ID.values()) {
-      if (u.maxLevel) continue;
-      expect(Number.isFinite(u.cost(100))).toBe(true);
+      expect(u.maxLevel).toBe(999);
+      if (!premium.has(u.id)) expect(u.cost(1)).toBeGreaterThanOrEqual(500);
+      if (!premium.has(u.id)) expect(u.cost(1)).toBeLessThanOrEqual(1500);
       expect(u.cost(100)).toBeGreaterThan(u.cost(99));
     }
+    const might = UPGRADE_BY_ID.get('might')!;
+    expect(Number.isFinite(might.cost(999))).toBe(true);
   });
 
-  it('Constancia cuesta 21 / 75 / 200 / 450 y no pasa del nivel 4', () => {
-    const bounty = UPGRADE_BY_ID.get('bounty')!;
-    expect([1, 2, 3, 4].map((n) => bounty.cost(n))).toEqual([21, 75, 200, 450]);
-    let d = grant(base(), 21 + 75 + 200 + 450 + 1000);
-    for (let i = 1; i <= 4; i++) d = buyUpgrade(d, 'bounty', START, T(i));
-    expect(economyOf(d, START, PROD).upgrades.bounty).toBe(4);
-    expect(() => buyUpgrade(d, 'bounty', START, T(5))).toThrow(EconomyError);
-    expect(economyOf(d, START, PROD).points).toBe(1000);
+  it('cada paso es un punto de habilidad; del mismo día vale el mayor total enviado', () => {
+    const steps = (day: string, total: number, at: number): LedgerEntry => ({
+      id: `steps:${day}:${total}`,
+      kind: 'steps',
+      points: total,
+      gold: 0,
+      habitId: null,
+      period: day,
+      details: null,
+      createdAt: T(at),
+      updatedAt: T(at),
+      deletedAt: null,
+    });
+    const d = {
+      ...base(),
+      ledger: [steps('2026-11-10', 3000, 1), steps('2026-11-10', 7000, 2), steps('2026-11-10', 7000, 3), steps('2026-11-10', 5000, 4), steps('2026-11-11', 20000, 5)],
+    };
+    const eco = economyOf(d, '2026-11-12', PROD);
+    expect(eco.points).toBe(27000);
+    expect(eco.totalPointsEarned).toBe(27000);
+    expect([...eco.steps]).toEqual([['2026-11-10', 7000], ['2026-11-11', 20000]]);
+    // Los pasos no dan intentos: eso lo hacen los hábitos.
+    expect(eco.available).toBe(0);
+    // Se pueden gastar como cualquier punto.
+    const bought = buyUpgrade(d, 'might', '2026-11-12', T(9));
+    expect(economyOf(bought, '2026-11-12', PROD).points).toBe(27000 - UPGRADE_BY_ID.get('might')!.cost(1));
   });
 
   it('compras que juntas no se pueden pagar: la segunda se ignora al sincronizar', () => {
@@ -235,8 +258,8 @@ describe('modo de pruebas y temporadas', () => {
     expect(finishRun(base(), 1, outcome(500), T(2), TEST).ledger).toHaveLength(0);
   });
 
-  it('las mejoras con puntos de hábitos funcionan igual en pruebas y en producción', () => {
-    const d = buyUpgrade(grant(base(), 100), 'might', START, T(1));
+  it('las mejoras con puntos funcionan igual en pruebas y en producción', () => {
+    const d = buyUpgrade(grant(base(), 5_000), 'might', START, T(1));
     expect(economyOf(d, START, TEST).upgrades).toEqual(economyOf(d, START, PROD).upgrades);
   });
 
@@ -253,7 +276,7 @@ describe('modo de pruebas y temporadas', () => {
   });
 
   it('alternar entre pruebas y progresión normal no crea, duplica ni pierde nada', () => {
-    let d = attempts(grant(base(), 40), 3);
+    let d = attempts(grant(base(), 5_000), 3);
     d = buyUpgrade(d, 'might', START, T(1));
     const run = startRun(d, 'wanderer', 'withered_woods', 'normal', START, T(2), 0, PROD);
     d = finishRun(run.data, 1, outcome(5_000), T(3), PROD);

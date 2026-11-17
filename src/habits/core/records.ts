@@ -139,9 +139,9 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   ...tiers(
     'points',
     'habits',
-    [100, 1000, 10000],
+    [100_000, 1_000_000, 10_000_000],
     (g) => `${n(g)} puntos`,
-    (g) => `Gana ${n(g)} puntos de hábito en total.`,
+    (g) => `Gana ${n(g)} puntos de habilidad en total.`,
     (r) => r.pointsEarned,
   ),
   ...tiers(

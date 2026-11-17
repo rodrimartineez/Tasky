@@ -538,3 +538,42 @@ incluso con 4–5 evoluciones.
 
 El bot sigue esquivando peor que una persona. Si con partidas reales los niveles siguen pareciendo fáciles (o
 demasiado duros), se ajusta `DIFFICULTY.base` con esos datos.
+
+## 15. Pasos → puntos de habilidad y dificultad más amable (17/11/2026)
+
+**Economía.** Los puntos de habilidad salen solo de caminar: **1 paso = 1 punto**, sin topes, multiplicadores ni
+reducciones. El Atajo de iOS (ATAJO_PASOS_IOS.md) llama a `public.ingest_steps` (supabase/schema.sql), que inserta un
+asiento inmutable `steps:<día>:<total>`; `economyOf` cuenta de cada día solo el **mayor** total, así reenviar o enviar
+varias veces al día nunca duplica pasos. Los hábitos ya no dan puntos: solo intentos (§11). Los puntos de hábitos
+ganados antes siguen en el saldo, y se ha retirado la mejora Constancia (los niveles comprados se conservan en el
+ledger, pero ya no tienen efecto).
+
+**Precios.** Todas las mejoras se multiplican por `PRICE` = 250 (game/content/upgrades.ts) y llegan hasta el nivel 999.
+Referencia: 7.000 pasos al día.
+
+| | Coste | Días (7.000 pasos/día) |
+|---|---|---|
+| Primer nivel de una mejora normal | 750–1.250 | ~6 compras el primer día |
+| Poder nivel 5 / 10 / 20 | 11.200 / 31.600 / 89.500 | 1,5 / 4,5 / 13 |
+| Multiplicidad (+1 proyectil) | 30.000 → ×4 cada nivel | 4 días el primero |
+| Segunda vida | 125.000 → ×5 cada nivel | 18 días el primero |
+
+Repartiendo entre todas las mejoras, un año caminando deja cada una hacia el nivel 12–13 (un ritmo algo mayor que el de
+la economía de hábitos, con la que se midieron las fronteras de §11). Los estudios `*.study.test.ts` simulan ahora los
+pasos (`balance/economy.ts`) y convierten los puntos a las unidades antiguas (`legacyPoints` = puntos / 250).
+
+**Dificultad.** Se suavizó la escalada dentro de la partida (sim/core.ts) siguiendo el ritmo habitual del género: un
+inicio tranquilo para montar la build, la presión por cantidad de enemigos y un personaje que, bien mejorado, va por
+delante a mitad de partida.
+
+| | Antes | Ahora |
+|---|---|---|
+| Vida de los enemigos en el minuto 1 / 7 / 15 | ×1,3 / ×5,7 / ×20 | ×1,2 / ×3,3 / ×10 |
+| Daño de los enemigos en el minuto 15 | ×6 | ×2,5 |
+| Veteranos | desde el minuto 2,5, hasta 1 de cada 6 | desde el 4, hasta 1 de cada 8 |
+| Vida de las élites con cofre | ×25 | ×15 |
+| Oleadas (pico de apariciones / anillo) | ×2,6 / 14 | ×2 / 10 |
+
+Medido con el bot, personaje base **sin ninguna mejora** y 10 semillas: el nivel 1 se supera en 6 de 10 partidas
+(antes ~1 de cada 4), el 2 en 7 de 10 y el 5 en 9 de 10. Sin mejoras, el nivel 20 se supera en ~2 de 6, el 40 en ~1 de 6
+y el 80 en ninguna: a partir de ahí, las mejoras de caminar son las que permiten avanzar.

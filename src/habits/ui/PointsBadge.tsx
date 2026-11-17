@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from 'motion/react';
 import styles from './PointsBadge.module.css';
 
-/** Gema de píxeles: icono original de los puntos de hábito. */
+/** Gema de píxeles: icono original de los puntos de habilidad. */
 export function GemIcon({ size = 16 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 8 8" shapeRendering="crispEdges" aria-hidden="true">
@@ -26,7 +26,7 @@ export function CoinIcon({ size = 16 }: { size?: number }) {
 }
 
 const CURRENCIES = {
-  points: { icon: GemIcon, one: 'punto de hábito', many: 'puntos de hábito', title: 'Puntos de hábito: se consiguen cumpliendo hábitos' },
+  points: { icon: GemIcon, one: 'punto de habilidad', many: 'puntos de habilidad', title: 'Puntos de habilidad: 1 por cada paso que caminas' },
   gold: { icon: CoinIcon, one: 'moneda de oro', many: 'monedas de oro', title: 'Oro: se consigue jugando partidas' },
 };
 
