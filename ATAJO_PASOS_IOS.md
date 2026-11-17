@@ -157,6 +157,7 @@ de **ayer** (Tasky acepta días de hasta una semana atrás y, como siempre, solo
 | `Código del Atajo no válido` | El código está mal copiado o generaste uno nuevo después. Genera otro en *Mejoras → Pasos del iPhone* y pégalo en `p_token`. |
 | `Invalid API key` / `No API key found` | Falta la cabecera `apikey` o la clave no es la pública del proyecto. Si empieza por `eyJ`, añade también `Authorization: Bearer <clave>`. |
 | `Could not find the function public.ingest_steps` | No se ha ejecutado `supabase/schema.sql` actualizado (paso 0.1). |
+| `invalid input syntax for type date: ""` | El campo `p_day` llegaba vacío (no tenía la variable *Fecha formateada*). Vuelve a ejecutar `supabase/schema.sql`: ahora `p_day` es opcional y, si va vacío o lo borras, se usa el día de hoy en tu zona horaria. Para el atajo «ayer» sí hace falta rellenarlo. |
 | `Fecha fuera de rango` | La fecha no tiene el formato `yyyy-MM-dd` o es de hace más de 7 días. Revisa la cadena de formato (M mayúsculas). |
 | `steps` vale 0 o un número raro | Revisa en la acción 1 que *Tipo* sea **Pasos**, *Agrupar por* **Día** y que Atajos tenga permiso de Salud (Ajustes → Salud → Acceso a datos y dispositivos → Atajos → Pasos activado). |
 | Los pasos no coinciden con Salud | Suele ser que falte *Agrupar por: Día*: sin él se suman a la vez los del iPhone y el Apple Watch. |
