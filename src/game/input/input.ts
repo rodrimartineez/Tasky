@@ -1,5 +1,5 @@
 /**
- * Controles: joystick virtual flotante (aparece donde se apoya el dedo, así no tapa una zona fija)
+ * Controles: joystick virtual flotante (aparece donde se apoya el dedo y se queda fijo ahí; solo se mueve el pomo)
  * y teclado (WASD o flechas). Expone la dirección de movimiento con módulo ≤ 1.
  */
 const RADIUS = 44;
@@ -72,13 +72,9 @@ export class Input {
     let dy = at.y - this.originY;
     const d = Math.hypot(dx, dy);
     if (d > RADIUS) {
-      // El dedo se ha salido del círculo: la base lo sigue para que girar no exija volver al centro.
-      this.originX += (dx / d) * (d - RADIUS);
-      this.originY += (dy / d) * (d - RADIUS);
+      // El dedo se ha salido del círculo: la base queda fija y solo el pomo se queda en el borde.
       dx = (dx / d) * RADIUS;
       dy = (dy / d) * RADIUS;
-      this.base.style.left = `${this.originX}px`;
-      this.base.style.top = `${this.originY}px`;
     }
     this.knob.style.left = `${this.originX + dx}px`;
     this.knob.style.top = `${this.originY + dy}px`;
