@@ -141,7 +141,7 @@ const freezeFor = (e: Enemy, seconds: number) => {
 /** Látigo: tajo horizontal hacia donde mira; los siguientes, al otro lado y algo más arriba. */
 const whip: Fire = (w, ws, index, n) => {
   const { player } = w;
-  const reach = ws.stats.area * player.stats.area * 2;
+  const reach = ws.stats.area * player.stats.area;
   const dir = side(w);
   for (let i = 0; i < n; i++) {
     const sx = i % 2 === 0 ? dir : -dir;
@@ -389,7 +389,7 @@ const ventoBonus = (w: World, ws: WeaponState) => Math.min(8 * Math.min(ws.level
 /** Viento Sacro: tajos horizontales delante; el Vendaval añade un círculo de cortes alrededor. */
 const vento: Fire = (w, ws, index, n) => {
   const { player } = w;
-  const reach = ws.stats.area * player.stats.area * 2;
+  const reach = ws.stats.area * player.stats.area;
   const dir = side(w);
   const damage = ws.stats.damage + ventoBonus(w, ws);
   for (let i = 0; i < n; i++) {
@@ -498,7 +498,7 @@ const misspell: Fire = (w, ws, index, n) => {
     ws.step = (ws.step ?? 0) + 1;
     const back = ws.id === 'muspell' && ws.step % 2 === 0;
     const angle = facing(w) + (back ? Math.PI : 0) + (rand(w) - 0.5) * 0.9;
-    const p = shot(w, ws, index, 'flare', 'x_flare', angle, ws.stats.speed * w.player.stats.projSpeed * 4); // alcance ×4
+    const p = shot(w, ws, index, 'flare', 'x_flare', angle, ws.stats.speed * w.player.stats.projSpeed * 2); // alcance ×2
     p.damage = ws.stats.damage + (ws.id === 'muspell' ? killBonus(w) : 0);
     p.orbitR = p.radius; // radio final de la llamarada
     p.total = p.life;
@@ -858,7 +858,7 @@ function bounceEdges(w: World, p: Projectile): boolean {
 }
 
 const CLOUD_TICK = 0.5;
-const BORRA = { speed: 10, growth: 6 };
+const BORRA = { speed: 10, growth: 3 };
 const LEAP_GRAVITY = 230;
 const TORNADO_TURN = 0.35;
 

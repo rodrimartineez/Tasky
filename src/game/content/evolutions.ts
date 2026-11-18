@@ -95,7 +95,7 @@ export const EVOLUTIONS: EvolutionDef[] = [
     'cloud',
     'lodestone',
     { id: 'plague', name: 'Brebaje Santo', description: 'Charcos que crecen y te siguen allá donde vas.', icon: 'w_plague', proj: 'x_plague', interval: 0.3 },
-    { damage: 130, cooldown: 3, amount: 4, area: 70, duration: 5 },
+    { damage: 400, cooldown: 5, amount: 4, area: 45, duration: 5 },
   ),
   evolution(
     'ricochet',
