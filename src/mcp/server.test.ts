@@ -13,8 +13,16 @@ function handler() {
     {
       load: async () => structuredClone(state),
       async save(r) {
-        state.tasks.push(...r.tasks);
-        state.ideas.push(...r.ideas);
+        const upsert = <T extends { id: string }>(list: T[], rows: T[]) => {
+          for (const row of rows) {
+            const i = list.findIndex((x) => x.id === row.id);
+            if (i >= 0) list[i] = row;
+            else list.push(row);
+          }
+        };
+        upsert(state.phases, r.phases);
+        upsert(state.tasks, r.tasks);
+        upsert(state.ideas, r.ideas);
         return noRecords();
       },
     },
@@ -44,7 +52,7 @@ async function rpc(mcp: ReturnType<typeof createTaskyMcpHandler>, method: string
 }
 
 describe('servidor MCP por HTTP', () => {
-  it('se presenta con instrucciones y expone las 16 herramientas con sus anotaciones', async () => {
+  it('se presenta con instrucciones y expone las 20 herramientas con sus anotaciones', async () => {
     const { mcp } = handler();
     const init = await rpc(mcp, 'initialize', {
       protocolVersion: '2025-06-18',
@@ -65,6 +73,10 @@ describe('servidor MCP por HTTP', () => {
         'move_task',
         'update_project',
         'create_idea',
+        'create_phase',
+        'update_phase',
+        'move_phase',
+        'delete_phase',
         'create_task',
         'delete_idea',
         'delete_task',
@@ -113,5 +125,42 @@ describe('servidor MCP por HTTP', () => {
     });
     expect(badDate.body.error ?? badDate.body.result?.isError).toBeTruthy();
     expect(state.tasks).toHaveLength(0);
+  });
+
+  it('gestiona fases completas: crear, añadir/mover/modificar tareas, reordenar y eliminar', async () => {
+    const { mcp, state } = handler();
+    const call = async (name: string, args: object) => {
+      const r = await rpc(mcp, 'tools/call', { name, arguments: args });
+      expect(r.body.result.isError).toBeFalsy();
+      return JSON.parse(r.body.result.content[0].text);
+    };
+    const a = (await call('create_phase', { project_id: 'wynot', name: 'Diseño' })).created;
+    const b = (await call('create_phase', { project_id: 'wynot', name: 'Código' })).created;
+    expect((await call('create_phase', { project_id: 'wynot', name: 'diseño' })).already_existed.id).toBe(a.id);
+
+    const made = await call('create_tasks', {
+      project_id: 'wynot',
+      tasks: [
+        { title: 'Boceto', phase_id: a.id },
+        { title: 'Suelta' },
+      ],
+    });
+    const [boceto, suelta] = made.created;
+    expect(boceto.phase).toBe('Diseño');
+    expect(suelta.phase).toBeNull();
+
+    await call('update_task', { task_id: suelta.id, phase_id: b.id, title: 'Implementar' });
+    expect((await call('get_project', { project_id: 'wynot' })).phases.map((f: { tasks: unknown[] }) => f.tasks.length)).toEqual([1, 1]);
+
+    await call('update_phase', { phase_id: a.id, name: 'Diseño UI', description: 'Pantallas' });
+    await call('move_phase', { phase_id: b.id, position: 1 });
+    expect((await call('get_project', { project_id: 'wynot' })).phases.map((f: { name: string }) => f.name)).toEqual(['Código', 'Diseño UI']);
+
+    await call('update_task', { task_id: boceto.id, phase_id: null });
+    await call('delete_task', { task_id: suelta.id });
+    await call('delete_phase', { phase_id: a.id });
+    expect(state.phases.find((f) => f.id === a.id)?.deletedAt).toBeTruthy();
+    expect((await call('get_project', { project_id: 'wynot' })).phases.map((f: { name: string }) => f.name)).toEqual(['Código']);
+    expect(state.tasks.find((t) => t.id === boceto.id)?.deletedAt).toBeNull();
   });
 });

@@ -57,7 +57,7 @@ describe('servicio MCP', () => {
     state.tasks = withPhase.tasks;
 
     const project = await service.getProject('wynot');
-    expect(project.phases).toEqual([{ id: 'fase', name: 'Diseño', description: '' }]);
+    expect(project.phases.map((f) => [f.id, f.name, f.tasks.map((t) => t.title)])).toEqual([['fase', 'Diseño', ['Dos', 'Tres']]]);
     expect(project.open_tasks.map((t) => [t.title, t.phase])).toEqual([
       ['Uno', null],
       ['Dos', 'Diseño'],

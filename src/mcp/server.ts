@@ -11,7 +11,7 @@ Reglas:
 - Tarea = algo concreto que hacer. Idea = algo a explorar o recordar más adelante. Si no está claro qué es, pregunta antes de crearlo.
 - Títulos breves y accionables en el idioma del usuario (las tareas empiezan por un verbo); la descripción añade el contexto útil (criterios de terminado, notas). No inventes detalles.
 - Para desglosar un proyecto usa create_tasks con todas las tareas en orden de trabajo; el orden de la lista es el orden en Tasky (la primera abierta es «la siguiente»). Usa move_task para reordenar.
-- Un proyecto puede organizar sus tareas en fases (get_project las lista; cada tarea indica su phase). Las tareas que crees quedan sin fase; el usuario las asigna desde la app.
+- Un proyecto organiza sus tareas en fases (get_project las lista con sus tareas; cada tarea indica su phase). Tienes acceso completo: create_phase / update_phase / move_phase / delete_phase gestionan las fases; para meter una tarea en una fase pasa phase_id en create_task, create_tasks o update_task (phase_id = null la saca de la fase). Eliminar una fase NO borra sus tareas: quedan sueltas. Sin phase_id, las tareas nuevas quedan sin fase.
 - Repetir una creación no duplica: si ya hay una tarea abierta, una idea o un proyecto con el mismo título, se devuelve en already_existed. Ante un error de conexión puedes reintentar con seguridad.
 - Estados: todo = pendiente, in_progress = en curso, done = completada. Marca in_progress al empezar una tarea y done (complete_task) SOLO cuando el trabajo esté terminado y verificado (pruebas pasadas, comprobado en la app…). Si no se ha podido verificar, déjala en curso y explica qué falta en su descripción.
 - Para localizar una tarea o idea por su texto, consulta primero get_tasks, get_project o get_ideas y usa su id. Si hay varias candidatas, pregunta.
@@ -38,6 +38,8 @@ const projectStatus = z
 const timeSlot = z
   .enum(['morning', 'afternoon', 'evening', 'all_day'])
   .describe('Cuándo hacerla: morning = mañana, afternoon = tarde, evening = noche, all_day = día completo');
+
+const phaseRef = id.describe('Id de una fase del mismo proyecto (get_project las lista)');
 
 const READ = { readOnlyHint: true, destructiveHint: false, openWorldHint: false } as const;
 const WRITE = { readOnlyHint: false, destructiveHint: false, openWorldHint: false } as const;
@@ -131,6 +133,55 @@ export function createTaskyMcpServer(service: TaskyService): McpServer {
     ({ project_id, name, description, status }) => run(() => service.updateProject(project_id, { name, description, status })),
   );
 
+  // ── Fases ──
+  server.registerTool(
+    'create_phase',
+    {
+      title: 'Crear fase',
+      description:
+        'Crea una fase al final de un proyecto. Opcionalmente incorpora tareas ya existentes del proyecto (task_ids). Para crear tareas nuevas dentro de ella usa create_task/create_tasks con phase_id. Si ya existe una fase con ese nombre, la devuelve en already_existed.',
+      inputSchema: z.object({
+        project_id: id,
+        name: z.string().min(1).max(120),
+        description: z.string().max(2000).optional(),
+        task_ids: z.array(id).max(100).optional().describe('Tareas existentes del proyecto que pasan a la fase'),
+      }),
+      annotations: WRITE,
+    },
+    ({ project_id, name, description, task_ids }) => run(() => service.createPhase(project_id, { name, description, taskIds: task_ids })),
+  );
+  server.registerTool(
+    'update_phase',
+    {
+      title: 'Modificar fase',
+      description: 'Cambia el nombre o la descripción de una fase (lo que no se indique se conserva).',
+      inputSchema: z.object({ phase_id: id, name: z.string().min(1).max(120).optional(), description: z.string().max(2000).optional() }),
+      annotations: WRITE,
+    },
+    ({ phase_id, name, description }) => run(() => service.updatePhase(phase_id, { name, description })),
+  );
+  server.registerTool(
+    'move_phase',
+    {
+      title: 'Reordenar fase',
+      description: 'Mueve una fase a otra posición entre las fases del proyecto (1 = la primera). Sus tareas se mueven con ella.',
+      inputSchema: z.object({ phase_id: id, position: z.number().int().min(1) }),
+      annotations: WRITE,
+    },
+    ({ phase_id, position }) => run(() => service.movePhase(phase_id, position)),
+  );
+  server.registerTool(
+    'delete_phase',
+    {
+      title: 'Eliminar fase',
+      description:
+        'Elimina una fase. Sus tareas NO se borran: quedan sueltas en el proyecto (para borrarlas usa delete_task). Confirma con el usuario antes de usarla salvo que lo haya pedido explícitamente.',
+      inputSchema: z.object({ phase_id: id }),
+      annotations: DELETE,
+    },
+    ({ phase_id }) => run(() => service.deletePhase(phase_id)),
+  );
+
   // ── Tareas ──
   server.registerTool(
     'get_tasks',
@@ -158,13 +209,15 @@ export function createTaskyMcpServer(service: TaskyService): McpServer {
         time_slot: timeSlot.optional(),
         ...schedule,
         status: taskStatus.optional(),
+        phase_id: phaseRef.optional(),
       }),
       annotations: WRITE,
     },
-    ({ project_id, due_date, time_slot, scheduled_days, repeat_weekly, ...rest }) =>
+    ({ project_id, due_date, time_slot, scheduled_days, repeat_weekly, phase_id, ...rest }) =>
       run(() =>
         service.createTask(project_id, {
           ...rest,
+          phaseId: phase_id,
           dueDate: due_date,
           timeSlot: time_slot,
           scheduledDays: scheduled_days,
@@ -189,6 +242,7 @@ export function createTaskyMcpServer(service: TaskyService): McpServer {
               time_slot: timeSlot.optional(),
               ...schedule,
               status: taskStatus.optional(),
+              phase_id: phaseRef.optional(),
             }),
           )
           .min(1)
@@ -200,8 +254,9 @@ export function createTaskyMcpServer(service: TaskyService): McpServer {
       run(() =>
         service.createTasks(
           project_id,
-          tasks.map(({ due_date, time_slot, scheduled_days, repeat_weekly, ...rest }) => ({
+          tasks.map(({ due_date, time_slot, scheduled_days, repeat_weekly, phase_id, ...rest }) => ({
             ...rest,
+            phaseId: phase_id,
             dueDate: due_date,
             timeSlot: time_slot,
             scheduledDays: scheduled_days,
@@ -226,7 +281,7 @@ export function createTaskyMcpServer(service: TaskyService): McpServer {
     {
       title: 'Modificar tarea',
       description:
-        'Cambia el título, la descripción, la fecha límite (null para quitarla), la programación (días y repetición semanal), la franja horaria o el estado de una tarea.',
+        'Cambia el título, la descripción, la fecha límite (null para quitarla), la programación (días y repetición semanal), la franja horaria, el estado o la fase (phase_id) de una tarea.',
       inputSchema: z.object({
         task_id: id,
         title: z.string().min(1).max(200).optional(),
@@ -235,13 +290,15 @@ export function createTaskyMcpServer(service: TaskyService): McpServer {
         time_slot: timeSlot.optional(),
         ...schedule,
         status: taskStatus.optional(),
+        phase_id: phaseRef.nullable().optional().describe('Id de la fase a la que moverla (al final de ella); null para sacarla de su fase'),
       }),
       annotations: WRITE,
     },
-    ({ task_id, due_date, time_slot, scheduled_days, repeat_weekly, ...rest }) =>
+    ({ task_id, due_date, time_slot, scheduled_days, repeat_weekly, phase_id, ...rest }) =>
       run(() =>
         service.updateTask(task_id, {
           ...rest,
+          phaseId: phase_id,
           dueDate: due_date,
           timeSlot: time_slot,
           scheduledDays: scheduled_days,

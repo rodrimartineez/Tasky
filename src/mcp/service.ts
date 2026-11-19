@@ -1,10 +1,11 @@
 import { emptyData } from '../core/data';
 import { createIdea, deleteIdea, updateIdea } from '../core/ideas';
-import type { Idea, LocalDate, Project, ProjectStatus, Task, TaskStatus, TaskyData, TimeSlot, Timestamp } from '../core/model';
+import type { Idea, LocalDate, Phase, Project, ProjectStatus, Task, TaskStatus, TaskyData, TimeSlot, Timestamp } from '../core/model';
+import { createPhase, deletePhase, movePhase, updatePhase } from '../core/phases';
 import { createProject, updateProject } from '../core/projects';
 import { findPhase, projectIdeas, projectPhases, projectSummariesByStatus, projectTasks } from '../core/selectors';
 import { countRecords, pendingChanges, rememberVersions, type ServerVersions, type SyncRecords } from '../core/sync';
-import { createTask, deleteTask, moveTask, updateTask, type TaskPatch } from '../core/tasks';
+import { createTask, deleteTask, moveTask, taskOrder, updateTask, type TaskPatch } from '../core/tasks';
 
 /**
  * Operaciones de Tasky para el asistente (servidor MCP). Toda la lógica de negocio es la de core/:
@@ -58,6 +59,8 @@ export interface TaskFields {
   scheduledDays?: LocalDate[];
   repeatWeekly?: boolean;
   status?: TaskStatus;
+  /** Fase del mismo proyecto; sin indicar, queda suelta. */
+  phaseId?: string | null;
 }
 
 export function createTaskyService(repo: TaskyRepository, env: ServiceEnv) {
@@ -116,12 +119,20 @@ export function createTaskyService(repo: TaskyRepository, env: ServiceEnv) {
       timeSlot: input.timeSlot,
       scheduledDays: input.scheduledDays,
       repeatWeekly: input.repeatWeekly,
+      phaseId: input.phaseId,
     };
     const created = createTask(d, projectId, fields, id, env.now());
     return input.status && input.status !== 'todo' ? updateTask(created, id, { status: input.status }, env.now()) : created;
   }
 
   const projectName = (data: TaskyData, id: string) => data.projects.find((p) => p.id === id)?.name ?? '';
+  function requirePhase(data: TaskyData, id: string): Phase {
+    const phase = findPhase(data, id);
+    if (!phase) throw new ToolError(`No existe ninguna fase con id «${id}». Usa get_project para ver las fases del proyecto.`);
+    return phase;
+  }
+  const phaseNamed = (d: TaskyData, projectId: string, name: string) => projectPhases(d, projectId).find((f) => sameText(f.name, name));
+
   const phaseName = (data: TaskyData, id: string | null) => (id ? (findPhase(data, id)?.name ?? null) : null);
 
   const taskView = (data: TaskyData, t: Task) => ({
@@ -146,6 +157,17 @@ export function createTaskyService(repo: TaskyRepository, env: ServiceEnv) {
     title: i.title,
     description: i.description,
     created_at: i.createdAt,
+  });
+
+  const phaseView = (data: TaskyData, f: Phase) => ({
+    id: f.id,
+    project_id: f.projectId,
+    name: f.name,
+    description: f.description,
+    tasks: data.tasks
+      .filter((t) => t.phaseId === f.id && !t.deletedAt)
+      .sort(taskOrder(data))
+      .map((t) => ({ id: t.id, title: t.title, status: t.status })),
   });
 
   function projectViews(data: TaskyData) {
@@ -183,7 +205,7 @@ export function createTaskyService(repo: TaskyRepository, env: ServiceEnv) {
       const project = requireProject(data, projectId);
       return {
         project: projectViews(data).find((p) => p.id === project.id),
-        phases: projectPhases(data, project.id).map((f) => ({ id: f.id, name: f.name, description: f.description })),
+        phases: projectPhases(data, project.id).map((f) => phaseView(data, f)),
         open_tasks: tasksOf(data, project.id, 'open'),
         completed_tasks: tasksOf(data, project.id, 'done'),
         ideas: projectIdeas(data, project.id).map((i) => ideaView(data, i)),
@@ -229,6 +251,63 @@ export function createTaskyService(repo: TaskyRepository, env: ServiceEnv) {
         return updateProject(d, projectId, patch, env.now());
       });
       return { updated: projectViews(data).find((p) => p.id === projectId) };
+    },
+
+    /**
+     * Crea una fase (al final del proyecto) e incorpora, si se indican, tareas ya existentes del mismo proyecto.
+     * Si ya hay una fase con ese nombre, la devuelve sin duplicarla.
+     */
+    async createPhase(projectId: string, input: { name: string; description?: string; taskIds?: string[] }) {
+      const id = env.newId();
+      let existing: Phase | undefined;
+      const data = await mutate((d) => {
+        requireProject(d, projectId);
+        existing = phaseNamed(d, projectId, input.name);
+        if (existing) return d;
+        for (const taskId of input.taskIds ?? []) {
+          if (requireTask(d, taskId).projectId !== projectId) throw new ToolError(`La tarea «${taskId}» no es de este proyecto.`);
+        }
+        return createPhase(d, projectId, { name: input.name, description: input.description ?? '' }, id, env.now(), input.taskIds);
+      });
+      return existing
+        ? { already_existed: phaseView(data, existing), note: 'Ya existía una fase con ese nombre en el proyecto; no se ha creado otra.' }
+        : { created: phaseView(data, requirePhase(data, id)) };
+    },
+
+    async updatePhase(phaseId: string, patch: { name?: string; description?: string }) {
+      const data = await mutate((d) => {
+        const phase = requirePhase(d, phaseId);
+        if (patch.name !== undefined) {
+          const clash = phaseNamed(d, phase.projectId, patch.name);
+          if (clash && clash.id !== phaseId) throw new ToolError(`Ya existe otra fase llamada «${clash.name}» en el proyecto.`);
+        }
+        return updatePhase(d, phaseId, { name: patch.name ?? phase.name, description: patch.description ?? phase.description }, env.now());
+      });
+      return { updated: phaseView(data, requirePhase(data, phaseId)) };
+    },
+
+    /** Mueve la fase a otra posición entre las fases del proyecto (1 = la primera). */
+    async movePhase(phaseId: string, position: number) {
+      const data = await mutate((d) => {
+        const phase = requirePhase(d, phaseId);
+        const phases = projectPhases(d, phase.projectId);
+        const others = phases.filter((f) => f.id !== phaseId);
+        const index = Math.min(Math.max(Math.round(position) - 1, 0), others.length);
+        if (phases.findIndex((f) => f.id === phaseId) === index) return d;
+        return movePhase(d, phaseId, others[index - 1]?.id ?? null, others[index]?.id ?? null, env.now());
+      });
+      const phase = requirePhase(data, phaseId);
+      return { moved: phaseView(data, phase), phases: projectPhases(data, phase.projectId).map((f) => f.name) };
+    },
+
+    /** Elimina la fase; sus tareas NO se borran: quedan sueltas en el proyecto. */
+    async deletePhase(phaseId: string) {
+      let deleted: ReturnType<typeof phaseView> | undefined;
+      await mutate((d) => {
+        deleted = phaseView(d, requirePhase(d, phaseId));
+        return deletePhase(d, phaseId, env.now());
+      });
+      return { deleted, note: 'Sus tareas no se han eliminado: han quedado sueltas en el proyecto.' };
     },
 
     async getTasks(projectId: string | undefined, which: 'open' | 'done' | 'all') {
