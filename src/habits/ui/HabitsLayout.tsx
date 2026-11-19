@@ -62,10 +62,14 @@ export function HabitsLayout() {
     <div className={styles.shell}>
       <header className={styles.header}>
         <div className={styles.inner}>
-          <ModeSwitch />
-          <div className={styles.actions}>
+          <div className={styles.mode}>
+            <ModeSwitch />
+          </div>
+          <div className={styles.counters}>
             <PointsBadge value={economy.points} />
             <PointsBadge value={economy.gold} currency="gold" />
+          </div>
+          <div className={styles.sync}>
             <SyncButton />
           </div>
         </div>

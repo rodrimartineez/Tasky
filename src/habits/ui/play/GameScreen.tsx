@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Ban, Dices, Flame, Pause, Skull } from 'lucide-react';
+import { Ban, Dices, Flame, Pause, Skull, SkipForward } from 'lucide-react';
 import { PASSIVE_BY_ID } from '../../../game/content/passives';
 import { WEAPON_BY_ID } from '../../../game/content/weapons';
 import { Game, SPEEDS, type Hud } from '../../../game/Game';
@@ -276,6 +276,13 @@ export default function GameScreen({ level, attempt, config, resume, onFinish, o
     gameRef.current?.choose(index);
   }, []);
 
+  const skip = useCallback(() => {
+    play('select');
+    setChoices(null);
+    setBanishing(false);
+    gameRef.current?.skip();
+  }, []);
+
   const reroll = useCallback(() => {
     if (!hudRef.current?.rerolls) return;
     setBanishing(false);
@@ -296,19 +303,20 @@ export default function GameScreen({ level, attempt, config, resume, onFinish, o
     [banishing, choose],
   );
 
-  // Teclado: 1–4 eligen la mejora, R repite las opciones, D activa el modo Descartar.
+  // Teclado: 1–4 eligen la mejora, S la salta, R repite las opciones, D activa el modo Descartar.
   useEffect(() => {
     if (!choices) return;
     const onKey = (e: KeyboardEvent) => {
       const index = Number(e.key) - 1;
       if (index >= 0 && index < choices.length) pick(index);
+      else if ((e.key === 's' || e.key === 'S') && !choices.some((c) => c.kind === 'form')) skip();
       else if (e.key === 'r' || e.key === 'R') reroll();
       else if (e.key === 'd' || e.key === 'D') toggleBanish();
       else if (e.key === 'Escape') setBanishing(false);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [choices, pick, reroll, toggleBanish]);
+  }, [choices, pick, reroll, skip, toggleBanish]);
 
   return createPortal(
     <div className={styles.screen}>
@@ -419,8 +427,11 @@ export default function GameScreen({ level, attempt, config, resume, onFinish, o
                 <kbd className={styles.key}>{i + 1}</kbd>
               </button>
             ))}
-            {(tools.rerolls > 0 || tools.banishes > 0) && !choices.some((c) => c.kind === 'form') && (
+            {!choices.some((c) => c.kind === 'form') && (
               <div className={styles.tools}>
+                <button type="button" className={styles.tool} onClick={skip}>
+                  <SkipForward /> Saltar <kbd className={styles.key}>S</kbd>
+                </button>
                 {tools.rerolls > 0 && (
                   <button type="button" className={styles.tool} disabled={!hud?.rerolls} onClick={reroll}>
                     <Dices /> Repetir ({hud?.rerolls ?? 0}) <kbd className={styles.key}>R</kbd>

@@ -10,6 +10,9 @@ import { initSync } from './state/sync';
 import { App } from './ui/app/App';
 import { restoreMode } from './ui/app/mode';
 
+// iOS Safari ignora `user-scalable=no`: el pellizco se bloquea desde su evento propio.
+for (const type of ['gesturestart', 'gesturechange', 'gestureend']) document.addEventListener(type, (e) => e.preventDefault());
+
 const platform = createPlatform();
 const loaded = useTasky.getState().load(platform.storage, platform.fileExport);
 void initSync(platform.sync, platform.requireAuth, loaded);

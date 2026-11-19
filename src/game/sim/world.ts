@@ -345,7 +345,7 @@ function updatePickups(w: World, dt: number) {
       if (item.kind === 'xp') gainXp(w, item.value);
       else if (item.kind === 'coin') w.gold += item.value * p.stats.greed;
       else if (item.kind === 'heart') p.hp = Math.min(p.stats.maxHp, p.hp + p.stats.maxHp * item.value);
-      else if (item.kind === 'chest') openChest(w);
+      else if (item.kind === 'chest') openChest(w, item.value > 1);
       else for (const other of w.pickups) if (other.kind === 'xp') other.pulled = true; // imán
       continue;
     }
@@ -454,6 +454,14 @@ export function chooseUpgrade(w: World, index: number) {
     return;
   }
   applyChoice(w, choice);
+  graceAfterChoice(w);
+  continueLevelUps(w);
+}
+
+/** Salta la subida de nivel sin elegir mejora (nunca en la elección de forma del atún). */
+export function skipUpgrade(w: World) {
+  if (w.phase !== 'levelup' || w.choices.some((c) => c.kind === 'form')) return;
+  w.pendingLevels -= 1;
   graceAfterChoice(w);
   continueLevelUps(w);
 }

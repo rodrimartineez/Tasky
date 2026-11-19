@@ -347,13 +347,13 @@ export function applyChoice(w: World, choice: UpgradeChoice) {
 }
 
 /**
- * Cofre: de 1 a 5 mejoras (más con suerte) y algo de oro que crece con ellas. La media de oro es la misma que cuando
- * el cofre daba siempre la misma cantidad, así que la economía no cambia: CHEST.gold[n - 1] es el multiplicador.
+ * Cofre: de 1 a 5 mejoras (más con suerte) y oro que crece con ellas: CHEST.gold[n - 1] es el multiplicador (el de 5
+ * mejoras da unas 10 veces lo del de 1). El cofre de un jefe (`boss`) paga siempre más que uno de 5 mejoras.
  */
-export const CHEST = { odds: [0.03, 0.05, 0.1, 0.17], gold: [0.8, 1.1, 1.4, 1.8, 2.4], heal: 0.1 };
+export const CHEST = { odds: [0.03, 0.05, 0.1, 0.17], gold: [0.8, 2.4, 4.4, 6, 8], boss: 12, heal: 0.1 };
 
 /** Cofre: evoluciona las armas que lo tengan listo y, si no, mejora al azar objetos que ya tengas; da oro. */
-export function openChest(w: World) {
+export function openChest(w: World, boss = false) {
   const luck = w.player.stats.luck;
   const roll = rand(w);
   // Probabilidades acumuladas de 5, 4, 3 y 2 mejoras (escalan con la suerte); si no, 1.
@@ -381,7 +381,7 @@ export function openChest(w: World) {
     rewards.push(choice);
   }
   w.player.hp = Math.min(w.player.stats.maxHp, w.player.hp + w.player.stats.maxHp * CHEST.heal);
-  const gold = Math.round((20 + Math.floor((w.time * TIMELINE) / 30)) * CHEST.gold[count - 1] * runGold(w.config));
+  const gold = Math.round((20 + Math.floor((w.time * TIMELINE) / 30)) * (boss ? CHEST.boss : CHEST.gold[count - 1]) * runGold(w.config));
   w.gold += gold;
   w.chestGold = gold;
   w.chestRewards = rewards;

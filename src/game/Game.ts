@@ -4,7 +4,7 @@ import type { RunConfig, RunResult, UpgradeChoice, World } from './sim/types';
 import { GameAudio } from './audio/listener';
 import { inWave, timeHpScale } from './sim/core';
 import { banishChoice, evolutionReady, rerollChoices } from './sim/upgrades';
-import { chooseUpgrade, createWorld, migrateWorld, purgeItems, runResult, step } from './sim/world';
+import { chooseUpgrade, createWorld, migrateWorld, purgeItems, runResult, skipUpgrade, step } from './sim/world';
 
 /**
  * Partida en pantalla: une la simulación, el render y los controles con un bucle de paso fijo.
@@ -237,6 +237,12 @@ export class Game {
     else if (w.phase === 'purge') this.callbacks.onPurge();
     this.announced = w.phase;
     this.sendHud();
+  }
+
+  /** Salta la subida de nivel sin elegir ninguna mejora. */
+  skip() {
+    skipUpgrade(this.world);
+    this.afterChoice();
   }
 
   /** Repite las opciones de la subida de nivel (gasta una repetición). */

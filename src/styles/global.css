@@ -10,7 +10,14 @@ body,
   height: 100%;
 }
 
+html {
+  /* Sin zoom por gesto (doble toque o pellizco) ni desplazamiento lateral accidental. */
+  touch-action: pan-x pan-y;
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
+  overflow-x: hidden;
   margin: 0;
   background: var(--bg);
   color: var(--text);

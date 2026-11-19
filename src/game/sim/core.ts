@@ -209,7 +209,7 @@ export function killEnemy(w: World, e: Enemy) {
   if (boss) {
     w.bossAlive = w.enemies.some((o) => !o.dead && o.def.ai === 'boss');
     if (e.def.patterns) w.cycleBoss = 2;
-    dropPickup(w, 'chest', e.x + 10, e.y, 1);
+    dropPickup(w, 'chest', e.x + 10, e.y, 2); // valor 2 = cofre de jefe
     dropPickup(w, 'coin', e.x - 10, e.y, (e.def.patterns ? 300 : 60) * runGold(w.config));
     emit(w, { type: 'shake', power: 6 });
   } else if (e.elite) {

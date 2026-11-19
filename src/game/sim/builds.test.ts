@@ -14,6 +14,7 @@ import {
   applyChoice,
   banishChoice,
   buildComplete,
+  CHEST,
   evolutionReady,
   newWeapon,
   openChest,
@@ -25,7 +26,7 @@ import {
   statsAt,
   WEAPON_LEVEL_CAP,
 } from './upgrades';
-import { chooseUpgrade, createWorld, migrateWorld, purgeItems, step, UPGRADE_GRACE } from './world';
+import { chooseUpgrade, createWorld, migrateWorld, purgeItems, skipUpgrade, step, UPGRADE_GRACE } from './world';
 
 const config = (weapon = 'spark', stats: Stats = BASE_STATS, seed = 1) => ({
   seed,
@@ -614,7 +615,7 @@ describe('niveles de armas y pasivas (máximo propio + hasta 999)', () => {
     expect(offered(w, 'whetstone')).toBe(false);
   });
 
-  it('un cofre da de 1 a 5 mejoras y más oro cuantas más da, con la misma media de antes', () => {
+  it('un cofre da de 1 a 5 mejoras y mucho más oro cuantas más da (5 ≈ 10 veces lo de 1)', () => {
     const counts = [0, 0, 0, 0, 0];
     let gold = 0;
     for (let seed = 1; seed <= 600; seed++) {
@@ -628,8 +629,34 @@ describe('niveles de armas y pasivas (máximo propio + hasta 999)', () => {
       gold += w.chestGold ?? 0;
     }
     expect(counts.every((n) => n > 0)).toBe(true);
-    expect(gold / 600).toBeGreaterThan(36);
-    expect(gold / 600).toBeLessThan(46);
+    expect(gold / 600).toBeGreaterThan(65);
+    expect(gold / 600).toBeLessThan(90);
+    expect(CHEST.gold[4] / CHEST.gold[0]).toBeCloseTo(10, 0);
+  });
+
+  it('el cofre de un jefe da más oro que uno de 5 mejoras', () => {
+    expect(CHEST.boss).toBeGreaterThan(CHEST.gold[4]);
+    const w = createWorld(config('spark', BASE_STATS, 1));
+    w.time = 300;
+    openChest(w, true);
+    const normal = createWorld(config('spark', BASE_STATS, 1));
+    normal.time = 300;
+    normal.player.stats.luck = 1000; // 5 mejoras seguras
+    openChest(normal);
+    expect(normal.chestRewards.length).toBe(5);
+    expect(w.chestGold!).toBeGreaterThan(normal.chestGold!);
+  });
+
+  it('saltar una subida de nivel no da mejora y consume el nivel pendiente', () => {
+    const w = createWorld(config('spark', BASE_STATS, 1));
+    w.phase = 'levelup';
+    w.pendingLevels = 1;
+    w.choices = rollChoices(w);
+    const weapons = w.player.weapons.map((x) => x.level);
+    skipUpgrade(w);
+    expect(w.phase).toBe('playing');
+    expect(w.pendingLevels).toBe(0);
+    expect(w.player.weapons.map((x) => x.level)).toEqual(weapons);
   });
 
   it('por encima del máximo cada nivel mejora el arma en porcentaje y el tope es el 999', () => {
