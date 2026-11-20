@@ -5,6 +5,7 @@ import { CHARACTERS } from '../../../game/content/characters';
 import { buildRunConfig } from '../../../game/content/run';
 import { SKINS } from '../../../game/content/skins';
 import { STAGES } from '../../../game/content/stages';
+import { WEAPON_BY_ID } from '../../../game/content/weapons';
 import { CYCLE_BOSS_BY_ID, CYCLE_LENGTH, cycleBossFor } from '../../../game/content/bosses';
 import { RUN_SECONDS, type RunConfig, type RunMode, type RunResult, type World } from '../../../game/sim/types';
 import { runResult } from '../../../game/sim/world';
@@ -196,6 +197,12 @@ export function PlayPage() {
     else if (kind === 'skin') saveExtras({ skin: id });
     else if (id) attempt(() => setLoadout(kind === 'character' ? id : character, kind === 'stage' ? id : stage));
   };
+  /** Personaje tocado: se muestran las armas con las que empieza (esté comprado o no). */
+  const [inspected, setInspected] = useState<string | null>(null);
+  const inspectedDef = CHARACTERS.find((c) => c.id === (inspected ?? character));
+  const startingWeapons = (c: (typeof CHARACTERS)[number]) =>
+    [c.weapon, ...(c.bonusWeapons ?? [])].map((id) => WEAPON_BY_ID.get(id)).filter((w) => w !== undefined);
+
   const choose = (kind: Kind, id: string) => {
     const key = `${kind}:${id}`;
     const owned = kind === 'skin' ? skinOwned(id) : isUnlocked(eco, key);
@@ -243,6 +250,7 @@ export function PlayPage() {
   // Un aspecto de logro no se compra: el diálogo explica cómo conseguirlo.
   const buyingSkin = buying?.startsWith('skin:') ? SKINS.find((s) => `skin:${s.id}` === buying) : undefined;
   const buyingAchievement = buyingSkin?.achievement ? ACHIEVEMENTS.find((a) => a.id === buyingSkin.achievement) : undefined;
+  const buyingCharacter = buying ? CHARACTERS.find((c) => `character:${c.id}` === buying) : undefined;
   const buyingPrice = buying ? priceOf(buying) : 0;
 
   return (
@@ -429,8 +437,10 @@ export function PlayPage() {
                 key={c.id}
                 type="button"
                 className={`${styles.option} ${c.id === character ? styles.selected : ''} ${unlocked ? '' : styles.locked} ${c.legendary ? styles.legendary : ''}`}
-                onClick={() => choose('character', c.id)}
-                disabled={!!open}
+                onClick={() => {
+                  setInspected(c.id);
+                  if (!open) choose('character', c.id);
+                }}
                 aria-pressed={c.id === character}
               >
                 <img className={styles.sprite} src={spriteDataUrl(`${c.sprite}_0`)} alt="" draggable={false} />
@@ -446,6 +456,16 @@ export function PlayPage() {
             );
           })}
         </div>
+        {inspectedDef && (
+          <p className={styles.startsWith}>
+            <b>{inspectedDef.name}</b> empieza con:
+            {startingWeapons(inspectedDef).map((w) => (
+              <span key={w.id} className={styles.startWeapon}>
+                <img src={spriteDataUrl(w.icon)} alt="" draggable={false} /> {w.name}
+              </span>
+            ))}
+          </p>
+        )}
       </section>
 
       <section className={styles.section}>
@@ -567,11 +587,11 @@ export function PlayPage() {
       <ConfirmDialog
         open={!!buying && !buyingAchievement}
         title={`Desbloquear ${buyingName ?? ''}`}
-        description={
+        description={`${
           buyingPrice > eco.gold
             ? `Cuesta ${gold(buyingPrice)} de oro y tienes ${gold(eco.gold)}. Sigue jugando para conseguir el resto.`
             : `Cuesta ${gold(buyingPrice)} de oro (tienes ${gold(eco.gold)}).`
-        }
+        }${buyingCharacter ? ` Empieza con: ${startingWeapons(buyingCharacter).map((w) => w.name).join(' y ')}.` : ''}`}
         confirmLabel="Desbloquear"
         onConfirm={confirmBuy}
         onClose={() => setBuying(null)}

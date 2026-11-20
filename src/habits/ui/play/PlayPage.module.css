@@ -502,3 +502,26 @@
   mask: var(--shape) center bottom / contain no-repeat;
   pointer-events: none;
 }
+
+/* Armas con las que empieza el personaje tocado. */
+.startsWith {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+.startWeapon {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text);
+  font-weight: 600;
+}
+.startWeapon img {
+  width: 24px;
+  height: 24px;
+  image-rendering: pixelated;
+}
