@@ -36,6 +36,8 @@ export const habitSchema = z.object({
   step: z.number().positive(),
   targets: z.array(targetSchema).min(1),
   archivedAt: timestamp.nullable(),
+  /** Orden manual (fractional-indexing). Sin rank = aún sin ordenar: van después, por antigüedad. */
+  rank: z.string().min(1).nullable().default(null),
 });
 
 /**

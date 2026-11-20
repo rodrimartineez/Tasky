@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Check, Minus, Plus, Undo2 } from 'lucide-react';
@@ -8,7 +8,7 @@ import { formatAmount, withUnit, type HabitView } from './view';
 import styles from './HabitCard.module.css';
 
 /** Tarjeta de un hábito con su registro rápido. Tocar el nombre abre el detalle. */
-export function HabitCard({ view }: { view: HabitView }) {
+export function HabitCard({ view, handle }: { view: HabitView; handle?: ReactNode }) {
   const log = useHabits((s) => s.log);
   const { habit, amount, target, met, remaining, over, fill, streak, reward } = view;
   const build = habit.kind === 'build';
@@ -29,6 +29,7 @@ export function HabitCard({ view }: { view: HabitView }) {
       className={`${styles.card} ${build ? styles.build : styles.reduce} ${met ? styles.met : ''} ${over > 0 ? styles.over : ''}`}
       style={{ '--fill': fill } as CSSProperties}
     >
+      {handle}
       <Link to={`/habits/habit/${habit.id}`} className={styles.main}>
         <div className={styles.titleRow}>
           <h3 className={styles.name}>{habit.name}</h3>

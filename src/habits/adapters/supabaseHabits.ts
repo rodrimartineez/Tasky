@@ -42,6 +42,7 @@ const fromRow: { [K in HabitsTable]: (r: Row) => HabitsRecords[K][number] } = {
       step: Number(r.step),
       targets: r.targets,
       archivedAt: ts(r.archived_at),
+      rank: r.rank ?? null,
       createdAt: ts(r.created_at),
       updatedAt: ts(r.updated_at),
       deletedAt: ts(r.deleted_at),
@@ -82,6 +83,8 @@ const toRow: { [K in HabitsTable]: (r: HabitsRecords[K][number]) => Record<strin
     step: h.step,
     targets: h.targets,
     archived_at: h.archivedAt,
+    // Solo si hay orden manual: así la sincronización no depende de la columna hasta que se use.
+    ...(h.rank === null ? {} : { rank: h.rank }),
     created_at: h.createdAt,
     updated_at: h.updatedAt,
     deleted_at: h.deletedAt,

@@ -1,5 +1,6 @@
 import type { LocalDate, Timestamp } from '../../core/model';
 import { newStreak, stepStreak, type StreakState } from './rewards';
+import { ranksFor } from '../../core/rank';
 import { PROFILE_ID, type Habit, type HabitKind, type HabitPeriod, type HabitsData, type LedgerEntry } from './model';
 import { dateInZone, isClosed, periodKey, periodStart, periodsBetween, previousPeriod, type PeriodKey } from './periods';
 
@@ -61,6 +62,7 @@ export function createHabit(data: HabitsData, input: HabitInput, id: string, now
     step: validNumber(input.step, 'El incremento'),
     targets: [{ since: periodStart(periodKey(input.period, today)), value: validNumber(input.target, 'El objetivo') }],
     archivedAt: null,
+    rank: null,
     createdAt: now,
     updatedAt: now,
     deletedAt: null,
@@ -102,6 +104,20 @@ export function updateHabit(data: HabitsData, id: string, patch: HabitPatch, now
 
 export const archiveHabit = (data: HabitsData, id: string, archived: boolean, now: Timestamp) =>
   changeHabit(data, id, (h) => ((h.archivedAt !== null) === archived ? h : { ...h, archivedAt: archived ? now : null, updatedAt: now }));
+
+/** Orden de los hábitos: por `rank`; los que aún no lo tienen, después y por antigüedad. */
+export const compareHabits = (a: Habit, b: Habit) =>
+  (a.rank ?? '￿').localeCompare(b.rank ?? '￿', 'en') || a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id);
+
+/** Fija el orden manual de un grupo de hábitos (ids en el orden deseado). Solo toca los que cambian de rank. */
+export function reorderHabits(data: HabitsData, orderedIds: string[], now: Timestamp): HabitsData {
+  const keys = ranksFor(orderedIds.length);
+  const ranks = new Map(orderedIds.map((id, i) => [id, keys[i]]));
+  return {
+    ...data,
+    habits: data.habits.map((h) => (ranks.has(h.id) && live(h) && h.rank !== ranks.get(h.id) ? { ...h, rank: ranks.get(h.id)!, updatedAt: now } : h)),
+  };
+}
 
 /** Borrado lógico. Las recompensas ya ganadas se conservan. */
 export const deleteHabit = (data: HabitsData, id: string, now: Timestamp) =>

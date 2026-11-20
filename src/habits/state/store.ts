@@ -7,6 +7,7 @@ import type { RunMode } from '../../game/sim/types';
 import { emptyHabitsData, HabitsDataError, parseHabitsData } from '../core/data';
 import {
   archiveHabit,
+  reorderHabits,
   createHabit,
   deleteHabit,
   ensureProfile,
@@ -62,6 +63,8 @@ interface HabitsState {
   createHabit(input: HabitInput): string;
   updateHabit(id: string, patch: HabitPatch): void;
   archiveHabit(id: string, archived: boolean): void;
+  /** Orden manual de un grupo de hábitos (ids en el orden deseado). */
+  reorderHabits(orderedIds: string[]): void;
   deleteHabit(id: string): void;
   log(id: string, direction: 1 | -1): void;
 
@@ -211,6 +214,7 @@ export const useHabits = create<HabitsState>()((set, get) => {
     },
     updateHabit: (id, patch) => commit((d) => updateHabit(d, id, patch, now(), todayIn(d))),
     archiveHabit: (id, archived) => commit((d) => archiveHabit(d, id, archived, now())),
+    reorderHabits: (orderedIds) => commit((d) => reorderHabits(d, orderedIds, now())),
     deleteHabit: (id) => commit((d) => deleteHabit(d, id, now())),
     log: (id, direction) => commit((d) => logHabit(d, id, direction, newId(), now(), todayIn(d))),
 

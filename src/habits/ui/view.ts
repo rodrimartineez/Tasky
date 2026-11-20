@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { amountIn, amountsOf, history, streaks, targetFor, type PeriodResult } from '../core/habits';
+import { amountIn, compareHabits, amountsOf, history, streaks, targetFor, type PeriodResult } from '../core/habits';
 import { ATTEMPTS } from '../core/economy';
 import type { Habit } from '../core/model';
 import { daysBetween, deviceTimeZone, periodEnd, periodKey } from '../core/periods';
@@ -37,6 +37,7 @@ export function useHabitViews(): HabitView[] {
     const timeZone = data.profile?.timeZone ?? deviceTimeZone();
     return data.habits
       .filter((h) => h.deletedAt === null)
+      .sort(compareHabits)
       .map((habit) => {
         const key = periodKey(habit.period, today);
         const amount = amountIn(amounts, habit.id, key);

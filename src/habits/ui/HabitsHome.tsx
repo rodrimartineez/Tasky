@@ -1,6 +1,20 @@
 import { useState } from 'react';
 import { AnimatePresence } from 'motion/react';
-import { ChevronRight, Plus } from 'lucide-react';
+import {
+  DndContext,
+  KeyboardSensor,
+  MouseSensor,
+  TouchSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
+import { CSS } from '@dnd-kit/utilities';
+import { ChevronRight, GripVertical, Plus } from 'lucide-react';
+import { useHabits } from '../state/store';
 import { Button } from '../../ui/components/Button';
 import { Fab } from '../../ui/components/Fab';
 import { useMediaQuery } from '../../ui/components/useMediaQuery';
@@ -8,6 +22,7 @@ import { HabitCard } from './HabitCard';
 import { HabitFormDialog } from './HabitFormDialog';
 import { SwordIcon } from './icons';
 import { useHabitViews, type HabitView } from './view';
+import cardStyles from './HabitCard.module.css';
 import styles from './HabitsHome.module.css';
 
 const daysLeftLabel = (n: number) => (n === 0 ? 'se cierra hoy' : n === 1 ? 'queda 1 día' : `quedan ${n} días`);
@@ -79,7 +94,43 @@ export function HabitsHome() {
   );
 }
 
+/** Tarjeta de hábito que se puede arrastrar por su asa para reordenarla. */
+function SortableHabitCard({ view }: { view: HabitView }) {
+  const { setNodeRef, setActivatorNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({ id: view.habit.id });
+  return (
+    <div ref={setNodeRef} style={{ transform: CSS.Translate.toString(transform), transition, zIndex: isDragging ? 1 : undefined, position: 'relative' }}>
+      <HabitCard
+        view={view}
+        handle={
+          <button
+            ref={setActivatorNodeRef}
+            type="button"
+            className={cardStyles.handle}
+            aria-label={`Mover el hábito «${view.habit.name}»`}
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical />
+          </button>
+        }
+      />
+    </div>
+  );
+}
+
 function Section({ title, meta, views }: { title: string; meta: string; views: HabitView[] }) {
+  const reorder = useHabits((s) => s.reorderHabits);
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+  const ids = views.map((v) => v.habit.id);
+  const onDragEnd = ({ active, over }: DragEndEvent) => {
+    if (!over || active.id === over.id) return;
+    reorder(arrayMove(ids, ids.indexOf(String(active.id)), ids.indexOf(String(over.id))));
+  };
+
   return (
     <section className={styles.section}>
       <header className={styles.sectionHeader}>
@@ -87,11 +138,15 @@ function Section({ title, meta, views }: { title: string; meta: string; views: H
         <span className={styles.sectionMeta}>{meta}</span>
       </header>
       <div className={styles.list}>
-        <AnimatePresence initial={false}>
-          {views.map((v) => (
-            <HabitCard key={v.habit.id} view={v} />
-          ))}
-        </AnimatePresence>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} modifiers={[restrictToVerticalAxis]} onDragEnd={onDragEnd}>
+          <SortableContext items={ids} strategy={verticalListSortingStrategy}>
+            <AnimatePresence initial={false}>
+              {views.map((v) => (
+                <SortableHabitCard key={v.habit.id} view={v} />
+              ))}
+            </AnimatePresence>
+          </SortableContext>
+        </DndContext>
       </div>
     </section>
   );

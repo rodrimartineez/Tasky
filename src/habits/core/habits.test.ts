@@ -4,11 +4,13 @@ import {
   amountIn,
   amountsOf,
   archiveHabit,
+  compareHabits,
   createHabit,
   ensureProfile,
   evaluateRewards,
   history,
   logHabit,
+  reorderHabits,
   streaks,
   targetFor,
   updateHabit,
@@ -283,5 +285,17 @@ describe('datos y sincronización', () => {
     rememberHabitsVersions(versions, pending);
     const after = pendingHabitsChanges(d, versions);
     expect(after.habits.length + after.logs.length + after.profile.length).toBe(0);
+  });
+});
+
+describe('orden manual', () => {
+  it('reordena un grupo y los hábitos nuevos sin rank van detrás', () => {
+    const { data, ids } = setup(read, face, gym);
+    const order = (d: HabitsData) => d.habits.slice().sort(compareHabits).map((h) => h.id);
+    expect(order(data)).toEqual(ids);
+    const moved = reorderHabits(data, [ids[2], ids[0], ids[1]], '2026-11-03T08:00:00.000Z');
+    expect(order(moved)).toEqual([ids[2], ids[0], ids[1]]);
+    const added = createHabit(moved, read, 'nuevo', T0, '2026-11-02');
+    expect(order(added).at(-1)).toBe('nuevo');
   });
 });
