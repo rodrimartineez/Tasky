@@ -510,9 +510,38 @@ export class Renderer {
       rim.scale.copyFrom(aura.scale);
       rim.tint = color;
       rim.alpha = 0.55 + pulse * 0.3;
-      const s = this.enemies.next(this.tex(e.def.sprite, e.flash > 0));
       const bounce = 1 + Math.sin(this.clock * 5 + e.uid) * 0.04;
-      s.scale.set((p.x < e.x ? -size : size) * (2 - bounce), size * bounce);
+      const flip = p.x < e.x ? -size : size;
+      // Resplandor del jefe: capas de luz aditiva y una silueta de su color que late detrás del sprite.
+      for (let k = 0; k < 3; k++) {
+        const glow = this.enemies.next(this.tex('disc'));
+        glow.position.set(e.x, e.y - 4);
+        glow.scale.set(((e.radius + 14) * size * (0.55 + k * 0.3)) / CIRCLE_RADIUS);
+        glow.tint = color;
+        glow.alpha = (0.1 - k * 0.025) * (0.8 + pulse * 0.4);
+        glow.blendMode = 'add';
+      }
+      for (const grow of [1.2, 1.1]) {
+        const halo = this.enemies.next(this.tex(e.def.sprite, true));
+        halo.position.set(e.x, e.y - 4);
+        halo.scale.set(flip * (2 - bounce) * grow, size * bounce * grow);
+        halo.tint = color;
+        halo.alpha = (grow > 1.15 ? 0.2 : 0.3) * (0.7 + pulse * 0.5);
+        halo.blendMode = 'add';
+      }
+      // Runas del color del jefe que orbitan a su alrededor.
+      for (let k = 0; k < 6; k++) {
+        const a = this.clock * 1.3 + (k / 6) * Math.PI * 2 + e.uid;
+        const orbit = (e.radius + 14) * size * 0.75;
+        const spark = this.enemies.next(this.tex('disc'));
+        spark.position.set(e.x + Math.cos(a) * orbit, e.y - 4 + Math.sin(a) * orbit * 0.55);
+        spark.scale.set((2.2 + Math.sin(this.clock * 6 + k) * 0.8) / CIRCLE_RADIUS);
+        spark.tint = k % 2 ? 0xffffff : color;
+        spark.alpha = 0.8;
+        spark.blendMode = 'add';
+      }
+      const s = this.enemies.next(this.tex(e.def.sprite, e.flash > 0));
+      s.scale.set(flip * (2 - bounce), size * bounce);
       s.position.set(e.x, e.y - 4);
     }
     this.enemies.end();

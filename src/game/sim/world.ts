@@ -317,6 +317,27 @@ function separate(w: World) {
   }
 }
 
+/**
+ * Los enemigos no atraviesan al jugador: al alcanzarlo se quedan pegados a él (siguen haciéndole daño por contacto),
+ * nunca encima. La Muerte sí lo atraviesa: es inevitable.
+ */
+function collideWithPlayer(w: World) {
+  const p = w.player;
+  for (const e of w.enemies) {
+    if (e.dead || e.def.ai === 'reaper') continue;
+    const dx = e.x - p.x;
+    const dy = e.y - p.y;
+    const d = Math.hypot(dx, dy);
+    const min = (e.radius + PLAYER_RADIUS) * 0.85;
+    if (d >= min) continue;
+    // Justo encima: se le aparta en la dirección en la que venía.
+    const nx = d > 0.001 ? dx / d : 1;
+    const ny = d > 0.001 ? dy / d : 0;
+    e.x = p.x + nx * min;
+    e.y = p.y + ny * min;
+  }
+}
+
 // ── Objetos del suelo ───────────────────────────────────────────────────────────────────────────
 
 function gainXp(w: World, amount: number) {
@@ -394,6 +415,7 @@ export function step(w: World, dt: number, moveX: number, moveY: number) {
   rebuildGrid(w);
   for (const e of w.enemies) if (!e.dead) updateEnemy(w, e, dt);
   separate(w);
+  collideWithPlayer(w);
   updateWeapons(w, dt);
   updateProjectiles(w, dt);
   updateHazards(w);

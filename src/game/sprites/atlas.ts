@@ -19,13 +19,35 @@ const SIZE = 512;
 export const WHITE = '!';
 /** Radio, en píxeles del atlas, de los círculos `ring` y `disc` (se escalan al dibujarlos). */
 export const CIRCLE_RADIUS = 32;
+/** Sprites con luz de borde: personajes, enemigos, jefes, y los iconos de armas y pasivas. */
+const LIT = /^(c_|hero_|e_|b_|w_|p_|a_)/;
 
-export function drawRows(ctx: CanvasRenderingContext2D, rows: string[], x: number, y: number, white: boolean) {
+const hex = (c: string) => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16));
+const mix = (c: string, to: number, amount: number) =>
+  `rgb(${hex(c)
+    .map((v) => Math.round(v + (to - v) * amount))
+    .join(',')})`;
+
+/**
+ * Dibuja un sprite. Con `lit`, añade una luz de borde: los píxeles que tocan el contorno por arriba se aclaran y los
+ * que lo tocan por abajo o por la derecha se oscurecen, lo que da volumen a todo el arte sin redibujarlo.
+ */
+export function drawRows(ctx: CanvasRenderingContext2D, rows: string[], x: number, y: number, white: boolean, lit = false) {
+  const edge = (r: number, c: number) => {
+    const ch = rows[r]?.[c];
+    return ch === undefined || ch === '.' || ch === 'k';
+  };
   for (let r = 0; r < rows.length; r++) {
     for (let c = 0; c < rows[r].length; c++) {
       const ch = rows[r][c];
       if (ch === '.') continue;
-      ctx.fillStyle = white ? '#ffffff' : PALETTE[ch];
+      let color = white ? '#ffffff' : PALETTE[ch];
+      if (lit && !white && ch !== 'k') {
+        if (edge(r - 1, c) && !edge(r + 1, c)) color = mix(color, 255, 0.22);
+        else if (edge(r + 1, c) && !edge(r - 1, c)) color = mix(color, 0, 0.22);
+        else if (edge(r, c + 1) && !edge(r, c - 1)) color = mix(color, 0, 0.12);
+      }
+      ctx.fillStyle = color;
       ctx.fillRect(x + c, y + r, 1, 1);
     }
   }
@@ -70,7 +92,7 @@ export function buildAtlas(): Atlas {
   for (const [name, rows] of Object.entries(SPRITES)) {
     for (const white of [false, true]) {
       const frame = place(white ? name + WHITE : name, rows[0].length, rows.length);
-      drawRows(ctx, rows, frame.x, frame.y, white);
+      drawRows(ctx, rows, frame.x, frame.y, white, LIT.test(name));
     }
   }
   const px = place('px', 2, 2);
@@ -215,7 +237,7 @@ export function spriteDataUrl(name: string): string {
   const canvas = document.createElement('canvas');
   canvas.width = rows[0].length;
   canvas.height = rows.length;
-  drawRows(canvas.getContext('2d')!, rows, 0, 0, false);
+  drawRows(canvas.getContext('2d')!, rows, 0, 0, false, LIT.test(name));
   const url = canvas.toDataURL();
   urlCache.set(name, url);
   return url;

@@ -25,6 +25,13 @@ const finite = (w: World) =>
   [w.player.x, w.player.y, w.player.hp, w.gold, ...w.enemies.flatMap((e) => [e.x, e.y, e.hp])].every(Number.isFinite);
 
 describe('simulación', () => {
+  it('los enemigos no se montan encima del jugador: se quedan pegados a él', () => {
+    const w = createWorld(config(3));
+    const e = spawnEnemy(w, ENEMY_BY_ID.get('slime')!, w.player.x, w.player.y);
+    for (let i = 0; i < 120; i++) step(w, DT, 0, 0);
+    expect(Math.hypot(e.x - w.player.x, e.y - w.player.y)).toBeGreaterThanOrEqual((e.radius + 5) * 0.85 - 0.01);
+  });
+
   it('es determinista: misma semilla, misma partida', () => {
     const a = createWorld(config(7));
     const b = createWorld(config(7));
