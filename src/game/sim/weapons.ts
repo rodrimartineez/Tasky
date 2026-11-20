@@ -250,7 +250,9 @@ const firewand: Fire = (w, ws, index, n) => {
 /** Ajo: daño periódico a todo lo que esté dentro del radio, apartándolo. */
 const garlic: Fire = (w, ws, index) => {
   const { player } = w;
-  const count = queryNear(player.x, player.y, emberRadius(w, ws));
+  const radius = emberRadius(w, ws);
+  emit(w, { type: 'ring', x: player.x, y: player.y, radius, color: tint(ws, 0xffd0e0) });
+  const count = queryNear(player.x, player.y, radius);
   for (let i = 0; i < count; i++) {
     const e = near[i];
     const dx = e.x - player.x;

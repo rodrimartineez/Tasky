@@ -381,19 +381,7 @@ export class Renderer {
     // Bajo los personajes: aura de ascuas.
     this.under.begin();
     const ember = p.weapons.find((ws) => behaviourOf(ws.id) === 'ember');
-    if (ember) {
-      const emberColor = WEAPON_BY_ID.get(ember.id)?.color ?? 0xdff0b0;
-      const s = this.under.next(this.tex('disc'));
-      s.position.set(p.x, p.y);
-      s.scale.set(emberRadius(w, ember) / CIRCLE_RADIUS);
-      s.tint = emberColor;
-      s.alpha = 0.13 + Math.sin(this.clock * 6) * 0.03;
-      const edge = this.under.next(this.tex('ring'));
-      edge.position.set(p.x, p.y);
-      edge.scale.set(emberRadius(w, ember) / CIRCLE_RADIUS);
-      edge.tint = emberColor;
-      edge.alpha = 0.22;
-    }
+    if (ember) this.drawGarlicAura(p.x, p.y, emberRadius(w, ember), WEAPON_BY_ID.get(ember.id)?.color ?? 0xdff0b0, ember.id !== 'ember');
     // Zonas marcadas por los jefes de ciclo: se intensifican hasta estallar (sim/bosses.ts).
     for (const h of w.hazards ?? []) {
       const kind = h.kind ?? 'blast';
@@ -726,23 +714,7 @@ export class Renderer {
         return;
       }
       case 'column': {
-        // Columna de energía: franja vertical translúcida con un núcleo brillante y notas que suben por ella.
-        const fade = Math.min(1, shot.life * 4);
-        const band = pool.next(this.tex('px'));
-        band.position.set(shot.x, shot.y);
-        band.scale.set(shot.radius, COLUMN_HALF);
-        band.tint = shot.sprite === 'x_mana' ? 0x8fb8ff : 0xc89bff;
-        band.alpha = (0.16 + Math.sin(this.clock * 10) * 0.03) * fade;
-        const core = pool.next(this.tex('px'));
-        core.position.set(shot.x, shot.y);
-        core.scale.set(shot.radius * 0.3, COLUMN_HALF);
-        core.alpha = 0.3 * fade;
-        for (let i = 0; i < 4; i++) {
-          const rise = (this.clock * 0.6 + i * 0.25) % 1;
-          const rune = pool.next(this.tex(shot.sprite));
-          rune.position.set(shot.x + Math.sin(this.clock * 3 + i * 1.7) * shot.radius * 0.5, shot.y + COLUMN_HALF * 0.8 - rise * COLUMN_HALF * 1.6);
-          rune.alpha = fade * (1 - Math.abs(rise - 0.5));
-        }
+        this.drawManaColumn(pool, shot);
         return;
       }
       case 'ray': {
@@ -891,6 +863,104 @@ export class Renderer {
     }
     for (let i = 0; i < 3; i++) this.rings.push({ x: p.x, y: p.y, radius: 14 + i * 14, life: RING_LIFE * (1 + i * 0.6), color: colors[i] });
     this.shake = Math.max(this.shake, w.completed ? 6 : 10);
+  }
+
+  /**
+   * Ajo / Engullealmas: aura que late como un halo suave (discos concentrales aditivos, borde ondulante y destellos
+   * que giran), no un disco plano. La evolución añade un segundo anillo y volutas que orbitan.
+   */
+  private drawGarlicAura(x: number, y: number, radius: number, color: number, evolved: boolean) {
+    const layer = this.under;
+    const pulse = 1 + Math.sin(this.clock * 4) * 0.035;
+    const r = radius * pulse;
+    const glow = (scale: number, alpha: number, tint = color) => {
+      const d = layer.next(this.tex('disc'));
+      d.position.set(x, y);
+      d.scale.set((r * scale) / CIRCLE_RADIUS);
+      d.tint = tint;
+      d.alpha = alpha;
+      d.blendMode = 'add';
+    };
+    for (let i = 0; i < 4; i++) glow(1 - i * 0.2, 0.05 + i * 0.015);
+    if (evolved) glow(0.45, 0.14, 0xffffff);
+    for (let k = 0; k < 2; k++) {
+      const ring = layer.next(this.tex('ring'));
+      ring.position.set(x, y);
+      ring.scale.set((r * (1 - k * 0.07 + Math.sin(this.clock * 5 + k * 2) * 0.012)) / CIRCLE_RADIUS);
+      ring.tint = color;
+      ring.alpha = 0.34 - k * 0.14;
+      ring.blendMode = 'add';
+    }
+    // Borde ondulante: destellos que respiran sobre el perímetro.
+    const beads = evolved ? 24 : 16;
+    for (let k = 0; k < beads; k++) {
+      const a = (k / beads) * Math.PI * 2 + this.clock * (evolved ? 0.9 : 0.4);
+      const wob = 1 + Math.sin(this.clock * 6 + k * 1.9) * 0.035;
+      const bead = layer.next(this.tex('disc'));
+      bead.position.set(x + Math.cos(a) * r * wob, y + Math.sin(a) * r * wob);
+      bead.scale.set((1.6 + Math.sin(this.clock * 7 + k) * 0.7) / CIRCLE_RADIUS);
+      bead.tint = k % 3 === 0 ? 0xffffff : color;
+      bead.alpha = 0.5;
+      bead.blendMode = 'add';
+    }
+    if (evolved) {
+      // Volutas que orbitan por dentro, con estela.
+      for (let k = 0; k < 6; k++) {
+        for (let t = 0; t < 4; t++) {
+          const a = this.clock * 1.6 + (k / 6) * Math.PI * 2 - t * 0.16;
+          const wisp = layer.next(this.tex('disc'));
+          wisp.position.set(x + Math.cos(a) * r * 0.62, y + Math.sin(a) * r * 0.62);
+          wisp.scale.set((4.5 - t) / CIRCLE_RADIUS);
+          wisp.tint = t === 0 ? 0xffffff : color;
+          wisp.alpha = 0.55 - t * 0.12;
+          wisp.blendMode = 'add';
+        }
+      }
+    }
+  }
+
+  /**
+   * Canción de Maná / Partitura de Maná: haz vertical de bordes ondulantes que se afina hacia los extremos, con núcleo
+   * brillante, hebras de energía entrelazadas y notas que suben. La hitbox sigue siendo la columna del arma.
+   */
+  private drawManaColumn(pool: Pool, shot: Projectile) {
+    const evolved = shot.sprite !== 'x_mana';
+    const fade = Math.min(1, shot.life * 4);
+    const color = evolved ? 0xc89bff : 0x8fb8ff;
+    const slices = 18;
+    const sliceHalf = COLUMN_HALF / slices;
+    const spread = evolved ? 1.15 : 1;
+    for (let i = 0; i < slices; i++) {
+      const t = (i + 0.5) / slices;
+      const taper = Math.pow(Math.sin(Math.PI * t), 0.45);
+      const wave = 1 + Math.sin(this.clock * 9 + i * 0.8) * 0.13;
+      const half = shot.radius * spread * taper * wave;
+      const y = shot.y - COLUMN_HALF + (i + 0.5) * sliceHalf * 2;
+      const strip = (width: number, tint: number, alpha: number, dx = 0) => {
+        const s = pool.next(this.tex('px'));
+        s.position.set(shot.x + dx, y);
+        s.scale.set(Math.max(0.3, width), sliceHalf + 0.4);
+        s.tint = tint;
+        s.alpha = alpha * fade * Math.min(1, taper * 1.4);
+        s.blendMode = 'add';
+      };
+      strip(half * 1.6, color, 0.09);
+      strip(half, color, 0.2);
+      strip(half * 0.32 * (1 + Math.sin(this.clock * 13 - i * 0.7) * 0.25), 0xffffff, 0.5);
+      // Bordes brillantes que ondulan: rompen la forma de rectángulo.
+      for (const side of [-1, 1]) strip(0.9, 0xffffff, 0.45, side * half);
+      if (evolved) {
+        // Dos hebras de energía que se trenzan a lo largo del haz.
+        for (const side of [-1, 1]) strip(1.4, 0xffd9ff, 0.7, Math.sin(this.clock * 6 + i * 0.55) * half * 0.7 * side);
+      }
+    }
+    // Notas que suben por el haz.
+    for (let i = 0; i < (evolved ? 7 : 4); i++) {
+      const rise = (this.clock * 0.6 + i * (evolved ? 0.143 : 0.25)) % 1;
+      const rune = pool.next(this.tex(shot.sprite));
+      rune.position.set(shot.x + Math.sin(this.clock * 3 + i * 1.7) * shot.radius * 0.55, shot.y + COLUMN_HALF * 0.85 - rise * COLUMN_HALF * 1.7);
+      rune.alpha = fade * Math.sin(Math.PI * rise);
+    }
   }
 
   private drawEffects(dt: number) {

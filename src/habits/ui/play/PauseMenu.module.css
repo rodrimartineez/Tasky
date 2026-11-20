@@ -71,8 +71,7 @@
 }
 
 .evolution {
-  display: grid;
-  grid-template-columns: auto auto auto auto auto 1fr;
+  display: flex;
   align-items: center;
   gap: 6px;
   padding: 4px 8px;
@@ -86,6 +85,7 @@
 }
 
 .cell {
+  flex-shrink: 0;
   display: grid;
   place-items: center;
   width: 40px;
@@ -113,8 +113,28 @@
 }
 
 .evoName {
+  flex: 1;
   min-width: 0;
   font-size: 13px;
   color: #d8d4e8;
   overflow-wrap: anywhere;
+}
+
+/* Móvil: las recetas de tres objetos (arma + dos pasivas) caben en una sola línea. */
+@media (max-width: 480px) {
+  .evolution {
+    gap: 4px;
+    padding: 4px 6px;
+  }
+  .cell {
+    width: 32px;
+    height: 32px;
+  }
+  .cell img {
+    width: 26px;
+    height: 26px;
+  }
+  .evoName {
+    font-size: 12px;
+  }
 }

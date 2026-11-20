@@ -155,7 +155,7 @@ export const PASSIVES: PassiveDef[] = [
   },
   {
     id: 'medalright',
-    name: 'Medalla del alba',
+    name: 'Medalla de la aurora',
     icon: 'p_medalright',
     text: '+5 % de maldición (desde el nivel 2)',
     maxLevel: 9,
