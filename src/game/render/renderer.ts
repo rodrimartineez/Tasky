@@ -70,7 +70,23 @@ interface Particle {
   vy: number;
   life: number;
   color: number;
+  /** Chispa luminosa (mezcla aditiva) con tamaño; sin él, un punto normal. */
+  glow?: number;
 }
+
+/** Color del resplandor de cada proyectil (por sprite); lo que no está aquí usa el color del arma o blanco cálido. */
+const SHOT_GLOW: Record<string, number> = {
+  x_spark: 0xffe27a, x_bullet: 0xffd75e, x_gun: 0xf6c945, x_lance: 0xbfe6ff, x_dawnlance: 0xffd36b, x_orb: 0x9fd0ff,
+  x_eclipse: 0xb08cff, x_constellation: 0xd6c4ff, x_thorn: 0x7dff9a, x_arrow: 0xffd9a0, x_boomerang: 0xffc861,
+  x_scythe: 0xe05cff, x_ricochet: 0x7ee8e0, x_luckyblades: 0xff4f9a, x_axe: 0xffa94d, x_deathspiral: 0xff3a5e,
+  x_fireball: 0xff7a2a, x_hellfire: 0xff3a1a, x_flask: 0x6bc5ff, x_tornado: 0xd8f0ff, x_tuna: 0x7ee8ff,
+  x_goldtuna: 0xffd75e, x_bigtuna: 0x7ee8ff, x_bubble: 0xbfeaff, x_flare: 0xff8a3a, x_ashflame: 0xc0243a,
+  x_galewhip: 0xaef0ff, x_galedance: 0xff5a6a, x_vento: 0xaef0ff, x_victory: 0xffe9a8, x_finisher: 0xff8a8a, x_slash: 0xffffff,
+};
+/** Tipos de proyectil que ya dibujan su propio brillo o cubren mucha pantalla. */
+const NO_GLOW = new Set(['cloud', 'column', 'galaxy', 'ray', 'dragon', 'enemyShot', 'critter']);
+/** Tipos que sueltan chispas por donde pasan. */
+const SPARKLING = new Set(['bolt', 'lance', 'boomerang', 'bounce', 'axe', 'spin', 'bomb', 'meteor', 'orbit', 'flare', 'leap']);
 interface Ring {
   x: number;
   y: number;
@@ -277,6 +293,7 @@ export class Renderer {
             vy: Math.sin(angle) * speed,
             life: 0.25 + Math.random() * 0.25,
             color: f.color,
+            glow: 0.7 + Math.random() * 0.9,
           });
         }
       } else if (f.type === 'hit') {
@@ -569,12 +586,43 @@ export class Renderer {
     for (const shot of w.projectiles) {
       // Los haces y la galaxia empiezan fuera de la pantalla o la cubren entera.
       if (shot.kind !== 'ray' && shot.kind !== 'galaxy' && !visible(shot.x, shot.y)) continue;
+      if (!NO_GLOW.has(shot.kind)) this.glowShot(shot, dt);
       this.drawShot(shot);
     }
     this.shots.end();
 
     this.drawEffects(dt);
     this.app.render();
+  }
+
+  /** Resplandor aditivo bajo cada proyectil y chispas que quedan a su paso: todo lo que vuela brilla. */
+  private glowShot(shot: Projectile, dt: number) {
+    const color = shot.color ?? SHOT_GLOW[shot.sprite] ?? 0xffe9b0;
+    const size = Math.min(34, Math.max(8, shot.radius * 1.5));
+    const pulse = 1 + Math.sin(this.clock * 14 + shot.x * 0.1) * 0.12;
+    const halo = this.shots.next(this.tex('disc'));
+    halo.position.set(shot.x, shot.y);
+    halo.scale.set((size * 1.7 * pulse) / CIRCLE_RADIUS);
+    halo.tint = color;
+    halo.alpha = shot.kind === 'slash' ? 0.1 : 0.2;
+    halo.blendMode = 'add';
+    const core = this.shots.next(this.tex('disc'));
+    core.position.set(shot.x, shot.y);
+    core.scale.set((size * 0.8 * pulse) / CIRCLE_RADIUS);
+    core.tint = 0xffffff;
+    core.alpha = shot.kind === 'slash' ? 0.1 : 0.22;
+    core.blendMode = 'add';
+    if (SPARKLING.has(shot.kind) && this.particles.length < this.cap(MAX_PARTICLES) && Math.random() < dt * 40) {
+      this.particles.push({
+        x: shot.x + (Math.random() - 0.5) * size * 0.6,
+        y: shot.y + (Math.random() - 0.5) * size * 0.6,
+        vx: (Math.random() - 0.5) * 24 - (shot.vx ?? 0) * 0.05,
+        vy: (Math.random() - 0.5) * 24 - (shot.vy ?? 0) * 0.05 - 6,
+        life: 0.3 + Math.random() * 0.25,
+        color: Math.random() < 0.35 ? 0xffffff : color,
+        glow: 0.8 + Math.random() * 0.9,
+      });
+    }
   }
 
   /** Estela: copias tenues del proyectil detrás de su trayectoria (dirección unitaria `dx, dy`). */
@@ -662,6 +710,17 @@ export class Renderer {
           puff.scale.set(bubbles ? 1 : Math.min(3, Math.max(1, shot.radius / 22)));
           puff.alpha = Math.min(0.55, shot.life * 0.8) * (1 - rise * 0.6);
         }
+        // Destellos que suben del charco.
+        for (let i = 0; i < 4; i++) {
+          const rise = (this.clock * 0.9 + i * 0.25 + shot.x * 0.01) % 1;
+          const a = i * 2.4 + shot.x;
+          const mote = pool.next(this.tex('disc'));
+          mote.position.set(shot.x + Math.cos(a) * shot.radius * 0.6, shot.y + Math.sin(a) * shot.radius * 0.35 - rise * 16);
+          mote.scale.set((1.8 * (1 - rise)) / CIRCLE_RADIUS);
+          mote.tint = 0xffffff;
+          mote.alpha = 0.7 * fade * (1 - rise);
+          mote.blendMode = 'add';
+        }
         return;
       }
       case 'slash': {
@@ -678,6 +737,14 @@ export class Renderer {
           const sx = (shot.radius * 1.2) / 20;
           s.scale.set(sx * (0.5 + 0.5 * sweep), sx * (1.1 - 0.4 * t));
           s.alpha = (1 - t) ** 0.7 * (shot.radius > 60 ? 0.5 : 1);
+          // Filo brillante que se adelanta al tajo y lo deja ardiendo.
+          const edge = pool.next(this.tex(shot.sprite));
+          edge.position.set(shot.x, shot.y);
+          edge.rotation = shot.angle;
+          edge.scale.set(s.scale.x * 1.12, s.scale.y * 1.12);
+          edge.tint = 0xffffff;
+          edge.alpha = s.alpha * 0.55;
+          edge.blendMode = 'add';
           return;
         }
         // Muy ampliado se vuelve translúcido para no tapar la escena.
@@ -975,6 +1042,19 @@ export class Renderer {
       s.scale.set((ring.radius * (0.4 + 0.6 * t)) / CIRCLE_RADIUS);
       s.tint = ring.color;
       s.alpha = 1 - t;
+      s.blendMode = 'add';
+      const wash = fx.next(this.tex('disc'));
+      wash.position.set(ring.x, ring.y);
+      wash.scale.set((ring.radius * (0.4 + 0.6 * t)) / CIRCLE_RADIUS);
+      wash.tint = ring.color;
+      wash.alpha = 0.16 * (1 - t);
+      wash.blendMode = 'add';
+      const inner = fx.next(this.tex('ring'));
+      inner.position.set(ring.x, ring.y);
+      inner.scale.set((ring.radius * (0.25 + 0.55 * t)) / CIRCLE_RADIUS);
+      inner.tint = 0xffffff;
+      inner.alpha = 0.7 * (1 - t) ** 2;
+      inner.blendMode = 'add';
     }
     this.rings = this.rings.filter((r) => r.life > 0);
 
@@ -987,9 +1067,24 @@ export class Renderer {
         const s = fx.next(this.tex('px'));
         s.position.set(pts[i] + dx / 2, pts[i + 1] + dy / 2);
         s.rotation = Math.atan2(dy, dx);
-        s.scale.set(Math.hypot(dx, dy) / 2, 1);
+        const len = Math.hypot(dx, dy) / 2;
+        const k = bolt.life / BOLT_LIFE;
+        s.scale.set(len, 3.2);
         s.tint = bolt.color;
-        s.alpha = bolt.life / BOLT_LIFE;
+        s.alpha = 0.35 * k;
+        s.blendMode = 'add';
+        const core = fx.next(this.tex('px'));
+        core.position.copyFrom(s.position);
+        core.rotation = s.rotation;
+        core.scale.set(len, 1);
+        core.alpha = k;
+        core.blendMode = 'add';
+        const flash = fx.next(this.tex('disc'));
+        flash.position.set(pts[i], pts[i + 1]);
+        flash.scale.set((4 + 4 * k) / CIRCLE_RADIUS);
+        flash.tint = bolt.color;
+        flash.alpha = 0.5 * k;
+        flash.blendMode = 'add';
       }
     }
     this.bolts = this.bolts.filter((b) => b.life > 0);
@@ -1001,6 +1096,13 @@ export class Renderer {
       const s = fx.next(this.tex(`${hit.sprite}_${frame}`));
       s.position.set(hit.x, hit.y);
       s.blendMode = 'add';
+      s.scale.set(1.25);
+      const flash = fx.next(this.tex('disc'));
+      const k = hit.life / HIT_LIFE;
+      flash.position.set(hit.x, hit.y);
+      flash.scale.set((5 + 9 * (1 - k)) / CIRCLE_RADIUS);
+      flash.alpha = 0.5 * k;
+      flash.blendMode = 'add';
     }
     this.hits = this.hits.filter((h) => h.life > 0);
 
@@ -1008,10 +1110,14 @@ export class Renderer {
       part.life -= dt;
       part.x += part.vx * dt;
       part.y += part.vy * dt;
-      const s = fx.next(this.tex('px'));
+      const s = fx.next(this.tex(part.glow ? 'disc' : 'px'));
       s.position.set(part.x, part.y);
       s.tint = part.color;
       s.alpha = Math.min(1, part.life * 5);
+      if (part.glow) {
+        s.scale.set((part.glow * Math.min(1, part.life * 3) * 2.2) / CIRCLE_RADIUS);
+        s.blendMode = 'add';
+      }
     }
     this.particles = this.particles.filter((q) => q.life > 0);
 
