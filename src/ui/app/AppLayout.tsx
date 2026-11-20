@@ -1,15 +1,11 @@
 import { useState } from 'react';
-import { Link, useLocation, useOutlet } from 'react-router-dom';
+import { useLocation, useOutlet } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { Keyboard, TriangleAlert } from 'lucide-react';
+import { TriangleAlert } from 'lucide-react';
 import { useTasky } from '../../state/store';
-import { Button } from '../components/Button';
-import { Logo } from '../components/Logo';
 import { Toaster } from '../components/Toaster';
 import { ShortcutsHelp } from '../shortcuts/ShortcutsHelp';
-import { DataMenu } from './DataMenu';
-import { ModeSwitch } from './ModeSwitch';
-import { SyncButton } from '../sync/SyncButton';
+import { TopBar } from './TopBar';
 import { useShortcut } from '../shortcuts/useShortcut';
 import styles from './AppLayout.module.css';
 
@@ -23,21 +19,7 @@ export function AppLayout() {
   return (
     <div className={styles.shell}>
       <header className={styles.header}>
-        <div className={styles.inner}>
-          <div className={styles.headerStart}>
-            <Link to="/" className={styles.brand} aria-label="Tasky — inicio">
-              <Logo size={34} withWordmark />
-            </Link>
-            <ModeSwitch />
-          </div>
-          <div className={styles.headerActions}>
-            <Button variant="ghost" icon={<Keyboard />} shortcut="?" className={styles.help} onClick={() => setHelpOpen(true)}>
-              Atajos
-            </Button>
-            <SyncButton />
-            <DataMenu />
-          </div>
-        </div>
+        <TopBar onHelp={() => setHelpOpen(true)} />
       </header>
 
       {saveError && (

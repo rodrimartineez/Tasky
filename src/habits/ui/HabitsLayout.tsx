@@ -2,10 +2,9 @@ import { useEffect } from 'react';
 import { NavLink, useLocation, useOutlet } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { BookOpen, ChartColumn, ListChecks, Medal, Sparkles, Swords, TriangleAlert } from 'lucide-react';
-import { ModeSwitch } from '../../ui/app/ModeSwitch';
+import { TopBar } from '../../ui/app/TopBar';
 import { toast, Toaster } from '../../ui/components/Toaster';
 import { UPGRADES } from '../../game/content/upgrades';
-import { SyncButton } from '../../ui/sync/SyncButton';
 import { useEconomy, useHabits } from '../state/store';
 import { useHabitsSync } from '../state/sync';
 import { PointsBadge } from './PointsBadge';
@@ -61,18 +60,14 @@ export function HabitsLayout() {
   return (
     <div className={styles.shell}>
       <header className={styles.header}>
-        <div className={styles.inner}>
-          <div className={styles.mode}>
-            <ModeSwitch />
-          </div>
-          <div className={styles.counters}>
-            <PointsBadge value={economy.points} />
-            <PointsBadge value={economy.gold} currency="gold" />
-          </div>
-          <div className={styles.sync}>
-            <SyncButton />
-          </div>
-        </div>
+        <TopBar
+          extra={
+            <>
+              <PointsBadge value={economy.points} />
+              <PointsBadge value={economy.gold} currency="gold" />
+            </>
+          }
+        />
         <nav className={styles.tabs} aria-label="Secciones de Hábitos">
           <div className={styles.tabsInner}>
             {TABS.map((t) => (

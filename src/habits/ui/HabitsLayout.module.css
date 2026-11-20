@@ -16,35 +16,12 @@
   padding-top: env(safe-area-inset-top);
 }
 
-.inner,
 .tabsInner,
 .main {
   width: 100%;
   max-width: 880px;
   margin: 0 auto;
   padding: 0 var(--space-6);
-}
-
-.inner {
-  height: 56px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
-.counters {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin-left: auto;
-  min-width: 0;
-}
-
-.mode,
-.sync {
-  display: flex;
-  align-items: center;
 }
 
 .tabsInner {
@@ -111,39 +88,10 @@
   .header {
     padding-top: calc(env(safe-area-inset-top) + var(--space-2));
   }
-  .inner,
   .tabsInner,
   .main {
     padding-left: var(--space-4);
     padding-right: var(--space-4);
-  }
-}
-
-/* Móvil: dos líneas. Selector de modo centrado con la nube a su altura; debajo, puntos y oro. */
-@media (max-width: 520px) {
-  .inner {
-    height: auto;
-    padding-top: var(--space-1);
-    padding-bottom: var(--space-2);
-    display: grid;
-    grid-template-columns: 1fr auto 1fr;
-    grid-template-areas:
-      '. mode sync'
-      'counters counters counters';
-    row-gap: var(--space-2);
-    justify-items: center;
-  }
-  .mode {
-    grid-area: mode;
-  }
-  .sync {
-    grid-area: sync;
-    justify-self: end;
-  }
-  .counters {
-    grid-area: counters;
-    margin-left: 0;
-    justify-content: center;
   }
 }
 

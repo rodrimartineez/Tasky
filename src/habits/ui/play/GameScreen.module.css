@@ -572,6 +572,17 @@
   background: #e5484d;
 }
 
+/* Pantallas estrechas: la barra del jefe baja bajo las dos filas de armas y objetos para no taparlas. */
+@media (max-width: 860px) {
+  .bossBar {
+    top: calc(env(safe-area-inset-top) + 150px);
+    width: min(320px, 90vw);
+  }
+  .boss {
+    top: calc(env(safe-area-inset-top) + 150px);
+  }
+}
+
 /* La Muerte (minuto 15). */
 .reaper {
   position: absolute;

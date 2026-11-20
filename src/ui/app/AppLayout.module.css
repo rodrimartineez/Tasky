@@ -16,32 +16,11 @@
   padding-top: env(safe-area-inset-top);
 }
 
-.inner,
 .main {
   width: 100%;
   max-width: 1160px;
   margin: 0 auto;
   padding: 0 var(--space-6);
-}
-
-.inner {
-  height: 56px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.headerStart {
-  display: flex;
-  align-items: center;
-  gap: var(--space-5);
-  min-width: 0;
-}
-
-.headerActions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
 }
 
 .banner {
@@ -60,28 +39,10 @@
   height: 15px;
 }
 
-@media (pointer: coarse) {
-  .help {
-    display: none;
-  }
-}
-
-.brand {
-  display: inline-flex;
-  border-radius: var(--radius-sm);
-}
-
 .main {
   flex: 1;
   padding-top: var(--space-6);
   padding-bottom: var(--space-7);
-}
-
-/* Móvil estrecho: el selector de modo necesita el sitio de la palabra «tasky» (queda el sello). */
-@media (max-width: 440px) {
-  .brand > span > span {
-    display: none;
-  }
 }
 
 @media (max-width: 640px) {
@@ -89,10 +50,6 @@
   .header {
     padding-top: calc(env(safe-area-inset-top) + var(--space-2));
   }
-  .headerStart {
-    gap: var(--space-3);
-  }
-  .inner,
   .main {
     padding-left: var(--space-4);
     padding-right: var(--space-4);
