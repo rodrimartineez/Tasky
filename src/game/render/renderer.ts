@@ -70,23 +70,8 @@ interface Particle {
   vy: number;
   life: number;
   color: number;
-  /** Chispa luminosa (mezcla aditiva) con tamaño; sin él, un punto normal. */
-  glow?: number;
 }
 
-/** Color del resplandor de cada proyectil (por sprite); lo que no está aquí usa el color del arma o blanco cálido. */
-const SHOT_GLOW: Record<string, number> = {
-  x_spark: 0xffe27a, x_bullet: 0xffd75e, x_gun: 0xf6c945, x_lance: 0xbfe6ff, x_dawnlance: 0xffd36b, x_orb: 0x9fd0ff,
-  x_eclipse: 0xb08cff, x_constellation: 0xd6c4ff, x_thorn: 0x7dff9a, x_arrow: 0xffd9a0, x_boomerang: 0xffc861,
-  x_scythe: 0xe05cff, x_ricochet: 0x7ee8e0, x_luckyblades: 0xff4f9a, x_axe: 0xffa94d, x_deathspiral: 0xff3a5e,
-  x_fireball: 0xff7a2a, x_hellfire: 0xff3a1a, x_flask: 0x6bc5ff, x_tornado: 0xd8f0ff, x_tuna: 0x7ee8ff,
-  x_goldtuna: 0xffd75e, x_bigtuna: 0x7ee8ff, x_bubble: 0xbfeaff, x_flare: 0xff8a3a, x_ashflame: 0xc0243a,
-  x_galewhip: 0xaef0ff, x_galedance: 0xff5a6a, x_vento: 0xaef0ff, x_victory: 0xffe9a8, x_finisher: 0xff8a8a, x_slash: 0xffffff,
-};
-/** Tipos de proyectil que ya dibujan su propio brillo o cubren mucha pantalla. */
-const NO_GLOW = new Set(['cloud', 'column', 'galaxy', 'ray', 'dragon', 'enemyShot', 'critter']);
-/** Tipos que sueltan chispas por donde pasan. */
-const SPARKLING = new Set(['bolt', 'lance', 'boomerang', 'bounce', 'axe', 'spin', 'bomb', 'meteor', 'orbit', 'flare', 'leap']);
 interface Ring {
   x: number;
   y: number;
@@ -293,7 +278,6 @@ export class Renderer {
             vy: Math.sin(angle) * speed,
             life: 0.25 + Math.random() * 0.25,
             color: f.color,
-            glow: 0.7 + Math.random() * 0.9,
           });
         }
       } else if (f.type === 'hit') {
@@ -615,43 +599,12 @@ export class Renderer {
     for (const shot of w.projectiles) {
       // Los haces y la galaxia empiezan fuera de la pantalla o la cubren entera.
       if (shot.kind !== 'ray' && shot.kind !== 'galaxy' && !visible(shot.x, shot.y)) continue;
-      if (!NO_GLOW.has(shot.kind)) this.glowShot(shot, dt);
       this.drawShot(shot);
     }
     this.shots.end();
 
     this.drawEffects(dt);
     this.app.render();
-  }
-
-  /** Resplandor aditivo bajo cada proyectil y chispas que quedan a su paso: todo lo que vuela brilla. */
-  private glowShot(shot: Projectile, dt: number) {
-    const color = shot.color ?? SHOT_GLOW[shot.sprite] ?? 0xffe9b0;
-    const size = Math.min(34, Math.max(8, shot.radius * 1.5));
-    const pulse = 1 + Math.sin(this.clock * 14 + shot.x * 0.1) * 0.12;
-    const halo = this.shots.next(this.tex('disc'));
-    halo.position.set(shot.x, shot.y);
-    halo.scale.set((size * 1.7 * pulse) / CIRCLE_RADIUS);
-    halo.tint = color;
-    halo.alpha = shot.kind === 'slash' ? 0.1 : 0.2;
-    halo.blendMode = 'add';
-    const core = this.shots.next(this.tex('disc'));
-    core.position.set(shot.x, shot.y);
-    core.scale.set((size * 0.8 * pulse) / CIRCLE_RADIUS);
-    core.tint = 0xffffff;
-    core.alpha = shot.kind === 'slash' ? 0.1 : 0.22;
-    core.blendMode = 'add';
-    if (SPARKLING.has(shot.kind) && this.particles.length < this.cap(MAX_PARTICLES) && Math.random() < dt * 40) {
-      this.particles.push({
-        x: shot.x + (Math.random() - 0.5) * size * 0.6,
-        y: shot.y + (Math.random() - 0.5) * size * 0.6,
-        vx: (Math.random() - 0.5) * 24 - (shot.vx ?? 0) * 0.05,
-        vy: (Math.random() - 0.5) * 24 - (shot.vy ?? 0) * 0.05 - 6,
-        life: 0.3 + Math.random() * 0.25,
-        color: Math.random() < 0.35 ? 0xffffff : color,
-        glow: 0.8 + Math.random() * 0.9,
-      });
-    }
   }
 
   /** Estela: copias tenues del proyectil detrás de su trayectoria (dirección unitaria `dx, dy`). */
@@ -1139,14 +1092,10 @@ export class Renderer {
       part.life -= dt;
       part.x += part.vx * dt;
       part.y += part.vy * dt;
-      const s = fx.next(this.tex(part.glow ? 'disc' : 'px'));
+      const s = fx.next(this.tex('px'));
       s.position.set(part.x, part.y);
       s.tint = part.color;
       s.alpha = Math.min(1, part.life * 5);
-      if (part.glow) {
-        s.scale.set((part.glow * Math.min(1, part.life * 3) * 2.2) / CIRCLE_RADIUS);
-        s.blendMode = 'add';
-      }
     }
     this.particles = this.particles.filter((q) => q.life > 0);
 
