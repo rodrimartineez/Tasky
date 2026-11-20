@@ -188,11 +188,6 @@ function Movements() {
           <p className={styles.balanceLabel}>puntos de habilidad disponibles</p>
         </div>
       </div>
-      <p className={styles.note}>
-        Cada paso que registra tu iPhone es un punto de habilidad, sin límites ni reducciones. El Atajo de iOS envía el total del día
-        (puede enviarlo varias veces): de cada día solo cuenta el total más alto, así nunca se suman dos veces los mismos pasos. Los
-        puntos se gastan en mejoras permanentes del personaje. Los hábitos dan intentos para jugar.
-      </p>
 
       {days.length === 0 ? (
         <div className={styles.empty}>

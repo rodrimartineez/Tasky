@@ -96,9 +96,13 @@ export type OutlineEntry = { kind: 'phase'; phase: Phase; open: number; done: nu
 
 /**
  * Primer nivel de un proyecto: fases y tareas sueltas abiertas intercaladas en su orden;
- * aparte, las tareas sueltas completadas. Las tareas cuya fase ya no existe cuentan como sueltas.
+ * aparte, las tareas sueltas completadas y las fases completadas. Una fase se completa sola cuando todas sus tareas lo están.
+ * Las tareas cuya fase ya no existe cuentan como sueltas.
  */
-export function projectOutline(data: TaskyData, projectId: string): { entries: OutlineEntry[]; done: Task[] } {
+export function projectOutline(
+  data: TaskyData,
+  projectId: string,
+): { entries: OutlineEntry[]; done: Task[]; donePhases: Extract<OutlineEntry, { kind: 'phase' }>[] } {
   const phases = projectPhases(data, projectId);
   const counts = new Map(phases.map((f) => [f.id, { open: 0, done: 0 }]));
   const loose: Task[] = [];
@@ -108,14 +112,17 @@ export function projectOutline(data: TaskyData, projectId: string): { entries: O
     if (c) c[t.status === 'done' ? 'done' : 'open']++;
     else loose.push(t);
   }
+  const phaseEntries = phases.map((phase) => ({ kind: 'phase' as const, phase, ...counts.get(phase.id)! }));
+  const isComplete = (e: { open: number; done: number }) => e.open === 0 && e.done > 0;
   const entries: OutlineEntry[] = [
-    ...phases.map((phase) => ({ kind: 'phase' as const, phase, ...counts.get(phase.id)! })),
+    ...phaseEntries.filter((e) => !isComplete(e)),
     ...loose.filter((t) => t.status !== 'done').map((task) => ({ kind: 'task' as const, task })),
   ];
   const item = (e: OutlineEntry) => (e.kind === 'phase' ? e.phase : e.task);
   return {
     entries: entries.sort((a, b) => compareRank(item(a), item(b))),
     done: loose.filter((t) => t.status === 'done').sort(byCompletion),
+    donePhases: phaseEntries.filter(isComplete),
   };
 }
 

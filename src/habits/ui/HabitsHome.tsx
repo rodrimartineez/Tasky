@@ -4,7 +4,6 @@ import { ChevronRight, Plus } from 'lucide-react';
 import { Button } from '../../ui/components/Button';
 import { Fab } from '../../ui/components/Fab';
 import { useMediaQuery } from '../../ui/components/useMediaQuery';
-import { HabitBridge } from './HabitBridge';
 import { HabitCard } from './HabitCard';
 import { HabitFormDialog } from './HabitFormDialog';
 import { SwordIcon } from './icons';
@@ -30,7 +29,6 @@ export function HabitsHome() {
       <div className={styles.intro}>
         <div>
           <h1 className={styles.title}>Tus hábitos</h1>
-          <p className={styles.subtitle}>Cada hábito cumplido da puntos para mejorar a tu personaje.</p>
         </div>
         {!isMobile && (
           <Button variant="primary" icon={<Plus />} onClick={() => setCreating(true)}>
@@ -53,7 +51,6 @@ export function HabitsHome() {
         </div>
       ) : (
         <>
-          <HabitBridge />
           {daily.length > 0 && (
             <Section title="Hoy" meta={`${dailyDone}/${daily.length} cumplidos`} views={daily} />
           )}

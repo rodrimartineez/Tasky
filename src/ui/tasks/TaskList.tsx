@@ -19,7 +19,7 @@ import { phaseTasks, projectOutline, type OutlineEntry } from '../../core/select
 import { useTasky } from '../../state/store';
 import { Button } from '../components/Button';
 import { EmptyState } from '../components/EmptyState';
-import { SortablePhaseItem } from '../phases/PhaseItem';
+import { DonePhaseItem, SortablePhaseItem } from '../phases/PhaseItem';
 import { DoneTaskItem, SortableTaskItem, type TaskActions } from './TaskItem';
 import styles from './TaskList.module.css';
 
@@ -45,10 +45,10 @@ export function TaskList({ projectId, phaseId, onCreate, onEditPhase, onDeletePh
   const data = useTasky((s) => s.data);
   const moveTask = useTasky((s) => s.moveTask);
   const movePhase = useTasky((s) => s.movePhase);
-  const { entries: open, done } = useMemo(() => {
+  const { entries: open, done, donePhases } = useMemo(() => {
     if (!phaseId) return projectOutline(data, projectId);
     const tasks = phaseTasks(data, phaseId);
-    return { entries: tasks.open.map((task): OutlineEntry => ({ kind: 'task', task })), done: tasks.done };
+    return { entries: tasks.open.map((task): OutlineEntry => ({ kind: 'task', task })), done: tasks.done, donePhases: [] };
   }, [data, projectId, phaseId]);
   const [showDone, setShowDone] = useState(false);
   const today = getToday();
@@ -70,7 +70,7 @@ export function TaskList({ projectId, phaseId, onCreate, onEditPhase, onDeletePh
     move(id, reordered[index - 1] ?? null, reordered[index + 1] ?? null);
   };
 
-  if (open.length === 0 && done.length === 0) {
+  if (open.length === 0 && done.length === 0 && donePhases.length === 0) {
     return (
       <EmptyState
         icon={<ListTodo />}
@@ -118,14 +118,14 @@ export function TaskList({ projectId, phaseId, onCreate, onEditPhase, onDeletePh
         </DndContext>
       )}
 
-      {done.length > 0 && (
+      {done.length + donePhases.length > 0 && (
         <section className={styles.doneSection}>
           <button type="button" className={styles.doneToggle} aria-expanded={showDone} onClick={() => setShowDone((v) => !v)}>
             <motion.span className={styles.chevron} animate={{ rotate: showDone ? 90 : 0 }} transition={{ duration: 0.15 }}>
               <ChevronRight />
             </motion.span>
             Completadas
-            <span className={styles.count}>{done.length}</span>
+            <span className={styles.count}>{done.length + donePhases.length}</span>
           </button>
           <AnimatePresence initial={false}>
             {showDone && (
@@ -138,6 +138,11 @@ export function TaskList({ projectId, phaseId, onCreate, onEditPhase, onDeletePh
               >
                 <ul className={styles.list} aria-label="Tareas completadas">
                   <AnimatePresence initial={false}>
+                    {donePhases.map((entry) => (
+                      <motion.li key={entry.phase.id} {...itemMotion}>
+                        <DonePhaseItem {...entry} />
+                      </motion.li>
+                    ))}
                     {done.map((task) => (
                       <motion.li key={task.id} {...itemMotion}>
                         <DoneTaskItem task={task} today={today} {...actions} />

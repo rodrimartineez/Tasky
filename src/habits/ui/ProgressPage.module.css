@@ -28,13 +28,6 @@
   font-size: var(--fs-sm);
 }
 
-.note {
-  margin: 0;
-  color: var(--text-faint);
-  font-size: var(--fs-sm);
-  line-height: 1.5;
-}
-
 .empty {
   display: flex;
   flex-direction: column;

@@ -57,17 +57,11 @@ export function CatalogPage() {
 
   return (
     <div className={styles.page}>
-      <p className={styles.intro}>
-        Todo lo que puede aparecer en una partida, lo hayas usado o no. Las armas y pasivas se eligen al subir de nivel; las evoluciones
-        aparecen al abrir un cofre con el arma al nivel máximo y lo que pida su receta (una o dos pasivas, a veces al
-        máximo, o fusionarse con otra arma). Las formas del atún evolucionan sin pasiva y eliges la siguiente.
-        {GAME_BUILD.devTools && (
-          <>
-            {' '}
-            <Link to="/habits/sprites">Ver todos los sprites</Link> (desarrollo).
-          </>
-        )}
-      </p>
+      {GAME_BUILD.devTools && (
+        <p className={styles.intro}>
+          <Link to="/habits/sprites">Ver todos los sprites</Link> (desarrollo).
+        </p>
+      )}
       <div className={styles.tabs} role="tablist" aria-label="Secciones del catálogo">
         {tabs.map((t) => (
           <button

@@ -92,6 +92,17 @@ describe('fases', () => {
     expect(projectOutline(d, 'p').done.map((t) => t.id)).toEqual(['c']);
   });
 
+  it('una fase con todas sus tareas completadas pasa sola a completadas', () => {
+    let d = createPhase(setup(), 'p', { name: 'F', description: '' }, 'f', T1, ['a', 'b']);
+    d = updateTask(d, 'a', { status: 'done' }, T1);
+    expect(projectOutline(d, 'p').donePhases).toHaveLength(0);
+    d = updateTask(d, 'b', { status: 'done' }, T1);
+    expect(outline(d)).toEqual(['c']);
+    expect(projectOutline(d, 'p').donePhases.map((e) => e.phase.id)).toEqual(['f']);
+    d = updateTask(d, 'b', { status: 'todo' }, T1);
+    expect(outline(d)).toEqual(['f', 'c']);
+  });
+
   it('una tarea cuya fase se borró en otro dispositivo cuenta como suelta', () => {
     const d = createPhase(setup(), 'p', { name: 'F', description: '' }, 'f', T0, ['a']);
     const remote = { projects: [], phases: [{ ...d.phases[0], deletedAt: T1, updatedAt: T1 }], tasks: [], ideas: [] };

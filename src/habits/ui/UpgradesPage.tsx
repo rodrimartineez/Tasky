@@ -1,5 +1,3 @@
-import { useState } from 'react';
-import { getSupabaseClient } from '../../adapters/supabaseSync';
 import { UPGRADES } from '../../game/content/upgrades';
 import { spriteDataUrl } from '../../game/sprites/atlas';
 import { toast } from '../../ui/components/Toaster';
@@ -31,11 +29,6 @@ export function UpgradesPage() {
           <p className={styles.balanceLabel}>puntos de habilidad (1 por paso)</p>
         </div>
       </div>
-      <p className={styles.note}>
-        Cada paso que registra tu iPhone es un punto de habilidad. Las mejoras se aplican en todas las partidas y con todos los
-        personajes; cada nivel cuesta algo más que el anterior, hasta el nivel 999.
-      </p>
-      <StepsLink />
       <ul className={styles.grid}>
         {UPGRADES.map((u) => {
           const level = eco.upgrades[u.id] ?? 0;
@@ -71,56 +64,6 @@ export function UpgradesPage() {
           );
         })}
       </ul>
-    </div>
-  );
-}
-
-/** Código personal del Atajo de iOS que envía los pasos (ATAJO_PASOS_IOS.md). Se muestra una sola vez. */
-function StepsLink() {
-  const [token, setToken] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  const generate = async () => {
-    const client = getSupabaseClient();
-    if (!client) return toast('Inicia sesión con la sincronización para conectar el Atajo.', 'error');
-    setBusy(true);
-    const { data, error } = await client.rpc('create_steps_token');
-    setBusy(false);
-    if (error) return toast(`No se pudo generar el código: ${error.message}`, 'error');
-    setToken(String(data));
-  };
-
-  const copy = async () => {
-    if (!token) return;
-    try {
-      await navigator.clipboard.writeText(token);
-      toast('Código copiado.');
-    } catch {
-      toast('No se pudo copiar: selecciónalo y cópialo a mano.', 'error');
-    }
-  };
-
-  return (
-    <div className={styles.steps}>
-      <p className={styles.stepsTitle}>Pasos del iPhone</p>
-      {token ? (
-        <>
-          <p className={styles.note}>
-            Pega este código en el Atajo. Solo se muestra ahora; si lo pierdes, genera otro (el anterior deja de funcionar).
-          </p>
-          <code className={styles.token}>{token}</code>
-          <button type="button" className={styles.buy} onClick={copy}>
-            Copiar código
-          </button>
-        </>
-      ) : (
-        <>
-          <p className={styles.note}>El Atajo de iOS envía tus pasos diarios a Tasky con un código personal.</p>
-          <button type="button" className={styles.buy} onClick={generate} disabled={busy}>
-            {busy ? 'Generando…' : 'Generar código del Atajo'}
-          </button>
-        </>
-      )}
     </div>
   );
 }

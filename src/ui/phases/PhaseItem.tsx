@@ -64,3 +64,23 @@ export function SortablePhaseItem({ phase, open, done, onEdit, onDelete }: Phase
     </div>
   );
 }
+
+/** Fase completada (todas sus tareas hechas): sin acciones de orden; al tocarla se consultan sus tareas. */
+export function DonePhaseItem({ phase, done }: Pick<PhaseItemProps, 'phase' | 'done'>) {
+  return (
+    <div className={`${row.row} ${styles.phase}`}>
+      <span className={styles.icon} aria-hidden>
+        <Layers />
+      </span>
+      <Link to={`/project/${phase.projectId}/phase/${phase.id}`} className={row.content} draggable={false}>
+        <span className={`${row.title} ${styles.name}`}>{phase.name}</span>
+      </Link>
+      <span className={row.actions}>
+        <span className={styles.count} title={`${done} tareas completadas`}>
+          {done}/{done}
+        </span>
+        <ChevronRight className={styles.chevron} aria-hidden />
+      </span>
+    </div>
+  );
+}
