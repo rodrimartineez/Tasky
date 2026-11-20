@@ -25,7 +25,7 @@ export function HabitCard({ view, handle }: { view: HabitView; handle?: ReactNod
 
   return (
     <motion.article
-      layout
+      layout={!handle}
       className={`${styles.card} ${build ? styles.build : styles.reduce} ${met ? styles.met : ''} ${over > 0 ? styles.over : ''}`}
       style={{ '--fill': fill } as CSSProperties}
     >

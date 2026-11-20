@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { AnimatePresence } from 'motion/react';
 import {
   DndContext,
   KeyboardSensor,
@@ -140,11 +139,9 @@ function Section({ title, meta, views }: { title: string; meta: string; views: H
       <div className={styles.list}>
         <DndContext sensors={sensors} collisionDetection={closestCenter} modifiers={[restrictToVerticalAxis]} onDragEnd={onDragEnd}>
           <SortableContext items={ids} strategy={verticalListSortingStrategy}>
-            <AnimatePresence initial={false}>
-              {views.map((v) => (
-                <SortableHabitCard key={v.habit.id} view={v} />
-              ))}
-            </AnimatePresence>
+            {views.map((v) => (
+              <SortableHabitCard key={v.habit.id} view={v} />
+            ))}
           </SortableContext>
         </DndContext>
       </div>
