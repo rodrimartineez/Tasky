@@ -31,9 +31,9 @@ export interface GameRelease {
  * publicar se pasa a la 1, que empieza de cero (§10).
  */
 export const GAME_BUILD = {
-  // Activado a petición del usuario para probar; se vuelve a poner a false cuando lo pida.
+  // Oculto a petición del usuario: se vuelve a poner a true solo cuando pida probar algo.
   // La temporada sigue en 0 (cambiarla empezaría la progresión de cero).
-  devTools: true,
+  devTools: false,
   season: 0,
   startsOn: null as LocalDate | null,
 } as const;
