@@ -199,7 +199,6 @@ export function PlayPage() {
   };
   /** Personaje tocado: se muestran las armas con las que empieza (esté comprado o no). */
   const [inspected, setInspected] = useState<string | null>(null);
-  const inspectedDef = CHARACTERS.find((c) => c.id === (inspected ?? character));
   const startingWeapons = (c: (typeof CHARACTERS)[number]) =>
     [c.weapon, ...(c.bonusWeapons ?? [])].map((id) => WEAPON_BY_ID.get(id)).filter((w) => w !== undefined);
 
@@ -447,6 +446,16 @@ export function PlayPage() {
                 <span className={styles.optionName}>{c.name}</span>
                 {c.legendary && <span className={styles.legendaryTag}>Legendario</span>}
                 <span className={styles.optionText}>{c.trait}</span>
+                {c.id === (inspected ?? character) && (
+                  <span className={styles.startsWith}>
+                    Empieza con:
+                    {startingWeapons(c).map((w) => (
+                      <span key={w.id} className={styles.startWeapon}>
+                        <img src={spriteDataUrl(w.icon)} alt="" draggable={false} /> {w.name}
+                      </span>
+                    ))}
+                  </span>
+                )}
                 {!unlocked && (
                   <span className={styles.price}>
                     <Lock /> <CoinIcon size={12} /> {gold(c.price)}
@@ -456,16 +465,6 @@ export function PlayPage() {
             );
           })}
         </div>
-        {inspectedDef && (
-          <p className={styles.startsWith}>
-            <b>{inspectedDef.name}</b> empieza con:
-            {startingWeapons(inspectedDef).map((w) => (
-              <span key={w.id} className={styles.startWeapon}>
-                <img src={spriteDataUrl(w.icon)} alt="" draggable={false} /> {w.name}
-              </span>
-            ))}
-          </p>
-        )}
       </section>
 
       <section className={styles.section}>
