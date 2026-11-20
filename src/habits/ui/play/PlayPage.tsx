@@ -36,20 +36,10 @@ interface Session {
   test: boolean;
 }
 
-const MODES: { id: RunMode; name: string; text: string; milestone: number }[] = [
-  { id: 'normal', name: 'Normal', text: 'Sobrevive 15 minutos para superar el nivel.', milestone: 0 },
-  {
-    id: 'infinite',
-    name: 'Infinito',
-    text: 'Sin La Muerte: llegar al minuto 15 supera el nivel, y sigues hasta caer o salir.',
-    milestone: MILESTONES.infinite,
-  },
-  {
-    id: 'mirror',
-    name: 'Reflejo',
-    text: 'Tu nivel con el doble de dificultad y el doble de oro. No cambia tu nivel.',
-    milestone: MILESTONES.mirror,
-  },
+const MODES: { id: RunMode; name: string }[] = [
+  { id: 'normal', name: 'Normal' },
+  { id: 'infinite', name: 'Infinito' },
+  { id: 'mirror', name: 'Reflejo' },
 ];
 
 /** Arcano y aspecto elegidos: preferencia de este dispositivo (no cambian la progresión, no hace falta sincronizarlos). */
@@ -341,14 +331,6 @@ export function PlayPage() {
                 <Swords /> {eco.available === 1 ? '1 intento' : `${gold(eco.available)} intentos`}
               </p>
             )}
-            <p className={styles.text}>
-              {eco.testMode
-                ? 'Juega cualquier nivel, jefe y modalidad sin gastar intentos. No se guarda el oro ni el nivel; tus hábitos, puntos y mejoras funcionan con normalidad.'
-                : eco.available > 0
-                  ? `${MODES.find((m) => m.id === runMode)!.text} Al minuto 15 llega La Muerte. Si caes antes, sigues en este nivel y te quedas el oro.`
-                  : 'No te quedan intentos. Consigue más cumpliendo hábitos: +1 por cada hábito diario y +3 por cada semanal. No caducan.'}
-              {boss && ' El jefe aparece en el minuto 10: véncelo antes de que llegue La Muerte para superar el nivel.'}
-            </p>
             <div className={styles.modes} role="radiogroup" aria-label="Modalidad">
               {MODES.map((m) => {
                 const unlocked = modeUnlocked(eco, m.id);
@@ -365,7 +347,6 @@ export function PlayPage() {
                     <span>
                       {!unlocked && <Lock />} {m.name}
                     </span>
-                    {!unlocked && <small>Supera el nivel {m.milestone}</small>}
                   </button>
                 );
               })}

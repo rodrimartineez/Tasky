@@ -9,6 +9,7 @@
   align-items: flex-end;
   justify-content: space-between;
   gap: var(--space-4);
+  margin-bottom: calc(var(--space-3) * -1);
 }
 
 .title {
@@ -19,12 +20,6 @@
   letter-spacing: 0.01em;
   color: var(--hb-gold);
   text-shadow: 0 3px 0 var(--hb-ink);
-}
-
-.subtitle {
-  margin: 4px 0 0;
-  color: var(--text-muted);
-  font-size: var(--fs-sm);
 }
 
 .section {
