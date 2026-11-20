@@ -29,7 +29,16 @@ export function buildRunConfig(
     seed = level,
     arcana,
     skin,
-  }: { boost?: { xp: number; hp: number }; mode?: RunMode; seed?: number; arcana?: string | null; skin?: string | null } = {},
+    weapons,
+  }: {
+    boost?: { xp: number; hp: number };
+    mode?: RunMode;
+    seed?: number;
+    arcana?: string | null;
+    skin?: string | null;
+    /** Armas iniciales elegidas (personajes con `pickStart`). */
+    weapons?: string[];
+  } = {},
 ): RunConfig {
   const character = CHARACTER_BY_ID.get(characterId) ?? CHARACTERS[0];
   const stage = STAGE_BY_ID.get(stageId) ?? STAGES[0];
@@ -41,13 +50,14 @@ export function buildRunConfig(
   arcanaDef?.apply?.(stats);
   const skinDef = skin ? SKIN_BY_ID.get(skin) : undefined;
   const cycleBoss = cycleBossFor(level);
+  const picked = character.pickStart && weapons?.length === character.pickStart ? weapons : undefined;
   return {
     seed: (Math.imul(seed, 2654435761) ^ Math.imul(level, 40503) ^ 0x5bd1e995) | 0,
     level,
     stage,
     stats,
-    startingWeapon: character.weapon,
-    bonusWeapons: character.bonusWeapons,
+    startingWeapon: picked?.[0] ?? character.weapon,
+    bonusWeapons: picked ? picked.slice(1) : character.bonusWeapons,
     sprite: character.sprite,
     mode,
     ...(cycleBoss ? { cycleBoss } : {}),

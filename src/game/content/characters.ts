@@ -14,6 +14,8 @@ export interface CharacterDef {
   weapon: string;
   /** Armas adicionales con las que empieza (solo los legendarios). */
   bonusWeapons?: string[];
+  /** Si existe, al empezar la partida se eligen tantas armas iniciales (en lugar de `weapon`/`bonusWeapons`). */
+  pickStart?: number;
   /** Personaje legendario: objetivo a muy largo plazo, con habilidades especiales. */
   legendary?: boolean;
   /** Rasgo en una frase. */
@@ -252,8 +254,8 @@ export const CHARACTERS: CharacterDef[] = [
     price: 1_500_000,
     legendary: true,
     weapon: 'spark',
-    bonusWeapons: ['orbs', 'boomerang'],
-    trait: 'Empieza con tres armas, +50 % de oro y +30 % de suerte.',
+    pickStart: 2,
+    trait: 'Elige 2 armas iniciales al empezar cada partida, +50 % de oro y +30 % de suerte.',
     apply: (s) => {
       s.greed *= 1.5;
       s.luck *= 1.3;
@@ -281,7 +283,7 @@ export const CHARACTERS: CharacterDef[] = [
     price: 10_000_000,
     legendary: true,
     weapon: 'storm',
-    bonusWeapons: ['phaser', 'pentagram', 'firewand'],
+    bonusWeapons: ['phaser', 'ember', 'spark'],
     trait: 'El objetivo final: empieza con cuatro armas, revive dos veces, +30 % de daño y de vida, +20 % de área y +1 proyectil.',
     apply: (s) => {
       s.revival += 2;

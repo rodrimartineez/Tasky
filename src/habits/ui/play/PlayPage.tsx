@@ -21,6 +21,7 @@ import { comebackFor } from '../../core/comeback';
 import { ACHIEVEMENTS, achieved, recordsOf } from '../../core/records';
 import { GAME_BUILD, releaseFor } from '../../core/release';
 import { SoundSettings } from './SoundControls';
+import { StartingWeaponsDialog } from './StartingWeaponsDialog';
 import { CoinIcon } from '../PointsBadge';
 import styles from './PlayPage.module.css';
 
@@ -144,7 +145,10 @@ export function PlayPage() {
   const skin = extras.skin && skinOwned(extras.skin) ? extras.skin : null;
   const heroSprite = CHARACTERS.find((c) => c.id === character)?.sprite ?? 'hero';
 
-  const play = () =>
+  const [pickingWeapons, setPickingWeapons] = useState(false);
+  const pickStart = CHARACTERS.find((c) => c.id === character)?.pickStart;
+  const play = () => (pickStart ? setPickingWeapons(true) : begin());
+  const begin = (weapons?: string[]) =>
     attempt(() => {
       const started = startRun(runMode, testLevel, arcana);
       if (started.level > 0)
@@ -156,6 +160,7 @@ export function PlayPage() {
             mode: runMode,
             arcana,
             skin,
+            weapons,
             // Las de prueba no se registran: cada una con una semilla distinta.
             seed: started.test ? Math.floor(Math.random() * 1e9) : started.attempt,
           }),
@@ -449,7 +454,8 @@ export function PlayPage() {
                 {c.id === (inspected ?? character) && (
                   <span className={styles.startsWith}>
                     Empieza con:
-                    {startingWeapons(c).map((w) => (
+                    {c.pickStart && <span className={styles.startWeapon}>{c.pickStart} armas a tu elección</span>}
+                    {startingWeapons(c).filter(() => !c.pickStart).map((w) => (
                       <span key={w.id} className={styles.startWeapon}>
                         <img src={spriteDataUrl(w.icon)} alt="" draggable={false} /> {w.name}
                       </span>
@@ -583,6 +589,17 @@ export function PlayPage() {
         Móvil: arrastra el dedo por la pantalla · Teclado: WASD o flechas, Esc para pausar y 1–4 para elegir mejora.
       </p>
 
+      <StartingWeaponsDialog
+        key={`${pickingWeapons}`}
+        open={pickingWeapons}
+        count={pickStart ?? 0}
+        onClose={() => setPickingWeapons(false)}
+        onConfirm={(ids) => {
+          setPickingWeapons(false);
+          begin(ids);
+        }}
+      />
+
       <ConfirmDialog
         open={!!buying && !buyingAchievement}
         title={`Desbloquear ${buyingName ?? ''}`}
@@ -590,7 +607,7 @@ export function PlayPage() {
           buyingPrice > eco.gold
             ? `Cuesta ${gold(buyingPrice)} de oro y tienes ${gold(eco.gold)}. Sigue jugando para conseguir el resto.`
             : `Cuesta ${gold(buyingPrice)} de oro (tienes ${gold(eco.gold)}).`
-        }${buyingCharacter ? ` Empieza con: ${startingWeapons(buyingCharacter).map((w) => w.name).join(' y ')}.` : ''}`}
+        }${buyingCharacter ? ` Empieza con: ${buyingCharacter.pickStart ? `${buyingCharacter.pickStart} armas a tu elección` : startingWeapons(buyingCharacter).map((w) => w.name).join(' y ')}.` : ''}`}
         confirmLabel="Desbloquear"
         onConfirm={confirmBuy}
         onClose={() => setBuying(null)}

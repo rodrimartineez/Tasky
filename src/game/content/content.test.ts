@@ -34,8 +34,13 @@ describe('contenido', () => {
 
   it('los legendarios empiezan con varias armas y el Sol Eterno revive dos veces', () => {
     const sun = createWorld(buildRunConfig(1, 'sun_avatar', 'withered_woods', {}));
-    expect(sun.player.weapons.map((w) => w.id)).toEqual(['storm', 'phaser', 'pentagram', 'firewand']);
+    expect(sun.player.weapons.map((w) => w.id)).toEqual(['storm', 'phaser', 'ember', 'spark']);
     expect(sun.player.stats.revival).toBe(2);
+  });
+
+  it('el Coleccionista empieza con las dos armas elegidas', () => {
+    const config = buildRunConfig(1, 'collector', 'withered_woods', {}, { weapons: ['whip', 'axe'] });
+    expect(createWorld(config).player.weapons.map((w) => w.id)).toEqual(['whip', 'axe']);
   });
 
   it('el sprite del personaje elegido llega a la configuración de la partida', () => {
