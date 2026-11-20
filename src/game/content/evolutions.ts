@@ -47,7 +47,7 @@ export const EVOLUTIONS: EvolutionDef[] = [
     'whip',
     'oakheart',
     { id: 'galewhip', name: 'Látigo de Sangre', description: 'Latigazos de sangre con críticos que te curan.', icon: 'w_galewhip', proj: 'x_galewhip', crit: 0.1 },
-    { damage: 80, cooldown: 0.9, amount: 2, area: 66, duration: 0.25, knockback: 50 },
+    { damage: 80, cooldown: 0.9, amount: 2, area: 100, duration: 0.25, knockback: 50 },
   ),
   evolution(
     'spark',
@@ -107,7 +107,7 @@ export const EVOLUTIONS: EvolutionDef[] = [
     'storm',
     'horn',
     { id: 'tempest', name: 'Tormenta Eléctrica', description: 'Cada rayo cae dos veces.', icon: 'w_tempest', color: 0xe3b8ff },
-    { damage: 150, cooldown: 2.6, amount: 5, area: 80 },
+    { damage: 200, cooldown: 2.6, amount: 5, area: 80 },
   ),
   evolution(
     'pentagram',
@@ -137,7 +137,7 @@ export const EVOLUTIONS: EvolutionDef[] = [
     'vento',
     { union: 'galewhip' },
     { id: 'galedance', name: 'Vendaval Carmesí', description: 'Tajos delante y un círculo de cortes a tu alrededor; sus críticos curan y estallan.', icon: 'w_galedance', proj: 'x_galedance', interval: 0.05, crit: 0.05 },
-    { damage: 32, cooldown: 1.5, amount: 8, area: 64, duration: 0.4, knockback: 5 },
+    { damage: 32, cooldown: 1.5, amount: 8, area: 110, duration: 0.4, knockback: 5 },
   ),
   evolution(
     'victory',

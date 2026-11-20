@@ -683,7 +683,15 @@ export class Renderer {
         s.position.set(shot.x, shot.y);
         s.rotation = shot.angle;
         if (shot.sprite === 'x_finisher') s.scale.set(Math.max(1, shot.radius / 40) * (1 + t * 0.5), shot.radius / 11);
-        else s.scale.set(shot.radius / 20, shot.radius / 14);
+        else if (shot.sprite === 'x_victory') s.scale.set(shot.radius / 20, shot.radius / 14);
+        else {
+          // Estela de Látigo / Viento Sacro: media luna alargada que barre hacia fuera y se desvanece.
+          const sweep = 1 - (1 - Math.min(1, t * 2.5)) ** 2;
+          const sx = (shot.radius * 1.2) / 20;
+          s.scale.set(sx * (0.5 + 0.5 * sweep), sx * (1.1 - 0.4 * t));
+          s.alpha = (1 - t) ** 0.7 * (shot.radius > 60 ? 0.5 : 1);
+          return;
+        }
         // Muy ampliado se vuelve translúcido para no tapar la escena.
         s.alpha = (1 - t) * (shot.radius > 60 ? 0.45 : 1);
         return;
