@@ -46,9 +46,9 @@
 }
 
 @media (max-width: 640px) {
-  /* Separación propia bajo la barra de estado / zona segura (igual que en Hábitos). */
+  /* Separación propia bajo la barra de estado / Dynamic Island, para que la cabecera no quede en la zona que iOS difumina. */
   .header {
-    padding-top: calc(env(safe-area-inset-top) + var(--space-2));
+    padding-top: calc(env(safe-area-inset-top) + var(--space-4));
   }
   .main {
     padding-left: var(--space-4);
