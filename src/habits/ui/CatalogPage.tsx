@@ -181,9 +181,7 @@ export function CatalogPage() {
               <p className={styles.evolves}>
                 {e.evolution.union
                   ? 'Fusiona las dos armas en un solo hueco y ya no sube de nivel.'
-                  : e.evolution.def.gift
-                    ? 'Es un regalo: se suma a tus armas sin quitarte la base ni ocupar hueco.'
-                    : 'Ocupa el mismo hueco que el arma y ya no sube de nivel.'}
+                  : 'Ocupa el mismo hueco que el arma y ya no sube de nivel.'}
               </p>
             </li>
           ))}

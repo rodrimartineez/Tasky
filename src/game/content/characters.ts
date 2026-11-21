@@ -14,8 +14,8 @@ export interface CharacterDef {
   weapon: string;
   /** Armas adicionales con las que empieza (solo los legendarios). */
   bonusWeapons?: string[];
-  /** Si existe, al empezar la partida se eligen tantas armas iniciales (en lugar de `weapon`/`bonusWeapons`). */
-  pickStart?: number;
+  /** Si existe, al empezar la partida se eligen `count` armas (o evoluciones) iniciales en lugar de `weapon`/`bonusWeapons`. */
+  pickStart?: { count: number; from: 'weapons' | 'evolutions' };
   /** Personaje legendario: objetivo a muy largo plazo, con habilidades especiales. */
   legendary?: boolean;
   /** Rasgo en una frase. */
@@ -249,13 +249,13 @@ export const CHARACTERS: CharacterDef[] = [
   },
   {
     id: 'collector',
-    name: 'Coleccionista',
+    name: 'Tormentario',
     sprite: 'c_collector',
     price: 1_500_000,
     legendary: true,
-    weapon: 'spark',
-    pickStart: 2,
-    trait: 'Elige 2 armas iniciales al empezar cada partida, +50 % de oro y +30 % de suerte.',
+    weapon: 'storm',
+    bonusWeapons: ['phaser', 'ember', 'spark'],
+    trait: 'Empieza con cuatro armas: Anillo Relámpago, Fasor, Ajo y Varita Mágica. +50 % de oro y +30 % de suerte.',
     apply: (s) => {
       s.greed *= 1.5;
       s.luck *= 1.3;
@@ -268,8 +268,8 @@ export const CHARACTERS: CharacterDef[] = [
     price: 4_000_000,
     legendary: true,
     weapon: 'clock',
-    bonusWeapons: ['storm'],
-    trait: 'Domina el tiempo: ataca un 25 % más rápido, +30 % de duración y +20 % de velocidad de proyectiles. Empieza con dos armas.',
+    pickStart: { count: 2, from: 'weapons' },
+    trait: 'Domina el tiempo: ataca un 25 % más rápido, +30 % de duración y +20 % de velocidad de proyectiles. Elige 2 armas iniciales.',
     apply: (s) => {
       s.cooldown *= 0.75;
       s.duration *= 1.3;
@@ -278,13 +278,13 @@ export const CHARACTERS: CharacterDef[] = [
   },
   {
     id: 'sun_avatar',
-    name: 'Sol Eterno',
+    name: 'Eclipsado',
     sprite: 'c_sun_avatar',
     price: 10_000_000,
     legendary: true,
     weapon: 'storm',
-    bonusWeapons: ['phaser', 'ember', 'spark'],
-    trait: 'El objetivo final: empieza con cuatro armas, revive dos veces, +30 % de daño y de vida, +20 % de área y +1 proyectil.',
+    pickStart: { count: 1, from: 'evolutions' },
+    trait: 'El objetivo final: empieza con una evolución a tu elección, revive dos veces, +30 % de daño y de vida, +20 % de área y +1 proyectil.',
     apply: (s) => {
       s.revival += 2;
       s.might *= 1.3;

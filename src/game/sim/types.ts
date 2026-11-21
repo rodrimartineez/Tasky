@@ -114,7 +114,6 @@ export interface WeaponDef {
   /** Probabilidad de crítico propia del arma (se suma a la del jugador). */
   crit?: number;
   /** Regalo: se añade junto al arma base, que se conserva, y no ocupa hueco. */
-  gift?: boolean;
 }
 
 export interface PassiveDef {

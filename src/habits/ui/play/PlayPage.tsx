@@ -5,7 +5,8 @@ import { CHARACTERS } from '../../../game/content/characters';
 import { buildRunConfig } from '../../../game/content/run';
 import { SKINS } from '../../../game/content/skins';
 import { STAGES } from '../../../game/content/stages';
-import { WEAPON_BY_ID } from '../../../game/content/weapons';
+import { EVOLUTIONS } from '../../../game/content/evolutions';
+import { WEAPON_BY_ID, WEAPONS } from '../../../game/content/weapons';
 import { CYCLE_BOSS_BY_ID, CYCLE_LENGTH, cycleBossFor } from '../../../game/content/bosses';
 import { RUN_SECONDS, type RunConfig, type RunMode, type RunResult, type World } from '../../../game/sim/types';
 import { runResult } from '../../../game/sim/world';
@@ -204,6 +205,8 @@ export function PlayPage() {
   };
   /** Personaje tocado: se muestran las armas con las que empieza (esté comprado o no). */
   const [inspected, setInspected] = useState<string | null>(null);
+  const pickText = (pick: NonNullable<(typeof CHARACTERS)[number]['pickStart']>) =>
+    pick.from === 'evolutions' ? `${pick.count} evolución a tu elección` : `${pick.count} armas a tu elección`;
   const startingWeapons = (c: (typeof CHARACTERS)[number]) =>
     [c.weapon, ...(c.bonusWeapons ?? [])].map((id) => WEAPON_BY_ID.get(id)).filter((w) => w !== undefined);
 
@@ -454,7 +457,7 @@ export function PlayPage() {
                 {c.id === (inspected ?? character) && (
                   <span className={styles.startsWith}>
                     Empieza con:
-                    {c.pickStart && <span className={styles.startWeapon}>{c.pickStart} armas a tu elección</span>}
+                    {c.pickStart && <span className={styles.startWeapon}>{pickText(c.pickStart)}</span>}
                     {startingWeapons(c).filter(() => !c.pickStart).map((w) => (
                       <span key={w.id} className={styles.startWeapon}>
                         <img src={spriteDataUrl(w.icon)} alt="" draggable={false} /> {w.name}
@@ -592,7 +595,9 @@ export function PlayPage() {
       <StartingWeaponsDialog
         key={`${pickingWeapons}`}
         open={pickingWeapons}
-        count={pickStart ?? 0}
+        count={pickStart?.count ?? 0}
+        evolutions={pickStart?.from === 'evolutions'}
+        options={pickStart?.from === 'evolutions' ? EVOLUTIONS.map((e) => e.def) : WEAPONS}
         onClose={() => setPickingWeapons(false)}
         onConfirm={(ids) => {
           setPickingWeapons(false);
@@ -607,7 +612,7 @@ export function PlayPage() {
           buyingPrice > eco.gold
             ? `Cuesta ${gold(buyingPrice)} de oro y tienes ${gold(eco.gold)}. Sigue jugando para conseguir el resto.`
             : `Cuesta ${gold(buyingPrice)} de oro (tienes ${gold(eco.gold)}).`
-        }${buyingCharacter ? ` Empieza con: ${buyingCharacter.pickStart ? `${buyingCharacter.pickStart} armas a tu elección` : startingWeapons(buyingCharacter).map((w) => w.name).join(' y ')}.` : ''}`}
+        }${buyingCharacter ? ` Empieza con: ${buyingCharacter.pickStart ? pickText(buyingCharacter.pickStart) : startingWeapons(buyingCharacter).map((w) => w.name).join(' y ')}.` : ''}`}
         confirmLabel="Desbloquear"
         onConfirm={confirmBuy}
         onClose={() => setBuying(null)}

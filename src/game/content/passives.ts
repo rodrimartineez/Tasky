@@ -165,15 +165,15 @@ export const PASSIVES: PassiveDef[] = [
     id: 'puzzlebox',
     name: 'Caja de engranajes',
     icon: 'p_puzzlebox',
-    text: 'Daño, área, duración y velocidad de proyectiles: +4 % el primer nivel y +3 % los siguientes; en el 9, +100 % de maldición',
-    maxLevel: 9,
+    text: 'Daño, área, duración y velocidad de proyectiles: +4 % el primer nivel y +3 % los siguientes; en el 5, +100 % de maldición',
+    maxLevel: 5,
     apply: (s, n) => {
-      const bonus = n > 0 ? 0.04 + 0.03 * (Math.min(n, 8) - 1) : 0;
+      const bonus = n > 0 ? 0.04 + 0.03 * (Math.min(n, 5) - 1) : 0;
       s.might += bonus;
       s.area += bonus;
       s.duration += bonus;
       s.projSpeed += bonus;
-      if (n >= 9) curse(s, 1);
+      if (n >= 5) curse(s, 1);
     },
   },
 ];

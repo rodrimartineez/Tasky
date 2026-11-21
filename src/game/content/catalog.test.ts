@@ -24,7 +24,7 @@ describe('catálogo', () => {
     expect(spark.last.damage).toBe('48');
     expect(spark.levels).toHaveLength(7);
     expect(weaponEntries().find((w) => w.def.id === 'whip')!.first.pierce).toBe('Todos');
-    expect(weaponEntries().find((w) => w.def.id === 'victory')!.maxLevel).toBe(12);
+    expect(weaponEntries().find((w) => w.def.id === 'victory')!.maxLevel).toBe(8);
     expect(weaponEntries().find((w) => w.def.id === 'tuna3')!.maxLevel).toBe(6);
   });
 

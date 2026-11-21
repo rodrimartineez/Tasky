@@ -50,7 +50,7 @@ export function buildRunConfig(
   arcanaDef?.apply?.(stats);
   const skinDef = skin ? SKIN_BY_ID.get(skin) : undefined;
   const cycleBoss = cycleBossFor(level);
-  const picked = character.pickStart && weapons?.length === character.pickStart ? weapons : undefined;
+  const picked = character.pickStart && weapons?.length === character.pickStart.count ? weapons : undefined;
   return {
     seed: (Math.imul(seed, 2654435761) ^ Math.imul(level, 40503) ^ 0x5bd1e995) | 0,
     level,

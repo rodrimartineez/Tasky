@@ -22,7 +22,6 @@ import {
   recomputeStats,
   rerollChoices,
   rollChoices,
-  slotsUsed,
   statsAt,
   WEAPON_LEVEL_CAP,
 } from './upgrades';
@@ -99,7 +98,7 @@ describe('catálogo cerrado', () => {
     for (const p of PASSIVES) expect(EVOLUTIONS.some((e) => e.passives.includes(p.id)), p.name).toBe(true);
     const recipe = (id: string) => {
       const e = EVOLUTIONS.find((x) => x.def.id === id)!;
-      return [e.weapon, ...(e.union ? [e.union] : []), ...e.passives, ...(e.maxed ? ['max'] : []), ...(e.def.gift ? ['gift'] : [])];
+      return [e.weapon, ...(e.union ? [e.union] : []), ...e.passives, ...(e.maxed ? ['max'] : [])];
     };
     expect(recipe('galewhip')).toEqual(['whip', 'oakheart']);
     expect(recipe('constellation')).toEqual(['spark', 'hourglass']);
@@ -117,7 +116,7 @@ describe('catálogo cerrado', () => {
     expect(recipe('eternal')).toEqual(['clock', 'silverring', 'goldring', 'max']);
     expect(recipe('thornmail')).toEqual(['laurel', 'medalleft', 'medalright', 'max']);
     expect(recipe('galedance')).toEqual(['vento', 'galewhip']);
-    expect(recipe('sole')).toEqual(['victory', 'puzzlebox', 'max', 'gift']);
+    expect(recipe('sole')).toEqual(['victory', 'puzzlebox', 'max']);
     expect(recipe('muspell')).toEqual(['misspell', 'puzzlebox', 'max']);
     expect(recipe('photonstorm')).toEqual(['phaser', 'hourglass', 'max']);
     expect(recipe('spirit')).toEqual(['unearthly', 'tiramisu', 'max']);
@@ -156,21 +155,13 @@ describe('evoluciones', () => {
         expect(w.player.weapons.map((x) => x.id)).not.toContain(evo.def.id);
         expect(w.chestRewards.every((r) => r.kind !== 'evolution')).toBe(true);
       }
-      // Con todo, el siguiente cofre la sustituye en el mismo hueco; una fusión libera el hueco de la otra arma y un
-      // regalo se añade sin quitar la base ni ocupar hueco.
+      // Con todo, el siguiente cofre la sustituye en el mismo hueco; una fusión libera el hueco de la otra arma.
       const w = recipeWorld(evo);
       w.player.weapons[1].dealt = 123;
       expect(evolutionReady(w, w.player.weapons[1])).toBe(evo);
       openChest(w);
       const ids = w.player.weapons.map((x) => x.id);
       expect(w.chestRewards[0]).toMatchObject({ kind: 'evolution', id: evo.def.id, name: evo.def.name });
-      if (evo.def.gift) {
-        expect(ids).toEqual(['spark', evo.weapon, evo.def.id]);
-        expect(slotsUsed(w)).toBe(2);
-        // Un regalo solo se da una vez.
-        expect(evolutionReady(w, w.player.weapons[1])).toBeNull();
-        return;
-      }
       expect(w.player.weapons[1].id).toBe(evo.def.id);
       expect(w.player.weapons[1].dealt).toBe(123);
       expect(ids).not.toContain(evo.weapon);
@@ -182,7 +173,7 @@ describe('evoluciones', () => {
 
   it('las evoluciones no se ofrecen al subir de nivel, y sus armas base tampoco vuelven a salir', () => {
     const evolvedIds = new Set(EVOLUTIONS.map((e) => e.def.id));
-    for (const evo of EVOLUTIONS.filter((e) => !e.def.gift)) {
+    for (const evo of EVOLUTIONS) {
       const w = recipeWorld(evo);
       openChest(w);
       for (let i = 0; i < 40; i++) {
@@ -536,8 +527,6 @@ describe('equilibrio de builds (daño)', () => {
     const ws = w.player.weapons[0];
     ws.level = maxLevelOf(id);
     ws.stats = statsAt(def, ws.level);
-    // Un regalo se suma a su arma base, que se conserva: se mide con ella.
-    if (def.gift) put(w, def.evolvedFrom!);
     w.time = 300;
     w.nextEvent = WITHERED_WOODS.events.length;
     while (w.time < 390 && w.phase !== 'dead') {

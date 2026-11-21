@@ -490,8 +490,13 @@ const soleSolution: Fire = (w, ws, index) => {
   p.life = life;
   p.total = 0;
   p.vx = 0.1; // segundos entre golpes
+  p.sx = life; // duración inicial: la usa el dibujo para el fogonazo de entrada y el aviso del final
   player.hurtTimer = Math.max(player.hurtTimer, life);
-  emit(w, { type: 'shake', power: 5 });
+  // Entrada a lo grande: ondas que barren la pantalla y un temblor fuerte.
+  emit(w, { type: 'ring', x: player.x, y: player.y, radius: 340, color: 0xffffff });
+  emit(w, { type: 'ring', x: player.x, y: player.y, radius: 240, color: 0x8f7bff });
+  emit(w, { type: 'ring', x: player.x, y: player.y, radius: 140, color: 0xff7ac3 });
+  emit(w, { type: 'shake', power: 8 });
 };
 
 /** Llamas de Hechizografía: llamaradas en abanico hacia donde camina; las Cenizas, también hacia atrás. */

@@ -312,10 +312,6 @@ export const WEAPONS: WeaponDef[] = [
       L('Un tajo más', { amount: 1 }),
       L('+20 % de área y +16 de daño', { area: 4, damage: 16 }),
       L('Críticos y, cada cinco tajos, un remate vertical enorme', {}),
-      L('+16 de daño', { damage: 16 }),
-      L('Ataca más a menudo', { cooldown: -0.19 }),
-      L('Ataca más a menudo', { cooldown: -0.19 }),
-      L('Ataca más a menudo', { cooldown: -0.19 }),
     ],
   },
   {

@@ -857,23 +857,65 @@ export class Renderer {
         return;
       }
       case 'galaxy': {
-        // Galaxia: brazos de estrellas que giran sobre toda la pantalla y se recogen al final.
-        const fade = Math.min(1, shot.life, (10 - shot.life) * 2);
-        for (let arm = 0; arm < 4; arm++)
-          for (let k = 0; k < 14; k++) {
-            const r = 12 + k * 15;
-            const a = shot.angle + arm * (Math.PI / 2) + k * 0.32;
-            const star = pool.next(this.tex(k % 3 === 0 ? 'disc' : 'px'));
-            star.position.set(shot.x + Math.cos(a) * r, shot.y + Math.sin(a) * r * 0.62);
-            star.scale.set(k % 3 === 0 ? (3 + (k % 2)) / CIRCLE_RADIUS : 1);
-            star.tint = [0x8f7bff, 0x6bc5ff, 0xff7ac3, 0xffffff][(arm + k) % 4];
-            star.alpha = fade * (0.9 - k * 0.04);
-          }
-        const veil = pool.next(this.tex('disc'));
+        // Solución Única: la pantalla se oscurece y se llena de una galaxia que gira; el jugador, dentro, es intocable.
+        const elapsed = shot.sx - shot.life;
+        const fade = Math.min(1, shot.life, elapsed * 4 + 0.2);
+        const warn = shot.life < 1.2 ? 0.6 + 0.4 * Math.sin(this.clock * 30) : 1;
+        const veil = pool.next(this.tex('px'));
         veil.position.set(shot.x, shot.y);
-        veil.scale.set(230 / CIRCLE_RADIUS, 140 / CIRCLE_RADIUS);
-        veil.tint = 0x3a2f5c;
-        veil.alpha = 0.18 * fade;
+        veil.scale.set(400, 300);
+        veil.tint = 0x120a35;
+        veil.alpha = 0.42 * fade;
+        for (let k = 0; k < 3; k++) {
+          const core = pool.next(this.tex('disc'));
+          core.position.set(shot.x, shot.y);
+          core.scale.set((60 + k * 55 + Math.sin(this.clock * 5 + k) * 6) / CIRCLE_RADIUS, (36 + k * 34) / CIRCLE_RADIUS);
+          core.tint = [0xffffff, 0xb8a4ff, 0xff7ac3][k];
+          core.alpha = (0.32 - k * 0.08) * fade;
+          core.blendMode = 'add';
+        }
+        for (let arm = 0; arm < 6; arm++)
+          for (let k = 0; k < 22; k++) {
+            const r = 10 + k * 11;
+            const a = shot.angle + arm * (Math.PI / 3) + k * 0.28;
+            const star = pool.next(this.tex(k % 2 === 0 ? 'disc' : 'px'));
+            star.position.set(shot.x + Math.cos(a) * r, shot.y + Math.sin(a) * r * 0.62);
+            star.scale.set(k % 2 === 0 ? (2.5 + (k % 3) * 1.2) / CIRCLE_RADIUS : 1.2);
+            star.tint = [0xffffff, 0x8f7bff, 0x6bc5ff, 0xff7ac3, 0xffd75e][(arm + k) % 5];
+            star.alpha = fade * warn * (1 - k * 0.025);
+            star.blendMode = 'add';
+          }
+        // Ondas que salen del jugador sin parar.
+        for (let k = 0; k < 3; k++) {
+          const t = (this.clock * 0.8 + k / 3) % 1;
+          const ring = pool.next(this.tex('ring'));
+          ring.position.set(shot.x, shot.y);
+          ring.scale.set((20 + t * 300) / CIRCLE_RADIUS, ((20 + t * 300) * 0.62) / CIRCLE_RADIUS);
+          ring.tint = k % 2 ? 0xb8a4ff : 0xffffff;
+          ring.alpha = (1 - t) * 0.5 * fade;
+          ring.blendMode = 'add';
+        }
+        // Escudo dorado de invulnerabilidad alrededor del jugador.
+        const shield = pool.next(this.tex('ring'));
+        shield.position.set(shot.x, shot.y);
+        shield.scale.set((15 + Math.sin(this.clock * 8) * 1.2) / CIRCLE_RADIUS);
+        shield.tint = 0xffd75e;
+        shield.alpha = 0.9 * warn;
+        shield.blendMode = 'add';
+        const glow = pool.next(this.tex('disc'));
+        glow.position.set(shot.x, shot.y);
+        glow.scale.set(14 / CIRCLE_RADIUS);
+        glow.tint = 0xffe08a;
+        glow.alpha = 0.3 * warn;
+        glow.blendMode = 'add';
+        // Fogonazo blanco al activarse.
+        if (elapsed < 0.4) {
+          const flash = pool.next(this.tex('px'));
+          flash.position.set(shot.x, shot.y);
+          flash.scale.set(400, 300);
+          flash.alpha = 0.85 * (1 - elapsed / 0.4);
+          flash.blendMode = 'add';
+        }
         return;
       }
       case 'enemyShot': {

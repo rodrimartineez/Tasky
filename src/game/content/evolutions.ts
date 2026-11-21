@@ -7,7 +7,6 @@ import type { WeaponDef, WeaponStats } from '../sim/types';
  * tiene más niveles. Recetas:
  * - `passives`: pasivas necesarias; a cualquier nivel salvo con `maxed`, que las pide al máximo.
  * - `union`: segunda arma (o evolución), también al máximo, que se fusiona con la primera (libera su hueco).
- * - `gift`: la evolución se añade sin quitar el arma base y sin ocupar hueco.
  * El Atún Cambiante evoluciona aparte (sin pasiva, eligiendo forma: sim/upgrades.ts).
  * No importa de `weapons.ts` (que sí las importa a ellas) para evitar un ciclo.
  */
@@ -22,14 +21,14 @@ export interface EvolutionDef {
   def: WeaponDef;
 }
 
-type Recipe = { passives?: string[]; maxed?: boolean; union?: string; gift?: boolean };
+type Recipe = { passives?: string[]; maxed?: boolean; union?: string };
 
 const s = (stats: Partial<WeaponStats>): WeaponStats => ({ damage: 0, cooldown: 1, amount: 1, pierce: 999, area: 0, speed: 0, duration: 0, knockback: 0, ...stats });
 
 function evolution(
   weapon: string,
   recipe: string | Recipe,
-  def: Omit<WeaponDef, 'base' | 'levels' | 'evolvedFrom' | 'gift'>,
+  def: Omit<WeaponDef, 'base' | 'levels' | 'evolvedFrom'>,
   base: Partial<WeaponStats>,
 ): EvolutionDef {
   const r: Recipe = typeof recipe === 'string' ? { passives: [recipe] } : recipe;
@@ -38,7 +37,7 @@ function evolution(
     passives: r.passives ?? [],
     ...(r.maxed ? { maxed: true } : {}),
     ...(r.union ? { union: r.union } : {}),
-    def: { ...def, evolvedFrom: weapon, base: s(base), levels: [], ...(r.gift ? { gift: true } : {}) },
+    def: { ...def, evolvedFrom: weapon, base: s(base), levels: [] },
   };
 }
 
@@ -141,7 +140,7 @@ export const EVOLUTIONS: EvolutionDef[] = [
   ),
   evolution(
     'victory',
-    { passives: ['puzzlebox'], maxed: true, gift: true },
+    { passives: ['puzzlebox'], maxed: true },
     { id: 'sole', name: 'Solución Única', description: 'Cada 20 s, una galaxia arrasa la pantalla durante 10 s y te vuelve intocable.', icon: 'w_sole', color: 0x8f7bff },
     { damage: 32, cooldown: 20, area: 400, duration: 10 },
   ),

@@ -47,7 +47,7 @@ export function statsAt(def: WeaponDef, level: number, carry?: Partial<WeaponSta
 }
 
 /** Huecos de arma ocupados (los regalos de una evolución no ocupan hueco). */
-export const slotsUsed = (w: World) => w.player.weapons.filter((x) => !WEAPON_BY_ID.get(x.id)?.gift).length;
+export const slotsUsed = (w: World) => w.player.weapons.length;
 
 /**
  * Build completa: las seis armas y las seis pasivas, todas al máximo. Solo entonces las armas siguen subiendo
@@ -71,7 +71,8 @@ export function newWeapon(id: string): WeaponState {
   const def = WEAPON_BY_ID.get(id);
   if (!def) throw new Error(`Arma desconocida: ${id}`);
   // Las armas de recarga muy larga (Pentáculo) no se gastan nada más cogerlas, con la pantalla vacía.
-  return { id, level: 1, stats: statsAt(def, 1), timer: def.base.cooldown >= 20 ? 5 : 0.5, dealt: 0 };
+  const level = def.evolvedFrom ? maxLevelOf(def.evolvedFrom) : 1;
+  return { id, level, stats: statsAt(def, level), timer: def.base.cooldown >= 20 ? 5 : 0.5, dealt: 0 };
 }
 
 /** Recalcula las estadísticas del jugador: las iniciales de la partida más las pasivas. */
@@ -118,7 +119,7 @@ export function evolutionReady(w: World, ws: WeaponState): Evolution | null {
   if (ws.level < maxLevelOf(ws.id)) return null;
   if (isTuna(ws.id)) return (w.pendingForms ?? []).includes(w.player.weapons.indexOf(ws)) ? null : TUNA_EVOLUTION;
   const evo = EVOLUTION_BY_WEAPON.get(ws.id);
-  if (!evo || (evo.def.gift && w.player.weapons.some((x) => x.id === evo.def.id))) return null;
+  if (!evo) return null;
   return recipeMet(w, evo) ? evo : null;
 }
 
@@ -135,7 +136,7 @@ function levelMods(ws: WeaponState): Partial<WeaponStats> {
 
 /**
  * Evoluciona el arma en su mismo hueco (conserva el daño acumulado para el resumen) y devuelve lo que se muestra.
- * En una fusión, la otra arma desaparece y deja libre su hueco; un regalo se añade sin quitar nada. El atún deja
+ * En una fusión, la otra arma desaparece y deja libre su hueco. El atún deja
  * pendiente la elección de forma (sim/world.ts la muestra como una pantalla de mejora).
  */
 function evolve(w: World, ws: WeaponState, evo: Evolution): UpgradeChoice {
@@ -153,16 +154,13 @@ function evolve(w: World, ws: WeaponState, evo: Evolution): UpgradeChoice {
   const next = newWeapon(evo.def.id);
   next.level = ws.level;
   next.stats = statsAt(evo.def, ws.level);
-  if (evo.def.gift) p.weapons.push(next);
-  else {
-    next.dealt = ws.dealt;
-    next.timer = ws.timer;
-    p.weapons[p.weapons.indexOf(ws)] = next;
-    const partner = evo.union && p.weapons.find((x) => x !== next && (x.id === evo.union || x.id === evo.weapon));
-    if (partner) {
-      next.dealt += partner.dealt;
-      p.weapons.splice(p.weapons.indexOf(partner), 1);
-    }
+  next.dealt = ws.dealt;
+  next.timer = ws.timer;
+  p.weapons[p.weapons.indexOf(ws)] = next;
+  const partner = evo.union && p.weapons.find((x) => x !== next && (x.id === evo.union || x.id === evo.weapon));
+  if (partner) {
+    next.dealt += partner.dealt;
+    p.weapons.splice(p.weapons.indexOf(partner), 1);
   }
   return {
     kind: 'evolution',

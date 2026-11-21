@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Ban, Dices, Flame, Pause, Skull, SkipForward } from 'lucide-react';
 import { PASSIVE_BY_ID } from '../../../game/content/passives';
-import { WEAPON_BY_ID } from '../../../game/content/weapons';
+import { TUNA_IDS, WEAPON_BY_ID } from '../../../game/content/weapons';
 import { Game, SPEEDS, type Hud } from '../../../game/Game';
 import { MAX_PASSIVES, MAX_WEAPONS, RUN_SECONDS, type RunConfig, type RunResult, type UpgradeChoice, type World } from '../../../game/sim/types';
 import { spriteDataUrl } from '../../../game/sprites/atlas';
@@ -45,15 +45,17 @@ function Slots({
       {Array.from({ length: total }, (_, i) => {
         const item = items[i];
         const def = item && defs.get(item.id);
+        // Las formas del atún (salvo la primera) son evoluciones del Atún Exprés.
+        const evolvedItem = !!def && (!!def.evolvedFrom || (TUNA_IDS.includes(item.id) && item.id !== 'tuna1'));
         return def ? (
           <span
             key={item.id}
-            className={`${styles.slot} ${def.evolvedFrom ? styles.evolved : ''}`}
+            className={`${styles.slot} ${evolvedItem ? styles.evolved : ''}`}
             title={item.ready ? `${def.name}: ¡puede evolucionar! Abre un cofre` : def.name}
           >
             <img className={styles.slotIcon} src={spriteDataUrl(def.icon)} alt="" draggable={false} />
             {item.ready && <b className={styles.star}>★</b>}
-            <i>{def.evolvedFrom ? 'Evo' : item.level}</i>
+            <i>{evolvedItem ? 'Evo' : item.level}</i>
           </span>
         ) : (
           <span key={`empty-${i}`} className={`${styles.slot} ${styles.empty}`} />
