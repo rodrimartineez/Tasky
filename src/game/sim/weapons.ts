@@ -1160,6 +1160,9 @@ export function updateProjectiles(w: World, dt: number) {
 /** Id del arma que lanzó un proyectil. */
 const weaponOf = (w: World, p: Projectile) => w.player.weapons[p.weapon]?.id;
 
+/** Segundos que dura un proyectil enemigo (se ven cruzar la pantalla entera y seguir de largo). */
+const ENEMY_SHOT_LIFE = 10;
+
 /** Disparo de un enemigo hacia un ángulo. */
 export function enemyShot(w: World, x: number, y: number, angle: number, speed: number, damage: number, sprite = 'x_thorn') {
   const p = spawnProjectile(w, 'enemyShot', sprite, -1, x, y);
@@ -1168,6 +1171,6 @@ export function enemyShot(w: World, x: number, y: number, angle: number, speed: 
   p.angle = angle;
   p.damage = damage;
   p.radius = 3;
-  p.life = 4;
+  p.life = ENEMY_SHOT_LIFE;
 }
 

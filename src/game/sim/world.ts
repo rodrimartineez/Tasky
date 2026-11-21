@@ -237,7 +237,8 @@ function updateEnemy(w: World, e: Enemy, dt: number) {
       if (e.t1 <= 0 && dist < 230) {
         e.t1 = 5;
         const aim = Math.atan2(dy, dx);
-        for (let i = -1; i <= 1; i += 2) enemyShot(w, e.x, e.y, aim + i * 0.22, 65, e.damage * 0.8, 'x_arrow');
+        // La del centro apunta al jugador y las otras dos se abren a los lados.
+        for (let i = -1; i <= 1; i++) enemyShot(w, e.x, e.y, aim + i * 0.22, 65, e.damage * 0.8, 'x_arrow');
       }
       break;
     case 'egg':

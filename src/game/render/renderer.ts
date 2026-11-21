@@ -544,7 +544,9 @@ export class Renderer {
         spark.alpha = 0.8;
         spark.blendMode = 'add';
       }
-      const s = this.enemies.next(this.tex(e.def.sprite, e.flash > 0));
+      // Un jefe que recibe daño sin parar no se vuelve blanco: conserva su sprite y solo se enrojece un poco.
+      const s = this.enemies.next(this.tex(e.def.sprite));
+      if (e.flash > 0) s.tint = 0xffa8a8;
       s.scale.set(flip * (2 - bounce), size * bounce);
       s.position.set(e.x, e.y - 4);
     }
