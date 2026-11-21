@@ -117,6 +117,8 @@ export class Renderer {
   private textures = new Map<string, Texture>();
   private world = new Container();
   private ground!: TilingSprite;
+  /** Velo de color del escenario (niebla, penumbra), por encima de todo lo dibujado. */
+  private veil!: Sprite;
   private groundKey = '';
   private props: Pool;
   private under: Pool;
@@ -229,7 +231,8 @@ export class Renderer {
       this.textures.set(name, new Texture({ source, frame: new Rectangle(f.x, f.y, f.w, f.h) }));
     }
     this.ground = new TilingSprite({ texture: this.groundTexture('t_grass'), width: 16, height: 16 });
-    this.app.stage.addChild(this.ground, this.world);
+    this.veil = new Sprite(Texture.WHITE);
+    this.app.stage.addChild(this.ground, this.world, this.veil);
   }
 
   /** Cambia el suelo al del escenario (solo se recalcula cuando cambia). */
@@ -335,6 +338,11 @@ export class Renderer {
     this.ground.height = height;
     this.ground.tileScale.set(zoom);
     this.ground.tilePosition.set(camX, camY);
+    const style = GROUNDS[this.groundKey];
+    this.veil.width = width;
+    this.veil.height = height;
+    this.veil.tint = style.tint.color;
+    this.veil.alpha = style.tint.alpha;
 
     const halfW = width / zoom / 2 + 24;
     const halfH = height / zoom / 2 + 24;
@@ -346,7 +354,7 @@ export class Renderer {
     for (let cy = Math.floor((p.y - halfH) / PROP_CELL); cy <= Math.floor((p.y + halfH) / PROP_CELL); cy++) {
       for (let cx = Math.floor((p.x - halfW) / PROP_CELL); cx <= Math.floor((p.x + halfW) / PROP_CELL); cx++) {
         const roll = hash(cx, cy);
-        if (roll > 0.42) continue;
+        if (roll > GROUNDS[this.groundKey].density) continue;
         const s = this.props.next(this.tex(propNames[Math.floor(hash(cy, cx) * propNames.length)]));
         s.position.set(Math.round((cx + hash(cx + 7, cy)) * PROP_CELL), Math.round((cy + hash(cx, cy + 7)) * PROP_CELL));
         s.alpha = 0.9;

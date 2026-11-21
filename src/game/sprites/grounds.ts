@@ -12,51 +12,76 @@ export interface Ambient {
   twinkle?: boolean;
 }
 
-/** Suelo de cada escenario (`StageDef.ground`): dibujo de la baldosa, fondo y partículas de ambiente. */
-export const GROUNDS: Record<string, GroundStyle & { background: number; ambient: Ambient }> = {
+/** Velo de color sobre toda la escena (niebla, penumbra…): da el ambiente propio del escenario. */
+export interface Tint {
+  color: number;
+  alpha: number;
+}
+
+/** Suelo de cada escenario (`StageDef.ground`): dibujo de la baldosa, fondo, velo, densidad de decoración y partículas. */
+export const GROUNDS: Record<string, GroundStyle & { background: number; ambient: Ambient; tint: Tint; density: number }> = {
+  // Bosque: hierba esmeralda y luz cálida, con hojas y polen a la deriva.
   t_grass: {
-    base: '#1b2f24',
-    light: '#26442f',
-    dark: '#14231a',
-    accent: '#c9a74a',
+    base: '#1f3d28',
+    light: '#2c5636',
+    dark: '#15291b',
+    accent: '#e0c24f',
     pattern: 'grass',
     background: 0x12201a,
-    ambient: { colors: [0x8fbf5a, 0xc9a74a], vx: 6, vy: 9, sway: 10, alpha: 0.55 },
+    ambient: { colors: [0x9fd45a, 0xe0c24f], vx: 6, vy: 9, sway: 10, alpha: 0.55 },
+    tint: { color: 0xffe9a0, alpha: 0.03 },
+    density: 0.42,
   },
+  // Pantano: barro pardo con charcas turbias, niebla verdosa y luciérnagas.
   t_bog: {
-    base: '#1c2a2b',
-    light: '#2b403c',
-    dark: '#111b1d',
-    accent: '#6f9a4a',
+    base: '#2b2a1b',
+    light: '#3b3a25',
+    dark: '#1a190f',
+    accent: '#5fb59a',
+    extra: '#1e4a47',
     pattern: 'bog',
-    background: 0x101a1b,
-    ambient: { colors: [0xd7ff8a], vx: 0, vy: -2, sway: 8, alpha: 0.75, twinkle: true },
+    background: 0x15150c,
+    ambient: { colors: [0xd7ff8a, 0x9affc8], vx: 0, vy: -2, sway: 8, alpha: 0.8, twinkle: true },
+    tint: { color: 0x2f7a4a, alpha: 0.13 },
+    density: 0.4,
   },
+  // Cripta: grandes losas violáceas con círculos rúnicos, polvo frío y penumbra.
   t_crypt: {
-    base: '#2a2630',
-    light: '#3a3444',
-    dark: '#18151e',
-    accent: '#4c5a3c',
+    base: '#2c2836',
+    light: '#363043',
+    dark: '#13101a',
+    accent: '#4f6e3f',
+    extra: '#7d4fc4',
     pattern: 'slabs',
-    background: 0x16131c,
-    ambient: { colors: [0xb8b0c8], vx: -3, vy: -2, sway: 3, alpha: 0.3 },
+    background: 0x100d16,
+    ambient: { colors: [0xc9c0dc, 0x8f78c8], vx: -3, vy: -2, sway: 3, alpha: 0.32 },
+    tint: { color: 0x2a1450, alpha: 0.16 },
+    density: 0.36,
   },
+  // Cavernas: roca azul marino atravesada por venas de cristal luminoso.
   t_cave: {
-    base: '#1f2338',
-    light: '#2e3452',
-    dark: '#141729',
-    accent: '#5fb7e8',
+    base: '#141a30',
+    light: '#1e2748',
+    dark: '#0a0e1d',
+    accent: '#4fd0ff',
+    extra: '#9a6bff',
     pattern: 'rocks',
-    background: 0x111424,
-    ambient: { colors: [0x8fd8ff, 0xd0b8ff], vx: 0, vy: 0, sway: 2, alpha: 0.8, twinkle: true },
+    background: 0x090c18,
+    ambient: { colors: [0x8fe0ff, 0xc9a8ff], vx: 0, vy: 0, sway: 2, alpha: 0.85, twinkle: true },
+    tint: { color: 0x1a3ec8, alpha: 0.12 },
+    density: 0.34,
   },
+  // Páramo: costra volcánica casi negra con ríos de lava y ascuas que suben.
   t_ash: {
-    base: '#32231e',
-    light: '#3b2b23',
-    dark: '#1f1512',
-    accent: '#ff7a2e',
+    base: '#1f1511',
+    light: '#2d1f19',
+    dark: '#0f0907',
+    accent: '#ff6a1f',
+    extra: '#ffd25e',
     pattern: 'ash',
-    background: 0x1c130f,
-    ambient: { colors: [0xff8a3c, 0xffc35e], vx: 2, vy: -16, sway: 6, alpha: 0.8, twinkle: true },
+    background: 0x0b0605,
+    ambient: { colors: [0xff8a3c, 0xffc35e, 0x8a7d78], vx: 4, vy: -18, sway: 6, alpha: 0.85, twinkle: true },
+    tint: { color: 0x8a2200, alpha: 0.12 },
+    density: 0.36,
   },
 };

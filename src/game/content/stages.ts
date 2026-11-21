@@ -61,7 +61,7 @@ export const GLOOM_BOG: StageDef = {
   name: 'Pantano Sombrío',
   price: 4_500,
   ground: 't_bog',
-  props: ['d_reed', 'd_puddle', 'd_log', 'd_tuft', 'd_lilypads', 'd_rottenlog'],
+  props: ['d_reed', 'd_cattail', 'd_puddle', 'd_log', 'd_lilypads', 'd_rottenlog', 'd_bogshroom'],
   spawns: [
     spawn('leech', 0, 8, 0.6, 1.4),
     spawn('toad', 1, 12, 0.25, 0.9),
@@ -93,7 +93,7 @@ export const FORGOTTEN_CRYPT: StageDef = {
   name: 'Cripta Olvidada',
   price: 25_000,
   ground: 't_crypt',
-  props: ['d_tomb', 'd_bones', 'd_pillar', 'd_stone', 'd_brokencolumn', 'd_candelabra'],
+  props: ['d_tomb', 'd_coffin', 'd_skullpile', 'd_pillar', 'd_brokencolumn', 'd_candelabra', 'd_bones'],
   spawns: [
     spawn('rat', 0, 10, 1.2, 3),
     spawn('bat', 1, 12, 0.3, 1.2),
@@ -126,7 +126,7 @@ export const CRYSTAL_CAVES: StageDef = {
   name: 'Cavernas de Cristal',
   price: 75_000,
   ground: 't_cave',
-  props: ['d_crystal', 'd_rock', 'd_stalagmite', 'd_stone', 'd_crystalcluster'],
+  props: ['d_crystal', 'd_rock', 'd_stalagmite', 'd_crystalcluster', 'd_glowshroom', 'd_gemvein'],
   spawns: [
     spawn('bones', 0, 6, 0.5, 0.9),
     spawn('crystal', 1, 30, 0.12, 0.6),
@@ -157,7 +157,7 @@ export const ASH_WASTES: StageDef = {
   name: 'Páramo de Ceniza',
   price: 150_000,
   ground: 't_ash',
-  props: ['d_cinder', 'd_deadtree', 'd_rock', 'd_bones', 'd_lavarock', 'd_charredpillar'],
+  props: ['d_cinder', 'd_deadtree', 'd_obsidian', 'd_ribcage', 'd_lavarock', 'd_charredpillar'],
   spawns: [
     spawn('imp', 0, 12, 0.5, 1.6),
     spawn('bat', 0, 8, 0.4, 1),
