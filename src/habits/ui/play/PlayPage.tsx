@@ -368,7 +368,7 @@ export function PlayPage() {
             </div>
             {eco.testMode && resumable && (
               <Button variant="secondary" icon={<Play />} className={styles.play} onClick={resume} disabled={!!session}>
-                Continuar la partida de prueba
+                Continuar la partida
               </Button>
             )}
             <Button variant="primary" icon={<Swords />} className={styles.play} onClick={play} disabled={eco.available <= 0 || !!session}>
