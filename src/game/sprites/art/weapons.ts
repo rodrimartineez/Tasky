@@ -325,8 +325,8 @@ export const ART: Record<string, string[]> = {
     '....k...........',
   ],
   x_spark: ['..........', '....Y.y...', 'o..Yyyhhy.', '.YYYyhhhh.', '.yhyyhwwhy', '...Yyhhhh.', 'o...yyhhy.', '......y...'],
-  x_lance: ['....ooo.....', '.ooyyyyyyo..', 'Fyhhwwwwwwww', '...yyyyyy...', '.....oo.....'],
-  x_dawnlance: ['x.m.mm......', '.mmmohmm....', 'mmoyyyyyym..', 'myywwwwwwwww', '.mmyyyyyy...', '..mmmhm.....', 'x.m.mm......'],
+  x_lance: ['....kkkkkkk...', 'kDDYWwwwwwWkk.', 'kDDDYWWWsssSkk', 'kDDYWWssssSkk.', '....kkkkkkk...'],
+  x_dawnlance: ['....kkkkkkk...', 'kMMYhwwwwwhkk.', 'kMMMYhhhyyyYkk', 'kMMYhhyyyyYkk.', '....kkkkkkk...'],
   x_orb: [
     '....PP....',
     '..PPppPP..',

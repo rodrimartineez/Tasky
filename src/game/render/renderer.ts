@@ -687,13 +687,8 @@ export class Renderer {
         return;
       }
       case 'bounce': {
-        // Runa o pistola que rebota: gira con una estela larga y un halo.
+        // Runa o pistola que rebota: gira con una estela larga.
         const speed = Math.hypot(shot.vx, shot.vy) || 1;
-        const halo = pool.next(this.tex('disc'));
-        halo.position.set(shot.x, shot.y);
-        halo.scale.set((shot.radius * 1.6) / CIRCLE_RADIUS);
-        halo.tint = shot.sprite === 'x_gun' ? 0xf6c945 : shot.sprite === 'x_luckyblades' ? 0xff4f9a : 0x7ee8e0;
-        halo.alpha = 0.18;
         this.trail(shot, shot.vx / speed, shot.vy / speed, shot.angle, 4, 5);
         const s = pool.next(this.tex(shot.sprite));
         s.position.set(shot.x, shot.y);
@@ -842,14 +837,8 @@ export class Renderer {
         return;
       }
       case 'flare': {
-        // Llamarada: crece, sube un poco y se apaga, con un resplandor cálido (rojo oscuro en las Cenizas).
+        // Llamarada: crece, sube un poco y se apaga.
         const t = 1 - Math.max(0, shot.life) / shot.total;
-        const ash = shot.sprite === 'x_ashflame';
-        const glow = pool.next(this.tex('disc'));
-        glow.position.set(shot.x, shot.y);
-        glow.scale.set((shot.radius * 1.3) / CIRCLE_RADIUS);
-        glow.tint = ash ? 0x7a1a24 : 0xff6a2a;
-        glow.alpha = 0.25 * (1 - t);
         const s = pool.next(this.tex(shot.sprite));
         s.position.set(shot.x, shot.y - t * 4);
         s.rotation = Math.sin(shot.sx * 0.3) * 0.5;
@@ -871,7 +860,7 @@ export class Renderer {
         return;
       }
       case 'dragon': {
-        // Dragón espectral: anillos que siguen a la cabeza por su ocho, con un halo verde.
+        // Dragón espectral: anillos que siguen a la cabeza por su ocho.
         for (let k = 6; k >= 1; k--) {
           const a = shot.angle - k * 0.12;
           const seg = pool.next(this.tex('disc'));
@@ -880,11 +869,6 @@ export class Renderer {
           seg.tint = k % 2 ? 0x2c9a56 : 0x5ee08a;
           seg.alpha = 0.75;
         }
-        const halo = pool.next(this.tex('disc'));
-        halo.position.set(shot.x, shot.y);
-        halo.scale.set(14 / CIRCLE_RADIUS);
-        halo.tint = 0x5ee08a;
-        halo.alpha = 0.18 + Math.sin(this.clock * 8) * 0.06;
         const s = pool.next(this.tex(shot.sprite));
         s.position.set(shot.x, shot.y);
         s.scale.set(Math.cos(shot.angle) >= 0 ? 1 : -1, 1);
