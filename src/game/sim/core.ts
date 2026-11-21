@@ -239,6 +239,8 @@ export const ON_HIT: Record<string, (w: World, e: Enemy, dmg: number, weapon: nu
 /** Ganchos que registra sim/weapons.ts: al recibir un golpe (contraataques) y críticos especiales por arma. */
 export const HOOKS: {
   hurt?: (w: World, amount: number) => void;
+  /** Un arma (índice en `player.weapons`) abate a un enemigo. */
+  kill?: (w: World, weapon: number) => void;
   /** Probabilidad de crítico extra del arma en su estado actual. */
   crit?: (w: World, weapon: number) => number;
 } = {};
@@ -249,9 +251,36 @@ const FLAT_CRITS = new Set(['unearthly', 'spirit']);
 /** Cura de las armas (Látigo de Sangre, Engullealmas…): con tope por segundo, como el robo de vida. */
 export function healPlayer(w: World, amount: number) {
   const p = w.player;
-  const heal = Math.min(amount, p.healPool ?? 0);
-  p.healPool = (p.healPool ?? 0) - heal;
-  p.hp = Math.min(p.stats.maxHp, p.hp + heal);
+  const healed = Math.min(amount, p.healPool ?? 0);
+  p.healPool = (p.healPool ?? 0) - healed;
+  heal(w, healed);
+}
+
+/** ¿Lleva la partida esa arcana o darkana? */
+export const hasArcana = (w: World, id: string) => w.config.arcana?.includes(id) ?? false;
+
+/** Radio y umbral de la onda de la Sarabanda de la curación. */
+const SARABANDE = { radius: 90, threshold: 4 };
+
+/**
+ * Toda la curación pasa por aquí. Con la Sarabanda de la curación se duplica y la vida recuperada se devuelve como
+ * daño a los enemigos cercanos (acumulada, para que la regeneración continua no haga daño a cada fotograma).
+ */
+export function heal(w: World, amount: number) {
+  const p = w.player;
+  if (amount <= 0) return;
+  const sarabande = hasArcana(w, 'sarabande');
+  const before = p.hp;
+  p.hp = Math.min(p.stats.maxHp, p.hp + (sarabande ? amount * 2 : amount));
+  if (!sarabande) return;
+  p.healBlast = (p.healBlast ?? 0) + (p.hp - before);
+  if (p.healBlast < SARABANDE.threshold) return;
+  const damage = p.healBlast;
+  p.healBlast = 0;
+  const count = queryNear(p.x, p.y, SARABANDE.radius * p.stats.area);
+  const targets = near.slice(0, count);
+  for (const e of targets) damageEnemy(w, e, damage / p.stats.might, -1, 0, 0, true);
+  emit(w, { type: 'ring', x: p.x, y: p.y, radius: SARABANDE.radius * p.stats.area, color: 0xff7a9a });
 }
 
 /**
@@ -271,9 +300,9 @@ export function damageEnemy(w: World, e: Enemy, base: number, weapon: number, kx
   e.hp -= dmg;
   e.flash = 0.1;
   if (stats.leech > 0) {
-    const heal = Math.min(dmg * stats.leech, w.player.leechPool ?? 0);
-    w.player.leechPool = (w.player.leechPool ?? 0) - heal;
-    w.player.hp = Math.min(stats.maxHp, w.player.hp + heal);
+    const leeched = Math.min(dmg * stats.leech, w.player.leechPool ?? 0);
+    w.player.leechPool = (w.player.leechPool ?? 0) - leeched;
+    heal(w, leeched);
   }
   const resist = 1 - e.def.knockResist;
   e.kx += kx * resist;
@@ -281,7 +310,10 @@ export function damageEnemy(w: World, e: Enemy, base: number, weapon: number, kx
   if (ws) ws.dealt += dmg;
   emit(w, { type: 'number', x: e.x, y: e.y - e.radius, value: dmg, crit, player: false });
   if (ws && !secondary) ON_HIT[ws.id]?.(w, e, dmg, weapon, crit);
-  if (e.hp <= 0 && !e.dead) killEnemy(w, e);
+  if (e.hp <= 0 && !e.dead) {
+    killEnemy(w, e);
+    if (ws) HOOKS.kill?.(w, weapon);
+  }
 }
 
 /** Sudario Carmesí: tope de daño por golpe y represalia (daño recibido, con tope, +10 % por nivel de Coraza). */

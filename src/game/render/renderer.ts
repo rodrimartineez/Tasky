@@ -97,6 +97,8 @@ interface Bolt {
 
 const NUMBER_LIFE = 0.6;
 const RING_LIFE = 0.3;
+/** Duración de la animación de resurrección (algo mayor que la pausa de la simulación). */
+const REVIVE_ANIM = 1.1;
 const BOLT_LIFE = 0.18;
 const MAX_NUMBERS = 70;
 const MAX_PARTICLES = 220;
@@ -135,6 +137,8 @@ export class Renderer {
   /** Partículas de ambiente: posición en el mundo, fase del vaivén y color. */
   private motes: { x: number; y: number; phase: number; color: number }[] = [];
   private shake = 0;
+  /** Segundos que quedan de la animación de resurrección (0 = ninguna). */
+  private reviveAnim = 0;
   private clock = 0;
   private deathBurst = false;
 
@@ -297,6 +301,13 @@ export class Renderer {
         }
         points.push(f.x2, f.y2);
         this.bolts.push({ points, life: BOLT_LIFE, color: f.color });
+      } else if (f.type === 'revive') {
+        this.reviveAnim = REVIVE_ANIM;
+        for (let i = 0; i < 28 && this.particles.length < this.cap(MAX_PARTICLES); i++) {
+          const angle = (i / 28) * Math.PI * 2;
+          const speed = 70 + Math.random() * 90;
+          this.particles.push({ x: f.x, y: f.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed - 30, life: 0.5 + Math.random() * 0.4, color: i % 2 ? 0xffe08a : 0xffffff });
+        }
       } else {
         this.shake = Math.min(8, this.shake + f.power);
       }
@@ -311,6 +322,7 @@ export class Renderer {
    */
   draw(w: World, dt: number, dying: number | null = null) {
     this.clock += dt;
+    this.reviveAnim = Math.max(0, this.reviveAnim - dt);
     this.adapt(dt);
     if (dying === null) this.deathBurst = false;
     else if (!this.deathBurst) {
@@ -556,6 +568,18 @@ export class Renderer {
     if (skin) hero.tint = skin.tint;
     // Al recibir daño destella en rojo, sin volverse transparente: el personaje se ve siempre.
     if (p.hurtTimer > 0 && dying === null && Math.floor(this.clock * 20) % 2 === 0) hero.tint = 0xff7a7a;
+    // Resurrección: halo dorado que se expande y el héroe se alza con un destello blanco-dorado.
+    if (this.reviveAnim > 0 && dying === null) {
+      const t = 1 - this.reviveAnim / REVIVE_ANIM;
+      const halo = this.actors.next(this.tex('disc'));
+      halo.position.set(p.x, p.y - 2);
+      halo.scale.set((18 + t * 60) / CIRCLE_RADIUS);
+      halo.tint = 0xffe08a;
+      halo.alpha = 0.55 * (1 - t);
+      hero.position.y -= Math.sin(Math.min(1, t * 1.6) * Math.PI) * 10;
+      hero.scale.set(hero.scale.x * (1 + 0.25 * Math.sin(t * Math.PI)), 1 + 0.25 * Math.sin(t * Math.PI));
+      hero.tint = Math.floor(this.clock * 24) % 2 === 0 ? 0xffffff : 0xffe08a;
+    }
     // Escudo del Laurel: burbuja verde mientras le quede alguna carga (roja con el Sudario Carmesí).
     const shield = p.shield ?? 0;
     const shroud = p.weapons.some((x) => x.id === 'thornmail');

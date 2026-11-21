@@ -229,9 +229,9 @@ export interface RunConfig {
   difficultyScale?: number;
   /** Jefe de ciclo de esta partida (niveles múltiplos de 7) y vuelta de la rotación (0 = primera). */
   cycleBoss?: { id: string; round: number };
-  /** Arcano elegido (Fase 10): su id, para mostrarlo. Sus efectos ya van en `stats`, `difficultyScale` y `goldScale`. */
-  arcana?: string;
-  /** Multiplicador del oro de la partida (arcanos). Por defecto 1. */
+  /** Arcanas y darkanas elegidas (hasta dos): sus efectos van en `stats` o los aplica sim/arcana.ts. */
+  arcana?: string[];
+  /** Multiplicador del oro de la partida (estudios de equilibrio). Por defecto 1. */
   goldScale?: number;
   /** Aspecto del personaje (solo visual): tinte y aura. */
   skin?: { tint: number; aura?: number };
@@ -273,6 +273,13 @@ export interface Player {
   hurtTimer: number;
   /** Resurrecciones ya gastadas (recomputeStats las descuenta de las que dan las pasivas). */
   revivalsUsed?: number;
+  /** Pasivas agotadas (el Tiramisú tras su última resurrección): ya no ocupan hueco ni se ofrecen, pero siguen contando para las evoluciones. */
+  spentPassives?: string[];
+  /** Sarabanda de la curación: vida recuperada que aún no se ha convertido en daño a los enemigos cercanos. */
+  healBlast?: number;
+  /** Heredero del destino: bajas con fuego sin canjear y escalones ya ganados. */
+  heirKills?: number;
+  heirSteps?: number;
   /** Cargas del escudo (Laurel): cada una absorbe un golpe entero. */
   shield?: number;
   /** Segundos seguidos en movimiento (Viento Sacro). */
@@ -395,6 +402,8 @@ export interface Projectile {
   total: number;
   /** Enemigos ya golpeados por este proyectil. */
   hit: number[];
+  /** Rebotes que le quedan hacia otro enemigo cercano (Vals de perlas, Voluntad azul de hierro). */
+  bounces?: number;
   /** Color del haz (rayos) o del charco. */
   color?: number;
   /** Al golpear o al caer deja un charco de este radio (formas del atún). */
@@ -422,7 +431,9 @@ export type Fx =
   | { type: 'hit'; x: number; y: number; sprite: string }
   | { type: 'ring'; x: number; y: number; radius: number; color: number }
   | { type: 'line'; x: number; y: number; x2: number; y2: number; color: number }
-  | { type: 'shake'; power: number };
+  | { type: 'shake'; power: number }
+  /** Resurrección: el render anima al héroe y un halo dorado mientras la simulación hace una pausa breve. */
+  | { type: 'revive'; x: number; y: number };
 
 /**
  * Zona de peligro de los jefes. Se avisa hasta `at`; entonces:
@@ -483,6 +494,8 @@ export interface World {
   chestRewards: UpgradeChoice[];
   /** Oro del último cofre (se muestra con sus mejoras). */
   chestGold?: number;
+  /** Segundos de pausa de la simulación tras una resurrección (el render anima el momento). */
+  reviveFreeze?: number;
   /** Oleadas ya empezadas (cada minuto, sim/core.ts WAVES). */
   waves?: number;
   /** Nivel del personaje desde el que se ofrece una vez la mejora de eliminar (solo en ~1 de cada 5 partidas). */

@@ -1,5 +1,5 @@
 import { behaviourOf, hitFxOf, WEAPON_BY_ID } from '../content/weapons';
-import { damageEnemy, emit, healPlayer, HOOKS, hurtPlayer, killEnemy, near, nearestEnemy, ON_HIT, queryNear, rand } from './core';
+import { damageEnemy, emit, hasArcana, healPlayer, HOOKS, hurtPlayer, killEnemy, near, nearestEnemy, ON_HIT, queryNear, rand } from './core';
 import { statsAt } from './upgrades';
 import type { Enemy, ProjKind, Projectile, WeaponState, World } from './types';
 
@@ -77,8 +77,18 @@ function onScreen(w: World): Enemy[] {
 
 const pick = <T>(w: World, list: T[]): T | null => (list.length > 0 ? list[Math.floor(rand(w) * list.length)] : null);
 
+/** Velocidad de proyectiles del jugador; con Caos en la noche oscura oscila entre −50 % y +50 % cada 10 s y gana un 1 % por nivel. */
+function projSpeed(w: World): number {
+  const { stats, level } = w.player;
+  if (!hasArcana(w, 'chaos')) return stats.projSpeed;
+  return stats.projSpeed * (1 + 0.5 * Math.sin((w.time * Math.PI * 2) / 10)) * (1 + 0.01 * (level - 1));
+}
+
+/** Proyectiles rectos: los únicos que rebotan (Vals de perlas, Voluntad azul de hierro). */
+const BOUNCY = new Set<ProjKind>(['bolt', 'lance', 'spin']);
+
 /** Proyectil con los valores habituales del arma (daño, tamaño, vida, perforación y retroceso). */
-function shot(w: World, ws: WeaponState, index: number, kind: ProjKind, sprite: string, angle: number, speed = ws.stats.speed * w.player.stats.projSpeed) {
+function shot(w: World, ws: WeaponState, index: number, kind: ProjKind, sprite: string, angle: number, speed = ws.stats.speed * projSpeed(w)) {
   const { player } = w;
   const p = spawnProjectile(w, kind, look(ws, sprite), index, player.x, player.y);
   p.vx = Math.cos(angle) * speed;
@@ -89,6 +99,11 @@ function shot(w: World, ws: WeaponState, index: number, kind: ProjKind, sprite: 
   p.life = ws.stats.duration * player.stats.duration;
   p.pierce = ws.stats.pierce;
   p.knockback = ws.stats.knockback;
+  if (BOUNCY.has(kind)) {
+    const bounces = (hasArcana(w, 'waltz') ? 3 : 0) + (hasArcana(w, 'ironblue') ? 3 : 0);
+    if (bounces > 0) p.bounces = bounces;
+    if (hasArcana(w, 'ironblue')) p.pierce += 2;
+  }
   return p;
 }
 
@@ -202,7 +217,7 @@ const deathspiral: Fire = (w, ws, index, n) => {
 /** Cruz: al enemigo más cercano; vuelve como un bumerán. */
 const cross: Fire = (w, ws, index, n) => {
   const { player } = w;
-  const speed = ws.stats.speed * player.stats.projSpeed;
+  const speed = ws.stats.speed * projSpeed(w);
   for (let i = 0; i < n; i++) {
     const angle = aimAngle(w, 170) + (rand(w) - 0.5) * 0.3;
     const p = shot(w, ws, index, 'boomerang', 'x_boomerang', angle);
@@ -227,7 +242,7 @@ const bible: Fire = (w, ws, index, n) => {
     const p = spawnProjectile(w, 'orbit', look(ws, 'x_orb'), index, player.x, player.y);
     p.angle = (i / n) * Math.PI * 2;
     p.orbitR = ws.stats.area * player.stats.area;
-    p.vx = ws.stats.speed * player.stats.projSpeed;
+    p.vx = ws.stats.speed * projSpeed(w);
     p.damage = ws.stats.damage;
     p.radius = 7 * Math.sqrt(player.stats.area);
     p.life = life;
@@ -505,7 +520,7 @@ const misspell: Fire = (w, ws, index, n) => {
     ws.step = (ws.step ?? 0) + 1;
     const back = ws.id === 'muspell' && ws.step % 2 === 0;
     const angle = facing(w) + (back ? Math.PI : 0) + (rand(w) - 0.5) * 0.9;
-    const p = shot(w, ws, index, 'flare', 'x_flare', angle, ws.stats.speed * w.player.stats.projSpeed * 2); // alcance ×2
+    const p = shot(w, ws, index, 'flare', 'x_flare', angle, ws.stats.speed * projSpeed(w) * 2); // alcance ×2
     p.damage = ws.stats.damage + (ws.id === 'muspell' ? killBonus(w) : 0);
     p.orbitR = p.radius; // radio final de la llamarada
     p.total = p.life;
@@ -651,8 +666,8 @@ const tuna3: Fire = (w, ws, index, n) => {
     const p = shot(w, ws, index, 'leap', 'x_tuna', -Math.PI / 2);
     p.x = player.x + from * (VIEW.hw - 30) * (0.5 + rand(w) * 0.5);
     p.y = player.y + VIEW.hh;
-    p.vx = -from * ws.stats.speed * 0.45 * w.player.stats.projSpeed;
-    p.vy = -ws.stats.speed * 1.4 * w.player.stats.projSpeed;
+    p.vx = -from * ws.stats.speed * 0.45 * projSpeed(w);
+    p.vy = -ws.stats.speed * 1.4 * projSpeed(w);
     p.radius = Math.max(8, p.radius);
     p.total = 0; // 0 = en el aire; 1 = anclado al jugador
     p.life += 2;
@@ -781,6 +796,8 @@ const OWN_AMOUNT = new Set(['mana', 'cataract', 'clock', 'eternal', 'laurel', 't
 function amountOf(w: World, ws: WeaponState): number {
   if (OWN_AMOUNT.has(ws.id)) return ws.stats.amount;
   let n = ws.stats.amount + w.player.stats.amount;
+  // Principio: el arma inicial y su evolución ganan 3 proyectiles en lugar de 1 (el +1 general ya está en las estadísticas).
+  if (hasArcana(w, 'beginning') && (ws.id === w.config.startingWeapon || WEAPON_BY_ID.get(ws.id)?.evolvedFrom === w.config.startingWeapon)) n += 2;
   const behaviour = behaviourOf(ws.id);
   if (behaviour === 'phaser') n *= 4;
   if (behaviour === 'unearthly') n += comboRules(w).amount;
@@ -808,7 +825,9 @@ export function updateWeapons(w: World, dt: number) {
       }
     }
     // Viento Sacro ataca el doble de a menudo mientras se camina.
-    const rate = behaviourOf(ws.id) === 'vento' && w.player.moving ? 2 : 1;
+    let rate = behaviourOf(ws.id) === 'vento' && w.player.moving ? 2 : 1;
+    // Princesa trágica: todas las armas se recargan un 50 % más rápido al moverse.
+    if (w.player.moving && hasArcana(w, 'tragic')) rate *= 1.5;
     ws.timer -= dt * rate;
     if (ws.timer > 0) continue;
     ws.timer += ws.stats.cooldown * (ws.id === 'sole' ? 1 : w.player.stats.cooldown);
@@ -818,6 +837,8 @@ export function updateWeapons(w: World, dt: number) {
       ws.burst = (ws.burst ?? 0) + n - 1;
       ws.burstT = def.interval;
     } else fire(w, ws, i, n);
+    // Niebla de zafiro: a veces el arma vuelve a atacar casi al instante.
+    if (hasArcana(w, 'sapphire') && rand(w) < 0.25) ws.timer = Math.min(ws.timer, 0.15);
   }
   flush();
 }
@@ -845,8 +866,23 @@ function hitLine(w: World, p: Projectile) {
       deferred.push(() => pool(w, weapon, 'x_bubble', x, y, splash, damage * 0.5, Math.max(0.4, total + 0.3), 0.35, BUBBLES));
       p.splash = undefined;
     }
+    if (p.bounces && bounceToNext(w, p)) p.pierce += 1; // el rebote no gasta la perforación
     if (p.hit.length >= p.pierce) p.dead = true;
   }
+}
+
+/** Desvía el proyectil hacia el enemigo más cercano que aún no ha golpeado. Devuelve si ha rebotado. */
+function bounceToNext(w: World, p: Projectile): boolean {
+  const prey = nearestEnemy(w, p.x, p.y, 220, p.hit);
+  if (!prey) return false;
+  const speed = Math.hypot(p.vx, p.vy) || 1;
+  const angle = Math.atan2(prey.y - p.y, prey.x - p.x);
+  p.vx = Math.cos(angle) * speed;
+  p.vy = Math.sin(angle) * speed;
+  p.angle = angle;
+  p.bounces = (p.bounces ?? 1) - 1;
+  p.life = Math.max(p.life, 0.8);
+  return true;
 }
 
 /** Rebota en los bordes de la pantalla (alrededor del jugador). Devuelve si ha rebotado. */

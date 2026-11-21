@@ -1,10 +1,10 @@
 import { CYCLE_BOSS_AT } from '../content/bosses';
 import { ENEMY_BY_ID } from '../content/enemies';
 import { EGG_HATCH, reaperStrike, spawnCycleBoss, spawnReaper, updateCycleBoss, updateHazards } from './bosses';
-import { championChance, curseOf, emit, hurtPlayer, maxEnemies, near, queryNear, rand, rebuildGrid, ringPoint, spawnEnemy, WAVES, waveFactor } from './core';
+import { championChance, curseOf, emit, hasArcana, heal, HOOKS, hurtPlayer, maxEnemies, near, queryNear, rand, rebuildGrid, ringPoint, spawnEnemy, WAVES, waveFactor } from './core';
 import { runDensity, survivalBonus } from './difficulty';
 import { MAX_WEAPONS, RUN_SECONDS, TIMELINE, type Enemy, type RunConfig, type RunResult, type World } from './types';
-import { WEAPON_BY_ID } from '../content/weapons';
+import { isFireWeapon, WEAPON_BY_ID } from '../content/weapons';
 import { PASSIVE_BY_ID } from '../content/passives';
 import { applyChoice, applyForm, formChoices, newWeapon, openChest, recomputeStats, rollChoices, statsAt } from './upgrades';
 import { enemyShot, updateProjectiles, updateWeapons } from './weapons';
@@ -365,7 +365,7 @@ function updatePickups(w: World, dt: number) {
       item.dead = true;
       if (item.kind === 'xp') gainXp(w, item.value);
       else if (item.kind === 'coin') w.gold += item.value * p.stats.greed;
-      else if (item.kind === 'heart') p.hp = Math.min(p.stats.maxHp, p.hp + p.stats.maxHp * item.value);
+      else if (item.kind === 'heart') heal(w, p.stats.maxHp * item.value);
       else if (item.kind === 'chest') openChest(w, item.value > 1);
       else for (const other of w.pickups) if (other.kind === 'xp') other.pulled = true; // imán
       continue;
@@ -391,6 +391,10 @@ function compact<T extends { dead: boolean }>(list: T[]) {
  */
 export function step(w: World, dt: number, moveX: number, moveY: number) {
   if (w.phase !== 'playing') return;
+  if ((w.reviveFreeze ?? 0) > 0) {
+    w.reviveFreeze! -= dt;
+    return;
+  }
   w.time += dt;
   const p = w.player;
 
@@ -408,7 +412,7 @@ export function step(w: World, dt: number, moveX: number, moveY: number) {
   p.hurtTimer -= dt;
   p.moveTime = p.moving ? (p.moveTime ?? 0) + dt : 0;
   p.healPool = Math.min(p.stats.maxHp * 0.03, (p.healPool ?? 0) + p.stats.maxHp * 0.03 * dt);
-  if (p.stats.regen > 0) p.hp = Math.min(p.stats.maxHp, p.hp + p.stats.regen * dt);
+  if (p.stats.regen > 0) heal(w, p.stats.regen * dt);
   if (p.stats.leech > 0) p.leechPool = Math.min(p.stats.maxHp * 0.01, (p.leechPool ?? 0) + p.stats.maxHp * 0.01 * dt);
 
   updateSpawns(w, dt);
@@ -435,17 +439,41 @@ export function step(w: World, dt: number, moveX: number, moveY: number) {
   if ((w.pendingForms?.length ?? 0) > 0 || w.pendingLevels > 0) continueLevelUps(w);
 }
 
-/** Segundos de invulnerabilidad al revivir. */
-const REVIVE_GRACE = 3;
+/** Heredero del destino: bajas con fuego necesarias por escalón y escalones máximos. */
+const HEIR = { kills: 25, steps: 60 };
+
+HOOKS.kill = (w, weapon) => {
+  const p = w.player;
+  const id = p.weapons[weapon]?.id;
+  if (!id || !hasArcana(w, 'heir') || !isFireWeapon(id) || (p.heirSteps ?? 0) >= HEIR.steps) return;
+  p.heirKills = (p.heirKills ?? 0) + 1;
+  if (p.heirKills < HEIR.kills) return;
+  p.heirKills = 0;
+  p.heirSteps = (p.heirSteps ?? 0) + 1;
+  recomputeStats(w);
+};
+
+/** Segundos de invulnerabilidad al revivir (cuentan una vez acabada la pausa). */
+const REVIVE_GRACE = 1;
+/** Pausa de la simulación al revivir: da tiempo a ver la animación. */
+const REVIVE_FREEZE = 0.8;
 const REVIVE_RADIUS = 160;
 
-/** Revive con media vida, aparta a los enemigos cercanos y da unos segundos de invulnerabilidad. */
+/** Revive con media vida, aparta a los enemigos cercanos y da un segundo de invulnerabilidad tras una breve pausa. */
 function revive(w: World) {
   const p = w.player;
   p.stats.revival -= 1;
   p.revivalsUsed = (p.revivalsUsed ?? 0) + 1;
   p.hp = p.stats.maxHp * 0.5;
   p.hurtTimer = REVIVE_GRACE;
+  w.reviveFreeze = REVIVE_FREEZE;
+  // Con la segunda (última) resurrección del Tiramisú, la pasiva se agota y libera su hueco; las evoluciones ya logradas se conservan.
+  const tiramisu = PASSIVE_BY_ID.get('tiramisu');
+  if (tiramisu && p.passives.some((x) => x.id === 'tiramisu') && p.revivalsUsed >= (w.config.stats.revival ?? 0) + tiramisu.maxLevel) {
+    p.passives = p.passives.filter((x) => x.id !== 'tiramisu');
+    p.spentPassives = [...(p.spentPassives ?? []), 'tiramisu'];
+    recomputeStats(w);
+  }
   for (const e of w.enemies) {
     const dx = e.x - p.x;
     const dy = e.y - p.y;
@@ -454,7 +482,7 @@ function revive(w: World) {
     e.x = p.x + (dx / d) * REVIVE_RADIUS;
     e.y = p.y + (dy / d) * REVIVE_RADIUS;
   }
-  w.fx.push({ type: 'ring', x: p.x, y: p.y, radius: REVIVE_RADIUS, color: 0xffe08a }, { type: 'shake', power: 6 });
+  w.fx.push({ type: 'ring', x: p.x, y: p.y, radius: REVIVE_RADIUS, color: 0xffe08a }, { type: 'ring', x: p.x, y: p.y, radius: REVIVE_RADIUS * 0.5, color: 0xffffff }, { type: 'shake', power: 6 }, { type: 'revive', x: p.x, y: p.y });
 }
 
 /** Elige una de las opciones de la subida de nivel y reanuda la partida (o abre la siguiente). */

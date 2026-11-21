@@ -1,11 +1,12 @@
 import type { LocalDate, Timestamp } from '../../core/model';
-import { ARCANA_BY_ID } from '../../game/content/arcana';
+import { ARCANA_BY_ID, MAX_ARCANA } from '../../game/content/arcana';
 import { CHARACTER_BY_ID } from '../../game/content/characters';
 import { SKIN_BY_ID } from '../../game/content/skins';
 import { STAGE_BY_ID } from '../../game/content/stages';
 import { UPGRADE_BY_ID } from '../../game/content/upgrades';
 import type { RunMode } from '../../game/sim/types';
 import { periodStart } from './periods';
+import { achieved, recordsOf } from './records';
 import type { HabitsData, LedgerEntry } from './model';
 import { dateInZone } from './periods';
 import { GAME_RELEASE, type GameRelease } from './release';
@@ -31,8 +32,8 @@ export interface RunRecord {
   mode: RunMode;
   character: string;
   stage: string;
-  /** Arcano de la partida (Fase 10), si llevaba uno. */
-  arcana: string | null;
+  /** Arcanas y darkanas de la partida (hasta dos). */
+  arcana: string[];
   startedAt: Timestamp;
   /** null = en curso (empezada y sin resultado). */
   /** `won` = nivel superado. */
@@ -46,7 +47,7 @@ export interface Economy {
   gold: number;
   /** Nivel comprado de cada mejora permanente. */
   upgrades: Record<string, number>;
-  /** Contenido desbloqueado con oro (`character:<id>`, `stage:<id>`, `skin:<id>`, `arcana:<id>`). */
+  /** Contenido desbloqueado con oro (`character:<id>`, `stage:<id>`, `skin:<id>`). */
   unlocked: Set<string>;
   runs: RunRecord[];
   /** Partida empezada y sin terminar (como mucho una). */
@@ -126,7 +127,7 @@ export function isFree(key: string): boolean {
   return false;
 }
 
-/** Precio en oro de lo que se desbloquea: `character:`, `stage:`, `skin:` (aspectos) y `arcana:` (arcanos). */
+/** Precio en oro de lo que se desbloquea: `character:`, `stage:` y `skin:` (aspectos). Las arcanas no se compran: las da un logro. */
 export function priceOf(key: string): number {
   const [kind, id] = key.split(':');
   const price =
@@ -134,11 +135,9 @@ export function priceOf(key: string): number {
       ? CHARACTER_BY_ID.get(id)?.price
       : kind === 'stage'
         ? STAGE_BY_ID.get(id)?.price
-        : kind === 'arcana'
-          ? ARCANA_BY_ID.get(id)?.price
-          : kind === 'skin'
-            ? SKIN_BY_ID.get(id)?.price || undefined
-            : undefined;
+        : kind === 'skin'
+          ? SKIN_BY_ID.get(id)?.price || undefined
+          : undefined;
   return price ?? Infinity;
 }
 
@@ -238,7 +237,7 @@ export function economyOf(data: HabitsData, today: LocalDate, release: GameRelea
           mode,
           character: String(e.details?.character ?? 'wanderer'),
           stage: String(e.details?.stage ?? 'withered_woods'),
-          arcana: typeof e.details?.arcana === 'string' ? e.details.arcana : null,
+          arcana: typeof e.details?.arcana === 'string' ? e.details.arcana.split(',').filter((id) => ARCANA_BY_ID.has(id)) : [],
           startedAt: e.createdAt,
           result: null,
         };
@@ -316,7 +315,7 @@ export function buyUpgrade(data: HabitsData, upgrade: string, today: LocalDate, 
   return append(data, entry(upgradeId(upgrade, level), 'upgrade', now, { points: -cost }));
 }
 
-/** Desbloquea con oro un personaje, escenario, aspecto o arcano (ver `priceOf`). */
+/** Desbloquea con oro un personaje, escenario o aspecto (ver `priceOf`). */
 export function unlock(data: HabitsData, key: string, today: LocalDate, now: Timestamp, release: GameRelease = GAME_RELEASE): HabitsData {
   const eco = economyOf(data, today, release);
   if (isUnlocked(eco, key)) return data;
@@ -341,8 +340,8 @@ export function startRun(
   /** Ayuda de vuelta aplicada (0 = ninguna), para el historial. */
   comeback = 0,
   release: GameRelease = GAME_RELEASE,
-  /** Arcano elegido para esta partida (B3), o null. */
-  arcana: string | null = null,
+  /** Arcanas y darkanas elegidas para esta partida (hasta dos, cada una desbloqueada por su logro). */
+  arcana: string[] = [],
 ): { data: HabitsData; attempt: number; level: number } {
   // Las partidas de prueba no se guardan: no pasan por aquí.
   if (release.testMode) throw new EconomyError('En el modo de pruebas las partidas no se registran.');
@@ -352,12 +351,15 @@ export function startRun(
   if (!modeUnlocked(eco, mode)) throw new EconomyError('Esa modalidad aún está bloqueada.');
   if (!isUnlocked(eco, `character:${character}`) || !isUnlocked(eco, `stage:${stage}`))
     throw new EconomyError('Ese contenido aún está bloqueado.');
-  if (arcana && !isUnlocked(eco, `arcana:${arcana}`)) throw new EconomyError('Ese arcano aún está bloqueado.');
+  if (arcana.length > MAX_ARCANA || new Set(arcana).size !== arcana.length) throw new EconomyError(`Como mucho ${MAX_ARCANA} cartas distintas por partida.`);
+  const earned = achieved(recordsOf(eco, data));
+  if (arcana.some((id) => !ARCANA_BY_ID.has(id) || !earned.has(ARCANA_BY_ID.get(id)!.achievement)))
+    throw new EconomyError('Esa carta aún está bloqueada: se desbloquea con su logro de hábitos.');
   const attempt = eco.attemptsUsed + 1;
   const level = eco.nextLevel;
   const details: Record<string, string | number> = { character, stage, level, mode };
   if (comeback > 0) details.comeback = Math.round(comeback * 100) / 100;
-  if (arcana) details.arcana = arcana;
+  if (arcana.length > 0) details.arcana = arcana.join(',');
   return { data: append(data, entry(runId(attempt, release), 'run_start', now, { details })), attempt, level };
 }
 

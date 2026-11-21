@@ -244,7 +244,7 @@ constante (§11, `ANALISIS_ECONOMIA.md` §11). Objetivo original de la Fase 1 (c
 | Fase 5c — Builds y economía: 16 evoluciones, armas Rebote/Dron/Estela, pasivas Ojo de águila y Colmillo de sangre, mejoras Segunda vida/Repetir/Descartar (con puntos), 4 personajes legendarios hasta 10 M de oro, bonificación de oro por supervivencia, escudo cada 60 días, modo de pruebas (§10), motor gráfico con alternativas para móvil | ✅ 169 tests (36 de builds, economía con temporadas y modo de pruebas, revivir). WebKit con iPhone 14 (WebGL y canvas) y navegador de escritorio con build sin conexión: campamento de pruebas, partida con legendario, pausa y guardado, sin errores. Pendiente: iPhone real |
 | Cambios previos a la Fase 6: selector del modo de pruebas (herramienta de desarrollo, por dispositivo, §10), apartado Catálogo (armas, pasivas y evoluciones desde `game/content/catalog.ts`), cabecera opaca con separación bajo la zona segura en móvil | ✅ 176 tests (alternar modos sin crear ni perder nada, catálogo frente a las definiciones). WebKit con iPhone 14 y Chromium de escritorio con la CSP de producción: alternar, partida real, partida de prueba, recarga, catálogo (16 + 14 + 16) y cabecera; sin errores. Pendiente: iPhone real |
 | Fase 8 — Escalada dentro de la partida (daño ×4 al minuto 30, veteranos, «Amenaza ×N»), bot que busca evoluciones, curva de niveles y oro recalibrados con Constancia (§17) | ✅ 215 tests, `tsc`, `eslint`, build. Estudios de frontera, progresión, jefes, ritmo y «quedarse quieto» (`ANALISIS_ECONOMIA.md` §14). Navegador: HUD de amenaza, Proyectos sin cambios. **Pendiente:** iPhone real, Tauri, sincronización entre dos dispositivos y MCP en uso real |
-| Fase 10 — Logros (22) y estadísticas en la pestaña «Logros», 5 arcanos y 7 aspectos con oro o logros (§18) | ✅ Tests de logros, estadísticas, precios y arcanos (nunca facilitan, registrados en la partida). Navegador escritorio y móvil 375 px: Logros, campamento (arcano, aspecto, bloqueos, diálogo de logro) y partida con aspecto; sin errores de consola |
+| Fase 10 — Logros (22) y estadísticas en la pestaña «Logros», 5 arcanos (sustituidos después por 8 arcanas y darkanas desbloqueadas con logros de hábitos, §18) y 7 aspectos con oro o logros (§18) | ✅ Tests de logros, estadísticas, precios y arcanos (nunca facilitan, registrados en la partida). Navegador escritorio y móvil 375 px: Logros, campamento (arcano, aspecto, bloqueos, diálogo de logro) y partida con aspecto; sin errores de consola |
 
 Notas de la Fase 3:
 - **Equilibrio provisional** (bot de `sim/bot.ts`, 4 semillas por perfil): sin mejoras 2–12 min; «1 mes» 11–22 min;
@@ -500,13 +500,16 @@ saltos, invocaciones, lluvias y anillos, cada jefe tiene ataques propios avisado
 
 - **Logros y estadísticas:** `core/records.ts` (`recordsOf`, `ACHIEVEMENTS`, `achieved`) y la pestaña «Logros»
   (`ui/RecordsPage.tsx`). Se deducen del ledger; no hay datos nuevos ni cambios en Supabase.
-- **Arcanos:** `game/content/arcana.ts`. Se desbloquean con oro (`unlock:<temporada>:arcana:<id>`), se eligen en el
-  campamento y `startRun` guarda el elegido en `details.arcana` (y lo rechaza si no está desbloqueado).
-  `buildRunConfig` aplica sus cambios: personaje (`stats`), dureza (`difficultyScale`) y oro (`goldScale`, que usan
-  `runGold` y `survivalBonus`).
+- **Arcanas y darkanas:** `game/content/arcana.ts` (8 cartas adaptadas de Vampire Survivors; 2 son darkanas). No cuestan
+  oro: cada una se desbloquea sola al cumplir su logro de hábitos (`achievement`: Racha de 7/30/100, 50/250/1000
+  cumplidos, 100.000 y 1.000.000 puntos). Se eligen hasta dos en el campamento (la sección solo aparece con al menos una
+  desbloqueada) y `startRun` las guarda en `details.arcana` (ids separados por comas) y rechaza las bloqueadas. Sus efectos
+  son estadísticas (`apply`, vía `buildRunConfig`) o reglas de la simulación que consultan `RunConfig.arcana`
+  (`hasArcana`): curación en `sim/core.ts`, proyectiles, cadencia y recarga en `sim/weapons.ts`, Heredero del destino en
+  `sim/world.ts`. Los logros del propio juego nunca desbloquean cartas.
 - **Aspectos:** `game/content/skins.ts`. Con oro (`unlock:…:skin:<id>`) o por un logro (no se pueden comprar). Solo
   visuales: `config.skin` (tinte y aura) lo dibuja el renderizador.
-- La elección de arcano y aspecto se guarda en el dispositivo (`tasky-game-extras`).
+- La elección de cartas y aspecto se guarda en el dispositivo (`tasky-game-extras`).
 
 ## 19. Progreso (antes «Recompensas», 12/11/2026)
 

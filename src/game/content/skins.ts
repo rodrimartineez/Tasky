@@ -21,7 +21,7 @@ export const SKINS: SkinDef[] = [
   { id: 'moss', name: 'Musgo', tint: 0xb4f0a0, price: 30_000 },
   { id: 'shade', name: 'Sombra', tint: 0x9a8cc8, aura: 0x6a4fd0, price: 120_000 },
   { id: 'gilded', name: 'Dorado', tint: 0xffe08a, aura: 0xffc23d, price: 0, achievement: 'level_30' },
-  { id: 'spirit', name: 'Espíritu', tint: 0xd8f4ff, aura: 0x7fe3ff, price: 0, achievement: 'streak_100' },
+  { id: 'spirit', name: 'Espíritu', tint: 0xd8f4ff, aura: 0x7fe3ff, price: 0, achievement: 'kills_1000000' },
   { id: 'reaper', name: 'Segador', tint: 0xc9c2d6, aura: 0xe5484d, price: 0, achievement: 'level_100' },
 ];
 

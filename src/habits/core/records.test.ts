@@ -2,9 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { ARCANA } from '../../game/content/arcana';
 import { buildRunConfig } from '../../game/content/run';
 import { SKINS } from '../../game/content/skins';
-import { runGold, runHp } from '../../game/sim/difficulty';
 import { emptyHabitsData } from './data';
-import { economyOf, EconomyError, finishRun, priceOf, startRun, unlock } from './economy';
+import { economyOf, EconomyError, finishRun, priceOf, startRun } from './economy';
 import { ensureProfile } from './habits';
 import type { HabitsData, LedgerEntry } from './model';
 import { ACHIEVEMENTS, achieved, achievementsOf, recordsOf } from './records';
@@ -37,7 +36,7 @@ function play(
   d: HabitsData,
   at: number,
   result: { gold: number; time: number; kills: number; won: boolean; xpLevel: number },
-  arcana: string | null = null,
+  arcana: string[] = [],
 ) {
   const started = startRun(d, 'wanderer', 'withered_woods', 'normal', START, T(at), 0, PROD, arcana);
   return finishRun(started.data, started.attempt, result, T(at + 1), PROD);
@@ -84,27 +83,27 @@ describe('estadísticas y logros (Fase 10)', () => {
   });
 });
 
-describe('arcanos (Fase 10)', () => {
-  it('nunca facilitan la partida y siempre pagan más oro', () => {
-    const base = buildRunConfig(10, 'wanderer', 'withered_woods', {});
-    for (const a of ARCANA) {
-      const config = buildRunConfig(10, 'wanderer', 'withered_woods', {}, { arcana: a.id });
-      expect(config.arcana).toBe(a.id);
-      expect(runHp(config)).toBeGreaterThanOrEqual(runHp(base));
-      expect(runGold(config)).toBeGreaterThan(runGold(base));
-    }
+describe('arcanas y darkanas', () => {
+  it('cada carta tiene su propio logro de hábitos, y los de juego no desbloquean cartas', () => {
+    const achievements = ARCANA.map((a) => a.achievement);
+    expect(new Set(achievements).size).toBe(ARCANA.length);
+    for (const id of achievements) expect(ACHIEVEMENTS.find((a) => a.id === id)?.group, id).toBe('habits');
   });
 
-  it('hay que desbloquearlos con oro y quedan registrados en la partida', () => {
-    const d = withRewards(3);
-    expect(() => startRun(d, 'wanderer', 'withered_woods', 'normal', START, T(1), 0, PROD, 'blood')).toThrow(EconomyError);
-    const rich = { ...d, ledger: [...d.ledger, reward('reward:gold', 0, null)] };
-    // Oro de una partida para pagar el arcano.
-    let e = play(rich, 1, { gold: 25_000, time: 600, kills: 10, won: false, xpLevel: 5 });
-    e = unlock(e, 'arcana:blood', START, T(3), PROD);
-    e = play(e, 5, { gold: 10, time: 60, kills: 1, won: false, xpLevel: 1 }, 'blood');
-    const eco = economyOf(e, START, PROD);
-    expect(eco.gold).toBe(25_000 - 20_000 + 10);
-    expect(eco.runs.at(-1)?.arcana).toBe('blood');
+  it('se configuran en la partida (hasta dos) y no se compran', () => {
+    for (const a of ARCANA) {
+      expect(buildRunConfig(10, 'wanderer', 'withered_woods', {}, { arcana: [a.id] }).arcana).toEqual([a.id]);
+      expect(priceOf(`arcana:${a.id}`)).toBe(Infinity);
+    }
+    const config = buildRunConfig(10, 'wanderer', 'withered_woods', {}, { arcana: ['chaos', 'tragic', 'waltz'] });
+    expect(config.arcana).toEqual(['chaos', 'tragic']);
+  });
+
+  it('solo se pueden llevar si se ha cumplido su logro y quedan registradas en la partida', () => {
+    const d = withRewards(8); // racha de 8: logro «Racha de 7» (Caos en la noche oscura)
+    expect(() => startRun(d, 'wanderer', 'withered_woods', 'normal', START, T(1), 0, PROD, ['waltz'])).toThrow(EconomyError);
+    expect(() => startRun(d, 'wanderer', 'withered_woods', 'normal', START, T(1), 0, PROD, ['chaos', 'chaos'])).toThrow(EconomyError);
+    const e = play(d, 1, { gold: 10, time: 60, kills: 1, won: false, xpLevel: 1 }, ['chaos']);
+    expect(economyOf(e, START, PROD).runs.at(-1)?.arcana).toEqual(['chaos']);
   });
 });

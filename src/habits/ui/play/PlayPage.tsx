@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { FlaskConical, HeartHandshake, Lock, Play, Swords } from 'lucide-react';
-import { ARCANA } from '../../../game/content/arcana';
+import { ARCANA, MAX_ARCANA } from '../../../game/content/arcana';
 import { CHARACTERS } from '../../../game/content/characters';
 import { buildRunConfig } from '../../../game/content/run';
 import { SKINS } from '../../../game/content/skins';
@@ -45,14 +45,14 @@ const MODES: { id: RunMode; name: string }[] = [
   { id: 'mirror', name: 'Reflejo' },
 ];
 
-/** Arcano y aspecto elegidos: preferencia de este dispositivo (no cambian la progresión, no hace falta sincronizarlos). */
+/** Arcanas, darkanas y aspecto elegidos: preferencia de este dispositivo (no cambian la progresión, no hace falta sincronizarlos). */
 const EXTRAS_KEY = 'tasky-game-extras';
-function loadExtras(): { arcana: string | null; skin: string | null } {
+function loadExtras(): { arcana: string[]; skin: string | null } {
   try {
-    const saved = JSON.parse(localStorage.getItem(EXTRAS_KEY) ?? 'null') as { arcana?: string | null; skin?: string | null } | null;
-    return { arcana: saved?.arcana ?? null, skin: saved?.skin ?? null };
+    const saved = JSON.parse(localStorage.getItem(EXTRAS_KEY) ?? 'null') as { arcana?: unknown; skin?: string | null } | null;
+    return { arcana: Array.isArray(saved?.arcana) ? saved.arcana.filter((id): id is string => typeof id === 'string') : [], skin: saved?.skin ?? null };
   } catch {
-    return { arcana: null, skin: null };
+    return { arcana: [], skin: null };
   }
 }
 
@@ -69,7 +69,7 @@ function attempt(action: () => void) {
   }
 }
 
-type Kind = 'character' | 'stage' | 'arcana' | 'skin';
+type Kind = 'character' | 'stage' | 'skin';
 
 /** Campamento: partidas disponibles, nivel siguiente, personaje y escenario. */
 export function PlayPage() {
@@ -141,8 +141,11 @@ export function PlayPage() {
   const character = profile && isUnlocked(eco, `character:${profile.character}`) ? profile.character : 'wanderer';
   const stage = profile && isUnlocked(eco, `stage:${profile.stage}`) ? profile.stage : 'withered_woods';
   const stageDef = STAGES.find((s) => s.id === stage) ?? STAGES[0];
+  // Cartas de arcana y darkana: cada una se desbloquea con su logro de hábitos (no se compran).
+  const cardOwned = (def: (typeof ARCANA)[number]) => eco.testMode || earned.has(def.achievement);
+  const cardsOwned = ARCANA.filter(cardOwned).length;
   // Lo elegido puede haber dejado de estar disponible (al salir del modo de pruebas): entonces, nada.
-  const arcana = extras.arcana && isUnlocked(eco, `arcana:${extras.arcana}`) ? extras.arcana : null;
+  const arcana = extras.arcana.filter((id) => ARCANA.some((a) => a.id === id && cardOwned(a))).slice(0, MAX_ARCANA);
   const skin = extras.skin && skinOwned(extras.skin) ? extras.skin : null;
   const heroSprite = CHARACTERS.find((c) => c.id === character)?.sprite ?? 'hero';
 
@@ -199,8 +202,7 @@ export function PlayPage() {
   };
 
   const select = (kind: Kind, id: string | null) => {
-    if (kind === 'arcana') saveExtras({ arcana: id });
-    else if (kind === 'skin') saveExtras({ skin: id });
+    if (kind === 'skin') saveExtras({ skin: id });
     else if (id) attempt(() => setLoadout(kind === 'character' ? id : character, kind === 'stage' ? id : stage));
   };
   /** Personaje tocado: se muestran las armas con las que empieza (esté comprado o no). */
@@ -214,9 +216,16 @@ export function PlayPage() {
     const key = `${kind}:${id}`;
     const owned = kind === 'skin' ? skinOwned(id) : isUnlocked(eco, key);
     if (!owned) return setBuying(key);
-    // Arcano y aspecto se quitan volviendo a pulsarlos.
-    const current = kind === 'arcana' ? arcana : kind === 'skin' ? skin : null;
-    select(kind, current === id ? null : id);
+    // El aspecto se quita volviendo a pulsarlo.
+    select(kind, kind === 'skin' && skin === id ? null : id);
+  };
+
+  /** Carta tocada: se activa o se quita (hasta dos); si está bloqueada, explica cómo conseguirla. */
+  const toggleCard = (def: (typeof ARCANA)[number]) => {
+    if (!cardOwned(def)) return toast(`Se desbloquea con el logro «${ACHIEVEMENTS.find((a) => a.id === def.achievement)?.name}».`);
+    if (arcana.includes(def.id)) return saveExtras({ arcana: arcana.filter((id) => id !== def.id) });
+    if (arcana.length >= MAX_ARCANA) return toast(`Como mucho ${MAX_ARCANA} cartas por partida: quita una antes.`, 'error');
+    saveExtras({ arcana: [...arcana, def.id] });
   };
 
   const confirmBuy = () => {
@@ -235,8 +244,7 @@ export function PlayPage() {
     const locked = [
       ...CHARACTERS.map((c) => ({ key: `character:${c.id}`, name: c.name, price: c.price })),
       ...STAGES.map((s) => ({ key: `stage:${s.id}`, name: s.name, price: s.price })),
-      // Usos del oro cuando ya está todo lo demás (D1): arcanos y aspectos.
-      ...ARCANA.map((a) => ({ key: `arcana:${a.id}`, name: `Arcano ${a.name}`, price: a.price })),
+      // Usos del oro cuando ya está todo lo demás (D1): aspectos.
       ...SKINS.filter((s) => s.price > 0).map((s) => ({ key: `skin:${s.id}`, name: `Aspecto ${s.name}`, price: s.price })),
     ]
       .filter((x) => !isUnlocked(eco, x.key))
@@ -252,7 +260,6 @@ export function PlayPage() {
     buying &&
     (CHARACTERS.find((c) => `character:${c.id}` === buying)?.name ??
       STAGES.find((s) => `stage:${s.id}` === buying)?.name ??
-      ARCANA.find((a) => `arcana:${a.id}` === buying)?.name ??
       SKINS.find((s) => `skin:${s.id}` === buying)?.name);
   // Un aspecto de logro no se compra: el diálogo explica cómo conseguirlo.
   const buyingSkin = buying?.startsWith('skin:') ? SKINS.find((s) => `skin:${s.id}` === buying) : undefined;
@@ -507,36 +514,40 @@ export function PlayPage() {
         </div>
       </section>
 
-      <section className={styles.section}>
-        <h2 className={styles.heading}>Arcano</h2>
-        <p className={styles.sectionText}>
-          Opcional: un modificador para la próxima partida, con más riesgo y más oro. Nunca la hace más fácil. Pulsa otra vez para quitarlo.
-        </p>
-        <div className={styles.grid}>
-          {ARCANA.map((a) => {
-            const unlocked = isUnlocked(eco, `arcana:${a.id}`);
-            return (
-              <button
-                key={a.id}
-                type="button"
-                className={`${styles.option} ${a.id === arcana ? styles.selected : ''} ${unlocked ? '' : styles.locked}`}
-                onClick={() => choose('arcana', a.id)}
-                disabled={!!open}
-                aria-pressed={a.id === arcana}
-              >
-                <img className={styles.sprite} src={spriteDataUrl(a.icon)} alt="" draggable={false} />
-                <span className={styles.optionName}>{a.name}</span>
-                <span className={styles.optionText}>{a.text}</span>
-                {!unlocked && (
-                  <span className={styles.price}>
-                    <Lock /> <CoinIcon size={12} /> {gold(a.price)}
+      {cardsOwned > 0 && (
+        <section className={styles.section}>
+          <h2 className={styles.heading}>Arcanas y darkanas</h2>
+          <p className={styles.sectionText}>
+            Elige hasta {MAX_ARCANA} cartas para la próxima partida. Se desbloquean solas al cumplir su logro de hábitos. Pulsa otra vez para quitarla.
+          </p>
+          <div className={styles.grid}>
+            {ARCANA.map((a) => {
+              const owned = cardOwned(a);
+              return (
+                <button
+                  key={a.id}
+                  type="button"
+                  className={`${styles.option} ${arcana.includes(a.id) ? styles.selected : ''} ${owned ? '' : styles.locked}`}
+                  onClick={() => toggleCard(a)}
+                  disabled={!!open}
+                  aria-pressed={arcana.includes(a.id)}
+                >
+                  <img className={styles.sprite} src={spriteDataUrl(a.icon)} alt="" draggable={false} />
+                  <span className={styles.optionName}>
+                    {a.name} · {a.dark ? 'Darkana' : 'Arcana'}
                   </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </section>
+                  <span className={styles.optionText}>{a.text}</span>
+                  {!owned && (
+                    <span className={styles.price}>
+                      <Lock /> Logro: {ACHIEVEMENTS.find((x) => x.id === a.achievement)?.name}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       <section className={styles.section}>
         <h2 className={styles.heading}>Aspecto</h2>

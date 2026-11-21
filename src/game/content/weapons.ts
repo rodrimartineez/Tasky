@@ -563,6 +563,9 @@ const FAMILY: Record<string, 'fire' | 'lightning' | 'arcane' | 'poison' | 'steel
   tuna6: 'steel',
 };
 
+/** ¿Es un arma de fuego (o la evolución de una)? Cuenta para el Heredero del destino. */
+export const isFireWeapon = (id: string) => FAMILY[behaviourOf(id)] === 'fire';
+
 /** Impacto animado de un arma (o de su evolución): `fx_<familia>_hit`. */
 export function hitFxOf(id: string): string | undefined {
   const family = FAMILY[behaviourOf(id)];

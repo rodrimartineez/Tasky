@@ -171,6 +171,7 @@ describe('revivir', () => {
     expect(w.phase).not.toBe('dead');
     expect(w.player.hp).toBe(BASE_STATS.maxHp * 0.5);
     expect(w.player.stats.revival).toBe(0);
+    w.reviveFreeze = 0;
     w.player.hp = -5;
     step(w, DT, 0, 0);
     expect(w.phase).toBe('dead');

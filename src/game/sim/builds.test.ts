@@ -400,6 +400,28 @@ describe('pasivas, inmunidad y partidas guardadas', () => {
     expect(w.player.stats.revival).toBe(1);
   });
 
+  it('el Tiramisú pausa la acción al revivir, da 1 s de inmunidad y se agota con la segunda resurrección', () => {
+    const w = createWorld(config('spark'));
+    passive(w, 'tiramisu');
+    passive(w, 'tiramisu', 2);
+    expect(w.player.stats.revival).toBe(2);
+    w.player.hp = 0;
+    step(w, 1 / 60, 0, 0);
+    expect(w.reviveFreeze).toBeGreaterThan(0);
+    expect(w.player.hurtTimer).toBe(1);
+    const t = w.time;
+    step(w, 1 / 60, 0, 0);
+    expect(w.time).toBe(t); // pausa: la simulación no avanza
+    expect(w.player.passives.some((x) => x.id === 'tiramisu')).toBe(true);
+    w.reviveFreeze = 0;
+    w.player.hp = 0;
+    step(w, 1 / 60, 0, 0);
+    expect(w.phase).toBe('playing');
+    expect(w.player.passives.some((x) => x.id === 'tiramisu')).toBe(false);
+    expect(w.player.stats.revival).toBe(0);
+    expect(w.player.spentPassives).toEqual(['tiramisu']);
+  });
+
   it('cada elección de mejora da 1 s de inmunidad, también con varias subidas seguidas', () => {
     const w = createWorld(config('spark'));
     w.pendingLevels = 2;
@@ -618,8 +640,9 @@ describe('niveles de armas y pasivas (máximo propio + hasta 999)', () => {
       gold += w.chestGold ?? 0;
     }
     expect(counts.every((n) => n > 0)).toBe(true);
-    expect(gold / 600).toBeGreaterThan(65);
-    expect(gold / 600).toBeLessThan(90);
+    // Incluye el +30 % de oro de todos los cofres (antes entre 65 y 90).
+    expect(gold / 600).toBeGreaterThan(65 * CHEST.bonus);
+    expect(gold / 600).toBeLessThan(90 * CHEST.bonus);
     expect(CHEST.gold[4] / CHEST.gold[0]).toBeCloseTo(10, 0);
   });
 

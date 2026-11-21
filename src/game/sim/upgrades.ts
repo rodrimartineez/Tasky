@@ -1,7 +1,7 @@
 import { EVOLUTION_BY_WEAPON, EVOLUTIONS, type EvolutionDef } from '../content/evolutions';
 import { PASSIVE_BY_ID, PASSIVES } from '../content/passives';
 import { maxLevelOf, TUNA_IDS, WEAPON_BY_ID, WEAPONS, weaponStatsAt } from '../content/weapons';
-import { emit, rand } from './core';
+import { emit, heal, rand } from './core';
 import { runGold } from './difficulty';
 import { MAX_PASSIVES, MAX_WEAPONS, TIMELINE, type UpgradeChoice, type WeaponDef, type WeaponState, type WeaponStats, type World } from './types';
 
@@ -83,6 +83,10 @@ export function recomputeStats(w: World) {
   for (const owned of p.passives) PASSIVE_BY_ID.get(owned.id)?.apply(stats, owned.level);
   // Las resurrecciones gastadas no vuelven al recalcular (p. ej. al coger otra pasiva); con La Muerte, ninguna.
   stats.revival = w.completed ? 0 : Math.max(0, stats.revival - (p.revivalsUsed ?? 0));
+  // Heredero del destino: +1 de vida máxima y +0,4 % de daño por escalón de bajas con fuego.
+  const heir = p.heirSteps ?? 0;
+  stats.maxHp += heir;
+  stats.might += 0.004 * heir;
   p.stats = stats;
   // La vida máxima ganada se suma también a la vida actual.
   if (stats.maxHp > before) p.hp += stats.maxHp - before;
@@ -98,7 +102,8 @@ const maxedWeapon = (w: World, id: string) => w.player.weapons.some((x) => x.id 
  * en la opción de nivel que la completaría.
  */
 function recipeMet(w: World, evo: EvolutionDef, assume?: { id: string; level: number }): boolean {
-  const level = (id: string) => (assume?.id === id ? assume.level : passiveLevel(w, id));
+  // Una pasiva agotada (Tiramisú) sigue cumpliendo la receta: perderla no bloquea una evolución.
+  const level = (id: string) => (assume?.id === id ? assume.level : w.player.spentPassives?.includes(id) ? (PASSIVE_BY_ID.get(id)?.maxLevel ?? 1) : passiveLevel(w, id));
   return (
     [evo.weapon, ...(evo.union ? [evo.union] : [])].every((id) => (assume?.id === id && assume.level >= maxLevelOf(id)) || maxedWeapon(w, id)) &&
     evo.passives.every((id) => level(id) >= (evo.maxed ? (PASSIVE_BY_ID.get(id)?.maxLevel ?? 1) : 1))
@@ -214,7 +219,7 @@ function pool(w: World): { choice: UpgradeChoice; weight: number }[] {
     }
   }
   for (const def of PASSIVES) {
-    if (banished.includes(def.id)) continue;
+    if (banished.includes(def.id) || p.spentPassives?.includes(def.id)) continue;
     const owned = p.passives.find((x) => x.id === def.id);
     const level = (owned?.level ?? 0) + 1;
     if (level > def.maxLevel || (!owned && p.passives.length >= MAX_PASSIVES)) continue;
@@ -328,7 +333,7 @@ export function applyForm(w: World, index: number, id: string) {
 export function applyChoice(w: World, choice: UpgradeChoice) {
   const p = w.player;
   if (choice.kind === 'gold') w.gold += 30;
-  else if (choice.kind === 'heal') p.hp = Math.min(p.stats.maxHp, p.hp + 40);
+  else if (choice.kind === 'heal') heal(w, 40);
   else if (choice.kind === 'weapon') {
     const owned = p.weapons.find((x) => x.id === choice.id);
     if (!owned) p.weapons.push(newWeapon(choice.id));
@@ -348,7 +353,7 @@ export function applyChoice(w: World, choice: UpgradeChoice) {
  * Cofre: de 1 a 5 mejoras (más con suerte) y oro que crece con ellas: CHEST.gold[n - 1] es el multiplicador (el de 5
  * mejoras da unas 10 veces lo del de 1). El cofre de un jefe (`boss`) paga siempre más que uno de 5 mejoras.
  */
-export const CHEST = { odds: [0.03, 0.05, 0.1, 0.17], gold: [0.8, 2.4, 4.4, 6, 8], boss: 12, heal: 0.1 };
+export const CHEST = { odds: [0.03, 0.05, 0.1, 0.17], gold: [0.8, 2.4, 4.4, 6, 8], boss: 12, heal: 0.1, bonus: 1.3 };
 
 /** Cofre: evoluciona las armas que lo tengan listo y, si no, mejora al azar objetos que ya tengas; da oro. */
 export function openChest(w: World, boss = false) {
@@ -378,8 +383,8 @@ export function openChest(w: World, boss = false) {
     applyChoice(w, choice);
     rewards.push(choice);
   }
-  w.player.hp = Math.min(w.player.stats.maxHp, w.player.hp + w.player.stats.maxHp * CHEST.heal);
-  const gold = Math.round((20 + Math.floor((w.time * TIMELINE) / 30)) * (boss ? CHEST.boss : CHEST.gold[count - 1]) * runGold(w.config));
+  heal(w, w.player.stats.maxHp * CHEST.heal);
+  const gold = Math.round((20 + Math.floor((w.time * TIMELINE) / 30)) * (boss ? CHEST.boss : CHEST.gold[count - 1]) * CHEST.bonus * runGold(w.config));
   w.gold += gold;
   w.chestGold = gold;
   w.chestRewards = rewards;

@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { Check } from 'lucide-react';
+import { ARCANA } from '../../game/content/arcana';
 import { SKINS } from '../../game/content/skins';
 import { achievementsOf, recordsOf, type GroupStats } from '../core/records';
 import { useEconomy, useHabits } from '../state/store';
@@ -88,7 +89,8 @@ export function RecordsPage() {
             {achievements
               .filter((a) => a.def.group === g.id)
               .map((a) => {
-                const reward = SKINS.find((s) => s.achievement === a.def.id);
+                const skin = SKINS.find((s) => s.achievement === a.def.id);
+                const card = ARCANA.find((c) => c.achievement === a.def.id);
                 return (
                   <li key={a.def.id} className={`${styles.achievement} ${a.done ? styles.done : ''}`}>
                     <span className={styles.badge} aria-hidden>
@@ -97,7 +99,12 @@ export function RecordsPage() {
                     <span className={styles.body}>
                       <b>{a.def.name}</b>
                       <small>{a.def.text}</small>
-                      {reward && <small className={styles.reward}>Recompensa: aspecto {reward.name}</small>}
+                      {skin && <small className={styles.reward}>Recompensa: aspecto {skin.name}</small>}
+                      {card && (
+                        <small className={styles.reward}>
+                          Recompensa: {card.dark ? 'darkana' : 'arcana'} {card.name}
+                        </small>
+                      )}
                       {!a.done && (
                         <span className={styles.bar} aria-label={`${n(a.value)} de ${n(a.def.goal)}`}>
                           <span style={{ width: `${(a.value / a.def.goal) * 100}%` }} />
