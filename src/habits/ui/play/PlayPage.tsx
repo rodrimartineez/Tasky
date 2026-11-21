@@ -22,6 +22,7 @@ import { comebackFor } from '../../core/comeback';
 import { ACHIEVEMENTS, achieved, recordsOf } from '../../core/records';
 import { GAME_BUILD, releaseFor } from '../../core/release';
 import { SoundSettings } from './SoundControls';
+import { CardPickerDialog } from './CardPickerDialog';
 import { StartingWeaponsDialog } from './StartingWeaponsDialog';
 import { CoinIcon } from '../PointsBadge';
 import styles from './PlayPage.module.css';
@@ -151,10 +152,15 @@ export function PlayPage() {
 
   const [pickingWeapons, setPickingWeapons] = useState(false);
   const pickStart = CHARACTERS.find((c) => c.id === character)?.pickStart;
-  const play = () => (pickStart ? setPickingWeapons(true) : begin());
-  const begin = (weapons?: string[]) =>
+  // Cartas elegidas en el menú, mientras se eligen las armas iniciales (si el personaje las pide).
+  const [pickingCards, setPickingCards] = useState(false);
+  const [cardsChosen, setCardsChosen] = useState<string[]>([]);
+  const afterCards = (cards: string[]) => (pickStart ? (setCardsChosen(cards), setPickingWeapons(true)) : begin(undefined, cards));
+  // «Jugar»: con alguna carta desbloqueada se abre antes el menú de cartas.
+  const play = () => (cardsOwned > 0 ? setPickingCards(true) : afterCards([]));
+  const begin = (weapons?: string[], cards: string[] = []) =>
     attempt(() => {
-      const started = startRun(runMode, testLevel, arcana);
+      const started = startRun(runMode, testLevel, cards);
       if (started.level > 0)
         setSession({
           level: started.level,
@@ -162,7 +168,7 @@ export function PlayPage() {
           config: buildRunConfig(started.level, character, stage, eco.upgrades, {
             boost: started.comeback ?? undefined,
             mode: runMode,
-            arcana,
+            arcana: cards,
             skin,
             weapons,
             // Las de prueba no se registran: cada una con una semilla distinta.
@@ -218,14 +224,6 @@ export function PlayPage() {
     if (!owned) return setBuying(key);
     // El aspecto se quita volviendo a pulsarlo.
     select(kind, kind === 'skin' && skin === id ? null : id);
-  };
-
-  /** Carta tocada: se activa o se quita (hasta dos); si está bloqueada, explica cómo conseguirla. */
-  const toggleCard = (def: (typeof ARCANA)[number]) => {
-    if (!cardOwned(def)) return toast(`Se desbloquea con el logro «${ACHIEVEMENTS.find((a) => a.id === def.achievement)?.name}».`);
-    if (arcana.includes(def.id)) return saveExtras({ arcana: arcana.filter((id) => id !== def.id) });
-    if (arcana.length >= MAX_ARCANA) return toast(`Como mucho ${MAX_ARCANA} cartas por partida: quita una antes.`, 'error');
-    saveExtras({ arcana: [...arcana, def.id] });
   };
 
   const confirmBuy = () => {
@@ -514,41 +512,6 @@ export function PlayPage() {
         </div>
       </section>
 
-      {cardsOwned > 0 && (
-        <section className={styles.section}>
-          <h2 className={styles.heading}>Arcanas y darkanas</h2>
-          <p className={styles.sectionText}>
-            Elige hasta {MAX_ARCANA} cartas para la próxima partida. Se desbloquean solas al cumplir su logro de hábitos. Pulsa otra vez para quitarla.
-          </p>
-          <div className={styles.grid}>
-            {ARCANA.map((a) => {
-              const owned = cardOwned(a);
-              return (
-                <button
-                  key={a.id}
-                  type="button"
-                  className={`${styles.option} ${arcana.includes(a.id) ? styles.selected : ''} ${owned ? '' : styles.locked}`}
-                  onClick={() => toggleCard(a)}
-                  disabled={!!open}
-                  aria-pressed={arcana.includes(a.id)}
-                >
-                  <img className={styles.sprite} src={spriteDataUrl(a.icon)} alt="" draggable={false} />
-                  <span className={styles.optionName}>
-                    {a.name} · {a.dark ? 'Darkana' : 'Arcana'}
-                  </span>
-                  <span className={styles.optionText}>{a.text}</span>
-                  {!owned && (
-                    <span className={styles.price}>
-                      <Lock /> Logro: {ACHIEVEMENTS.find((x) => x.id === a.achievement)?.name}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
       <section className={styles.section}>
         <h2 className={styles.heading}>Aspecto</h2>
         <p className={styles.sectionText}>Solo cambia cómo se ve tu personaje. Unos se compran con oro y otros se ganan con logros.</p>
@@ -603,6 +566,28 @@ export function PlayPage() {
         Móvil: arrastra el dedo por la pantalla · Teclado: WASD o flechas, Esc para pausar y 1–4 para elegir mejora.
       </p>
 
+      <CardPickerDialog
+        key={`cards${pickingCards}`}
+        open={pickingCards}
+        max={MAX_ARCANA}
+        initial={arcana}
+        cards={ARCANA.map((a) => ({
+          id: a.id,
+          name: a.name,
+          dark: a.dark,
+          icon: a.icon,
+          text: a.text,
+          owned: cardOwned(a),
+          achievement: ACHIEVEMENTS.find((x) => x.id === a.achievement)?.name ?? '',
+        }))}
+        onClose={() => setPickingCards(false)}
+        onConfirm={(ids) => {
+          setPickingCards(false);
+          saveExtras({ arcana: ids });
+          afterCards(ids);
+        }}
+      />
+
       <StartingWeaponsDialog
         key={`${pickingWeapons}`}
         open={pickingWeapons}
@@ -612,7 +597,7 @@ export function PlayPage() {
         onClose={() => setPickingWeapons(false)}
         onConfirm={(ids) => {
           setPickingWeapons(false);
-          begin(ids);
+          begin(ids, cardsChosen);
         }}
       />
 

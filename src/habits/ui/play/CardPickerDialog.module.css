@@ -1,0 +1,74 @@
+/* Solo los iconos de las 8 cartas, sin scroll: el texto va en una zona común debajo. */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-2);
+}
+
+.card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-1);
+  border: none;
+  border-radius: var(--radius);
+  background: var(--hb-surface-1);
+  box-shadow: var(--hb-pixel-edge);
+  cursor: pointer;
+  transition: transform 0.12s;
+}
+.card:hover {
+  transform: translateY(-2px);
+}
+.art {
+  width: 100%;
+  max-width: 80px;
+  aspect-ratio: 20 / 28;
+  image-rendering: pixelated;
+}
+.shown {
+  background: var(--hb-surface-2, var(--hb-surface-1));
+}
+.on {
+  box-shadow: 0 0 0 2px var(--hb-gold), 0 0 12px rgba(246, 201, 69, 0.45), inset 0 -3px 0 rgba(0, 0, 0, 0.35);
+  transform: translateY(-2px);
+}
+.locked .art {
+  filter: brightness(0.25) saturate(0.6);
+}
+.lockIcon {
+  position: absolute;
+  color: var(--hb-gold);
+}
+
+.info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  min-height: 108px;
+  border-radius: var(--radius);
+  background: var(--hb-surface-1);
+  box-shadow: var(--hb-pixel-edge);
+}
+.name {
+  font-size: var(--fs-md, 1rem);
+}
+.kind {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--hb-gold);
+}
+.text {
+  font-size: var(--fs-sm);
+}
+.lock {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--hb-gold);
+}
