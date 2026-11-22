@@ -3,7 +3,7 @@ import { PASSIVE_BY_ID, PASSIVES } from '../content/passives';
 import { maxLevelOf, TUNA_IDS, WEAPON_BY_ID, WEAPONS, weaponStatsAt } from '../content/weapons';
 import { emit, heal, rand } from './core';
 import { runGold } from './difficulty';
-import { MAX_PASSIVES, MAX_WEAPONS, TIMELINE, type UpgradeChoice, type WeaponDef, type WeaponState, type WeaponStats, type World } from './types';
+import { MAX_PASSIVES, MAX_WEAPONS, type UpgradeChoice, type WeaponDef, type WeaponState, type WeaponStats, type World } from './types';
 
 /** Subidas de nivel, evoluciones, cofres y cálculo de estadísticas. */
 
@@ -350,10 +350,21 @@ export function applyChoice(w: World, choice: UpgradeChoice) {
 }
 
 /**
- * Cofre: de 1 a 5 mejoras (más con suerte) y oro que crece con ellas: CHEST.gold[n - 1] es el multiplicador (el de 5
- * mejoras da unas 10 veces lo del de 1). El cofre de un jefe (`boss`) paga siempre más que uno de 5 mejoras.
+ * Cofres: la cantidad de oro es aleatoria y crece con las mejoras, como en Vampire Survivors. Los rangos son para
+ * nivel 1, modo normal y Greed 1; el nivel, el modo reflejo y Greed los escalan después.
  */
-export const CHEST = { odds: [0.03, 0.05, 0.1, 0.17], gold: [0.8, 2.4, 4.4, 6, 8], boss: 12, heal: 0.1, bonus: 1.3 };
+export const CHEST = {
+  odds: [0.03, 0.05, 0.1, 0.17],
+  gold: [
+    { min: 200, max: 400 },
+    { min: 600, max: 900 },
+    { min: 1200, max: 1500 },
+    { min: 1800, max: 2200 },
+    { min: 2500, max: 3000 },
+  ],
+  boss: { min: 3500, max: 4000 },
+  heal: 0.1,
+};
 
 /** Cofre: evoluciona las armas que lo tengan listo y, si no, mejora al azar objetos que ya tengas; da oro. */
 export function openChest(w: World, boss = false) {
@@ -384,7 +395,9 @@ export function openChest(w: World, boss = false) {
     rewards.push(choice);
   }
   heal(w, w.player.stats.maxHp * CHEST.heal);
-  const gold = Math.round((20 + Math.floor((w.time * TIMELINE) / 30)) * (boss ? CHEST.boss : CHEST.gold[count - 1]) * CHEST.bonus * runGold(w.config));
+  const range = boss ? CHEST.boss : CHEST.gold[count - 1];
+  const baseGold = range.min + Math.floor(rand(w) * (range.max - range.min + 1));
+  const gold = Math.round(baseGold * runGold(w.config) * w.player.stats.greed);
   w.gold += gold;
   w.chestGold = gold;
   w.chestRewards = rewards;

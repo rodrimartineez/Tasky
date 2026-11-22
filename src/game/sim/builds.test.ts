@@ -626,7 +626,7 @@ describe('niveles de armas y pasivas (máximo propio + hasta 999)', () => {
     expect(offered(w, 'whetstone')).toBe(false);
   });
 
-  it('un cofre da de 1 a 5 mejoras y mucho más oro cuantas más da (5 ≈ 10 veces lo de 1)', () => {
+  it('un cofre da de 1 a 5 mejoras y oro aleatorio dentro del rango de cada cofre', () => {
     const counts = [0, 0, 0, 0, 0];
     let gold = 0;
     for (let seed = 1; seed <= 600; seed++) {
@@ -637,17 +637,18 @@ describe('niveles de armas y pasivas (máximo propio + hasta 999)', () => {
       openChest(w);
       counts[w.chestRewards.length - 1] += 1;
       expect(w.gold - before).toBe(w.chestGold);
+      const range = CHEST.gold[w.chestRewards.length - 1];
+      expect(w.chestGold).toBeGreaterThanOrEqual(range.min);
+      expect(w.chestGold).toBeLessThanOrEqual(range.max);
       gold += w.chestGold ?? 0;
     }
     expect(counts.every((n) => n > 0)).toBe(true);
-    // Incluye el +30 % de oro de todos los cofres (antes entre 65 y 90).
-    expect(gold / 600).toBeGreaterThan(65 * CHEST.bonus);
-    expect(gold / 600).toBeLessThan(90 * CHEST.bonus);
-    expect(CHEST.gold[4] / CHEST.gold[0]).toBeCloseTo(10, 0);
+    expect(gold / 600).toBeGreaterThan(200);
+    expect(gold / 600).toBeLessThan(3000);
   });
 
   it('el cofre de un jefe da más oro que uno de 5 mejoras', () => {
-    expect(CHEST.boss).toBeGreaterThan(CHEST.gold[4]);
+    expect(CHEST.boss.min).toBeGreaterThan(CHEST.gold[4].max);
     const w = createWorld(config('spark', BASE_STATS, 1));
     w.time = 300;
     openChest(w, true);
