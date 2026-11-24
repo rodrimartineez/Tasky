@@ -20,6 +20,8 @@ export const BOSS_TUNING = {
   shot: 0.35,
   /** Segundos entre ataques en la primera vuelta. */
   cooldown: 4,
+  /** Segundos entre ataques de los jefes de escenario. */
+  stageCooldown: 5,
 };
 
 /** Vuelta de la rotación de la partida (0 = primera). */
@@ -683,18 +685,140 @@ const ATTACKS: Record<BossPattern, Attack> = {
       for (let i = 0; i < count; i++) zone(c, ...aroundPlayer(c, 30, 170), 26, 0.8, 5.5, 0.8);
     },
   },
+
+  // ── Jefes de escenario (content/enemies.ts): dos ataques cada uno ──
+  roots: {
+    // Roble Anciano: raíces que brotan en radios hacia el jugador; se esquivan en el centro o entre dos raíces.
+    duration: 1.2,
+    still: true,
+    begin(c) {
+      const offset = rand(c.w) * Math.PI * 2;
+      for (let i = 0; i < 6; i++) {
+        const a = offset + (i / 6) * Math.PI * 2;
+        segment(c, ...polar(c.p.x, c.p.y, a, 105), ...polar(c.p.x, c.p.y, a, 28), 1, 0.4, 6);
+      }
+    },
+  },
+  acorn: {
+    // Roble Anciano: una bellota enorme cae sobre el jugador y se parte en astillas.
+    duration: 1.3,
+    begin(c) {
+      c.e.tx = c.p.x;
+      c.e.ty = c.p.y;
+      blast(c, c.p.x, c.p.y, 30, 1);
+    },
+    tick(c, t, dt) {
+      if (at(t, dt, 1)) {
+        const from = { x: c.e.tx ?? c.p.x, y: c.e.ty ?? c.p.y };
+        const offset = rand(c.w) * Math.PI;
+        for (let i = 0; i < 8; i++) shoot(c, offset + (i / 8) * Math.PI * 2, 60, undefined, from);
+      }
+      return undefined;
+    },
+  },
+  bubbles: {
+    // Rey del Pantano: burbujas lentísimas que quedan flotando como un campo de minas.
+    duration: 0.6,
+    begin(c) {
+      for (let i = 0; i < 10; i++) shoot(c, rand(c.w) * Math.PI * 2, 18 + rand(c.w) * 16, 'x_bubble');
+      pulse(c);
+    },
+  },
+  tide: {
+    // Rey del Pantano: una ola, una fila de proyectiles hombro con hombro que avanza hacia el jugador; se rodea.
+    duration: 0.6,
+    still: true,
+    begin(c) {
+      for (let i = -5; i <= 5; i++) {
+        const [x, y] = polar(c.e.x, c.e.y, c.toPlayer + Math.PI / 2, i * 16);
+        shoot(c, c.toPlayer, 55, undefined, { x, y });
+      }
+    },
+  },
+  ossuary: {
+    // Señor de los Huesos: osario en tablero de ajedrez; primero estallan unas casillas y luego las otras.
+    duration: 0.6,
+    begin(c) {
+      for (let i = -1; i <= 1; i++)
+        for (let j = -1; j <= 1; j++) blast(c, c.p.x + i * 48, c.p.y + j * 48, 22, (i + j) % 2 === 0 ? 0.9 : 1.5);
+    },
+  },
+  corridor: {
+    // Señor de los Huesos: dos filas de huesos encierran al jugador en un pasillo y luego cae otra por el centro.
+    duration: 0.6,
+    begin(c) {
+      for (const side of [-28, 28, 0]) {
+        const [x, y] = polar(c.p.x, c.p.y, c.toPlayer + Math.PI / 2, side);
+        const center = side === 0;
+        segment(c, ...polar(x, y, c.toPlayer, -200), ...polar(x, y, c.toPlayer, 200), center ? 1.5 : 1, center ? 0.4 : 0.9, 6);
+      }
+    },
+  },
+  prism: {
+    // Titán de Cristal: dos rayos refractados en zigzag que se abren hacia el jugador.
+    duration: 1.5,
+    still: true,
+    begin(c) {
+      for (const bend of [-0.5, 0.5]) {
+        let [x, y] = [c.e.x, c.e.y];
+        for (let k = 0; k < 3; k++) {
+          const [x2, y2] = polar(x, y, c.toPlayer + (k % 2 === 0 ? bend : -bend), 130);
+          segment(c, x, y, x2, y2, 1, 0.4, 7);
+          [x, y] = [x2, y2];
+        }
+      }
+    },
+  },
+  shards: {
+    // Titán de Cristal: cuatro cristales en rombo alrededor del jugador que estallan y lanzan esquirlas hacia fuera.
+    duration: 1.3,
+    begin(c) {
+      c.e.tx = c.p.x;
+      c.e.ty = c.p.y;
+      c.e.aim = rand(c.w) * Math.PI;
+      for (let i = 0; i < 4; i++) blast(c, ...polar(c.p.x, c.p.y, c.e.aim + (i * Math.PI) / 2, 50), 22, 1);
+    },
+    tick(c, t, dt) {
+      if (at(t, dt, 1))
+        for (let i = 0; i < 4; i++) {
+          const a = (c.e.aim ?? 0) + (i * Math.PI) / 2;
+          const [x, y] = polar(c.e.tx ?? c.p.x, c.e.ty ?? c.p.y, a, 50);
+          for (const spread of [-0.35, 0, 0.35]) shoot(c, a + spread, 75, undefined, { x, y });
+        }
+      return undefined;
+    },
+  },
+  firewall: {
+    // Señor de la Ceniza: un muro de fuego entre él y el jugador que corta el paso unos segundos.
+    duration: 0.6,
+    begin(c) {
+      const [mx, my] = [(c.e.x + c.p.x) / 2, (c.e.y + c.p.y) / 2];
+      for (let i = -3; i <= 3; i++) zone(c, ...polar(mx, my, c.toPlayer + Math.PI / 2, i * 30), 18, 0.7, 5);
+    },
+  },
+  eruption: {
+    // Señor de la Ceniza: erupción en espiral, estallidos que se alejan de él girando.
+    duration: 2,
+    still: true,
+    begin(c) {
+      const offset = rand(c.w) * Math.PI * 2;
+      for (let i = 0; i < 14; i++) blast(c, ...polar(c.e.x, c.e.y, offset + i * 0.7, 30 + i * 12), 22, 0.6 + i * 0.1);
+      emit(c.w, { type: 'shake', power: 4 });
+    },
+  },
 };
 
 /**
- * Comportamiento de un jefe de ciclo. Devuelve la velocidad que debe llevar este paso, o null para que siga
+ * Ataques de un jefe (de ciclo o de escenario). Devuelve la velocidad que debe llevar este paso, o null para que siga
  * persiguiendo al jugador como cualquier enemigo.
  */
-export function updateCycleBoss(w: World, e: Enemy, dt: number, toPlayer: number): [number, number] | null {
-  const round = roundOf(w);
-  const patterns = patternsOf(e, round);
+export function updateBoss(w: World, e: Enemy, dt: number, toPlayer: number): [number, number] | null {
+  const cycle = !!e.def.patterns;
+  const round = cycle ? roundOf(w) : 0;
+  const patterns = cycle ? patternsOf(e, round) : (e.def.attacks ?? []);
   if (patterns.length === 0) return null;
   const enraged = round >= 1 && e.hp < e.maxHp * 0.5;
-  const cooldown = Math.max(1, (BOSS_TUNING.cooldown / (1 + 0.15 * round)) * (enraged ? 0.7 : 1));
+  const cooldown = cycle ? Math.max(1, (BOSS_TUNING.cooldown / (1 + 0.15 * round)) * (enraged ? 0.7 : 1)) : BOSS_TUNING.stageCooldown;
   const attack = ATTACKS[patterns[(e.pattern ?? 0) % patterns.length]];
   const c: Ctx = { w, e, p: w.player, round, toPlayer, color: e.def.color ?? 0xffffff, dmg: e.damage * BOSS_TUNING.shot };
 

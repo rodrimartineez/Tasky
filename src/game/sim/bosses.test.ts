@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CYCLE_BOSSES, CYCLE_BOSS_AT, cycleBossFor, isBossLevel } from '../content/bosses';
+import { ENEMIES } from '../content/enemies';
 import { WITHERED_WOODS } from '../content/stages';
 import { SPRITES } from '../sprites/data';
 import { EGG, EGG_HATCH, patternsOf } from './bosses';
@@ -45,11 +46,24 @@ describe('jefes de ciclo', () => {
     expect(SPRITES.e_reaper).toBeDefined();
   });
 
-  it('ningún ataque se repite entre jefes y cada jefe tiene 3 propios más 1 avanzado', () => {
-    const all = CYCLE_BOSSES.flatMap((b) => [...(b.patterns ?? []), ...(b.advanced ?? [])]);
+  it('ningún ataque se repite entre jefes: los de ciclo tienen 3 + 1 avanzado y los de escenario, 2', () => {
+    const stage = ENEMIES.filter((e) => e.ai === 'boss');
+    const all = [...CYCLE_BOSSES, ...stage].flatMap((b) => [...(b.patterns ?? []), ...(b.advanced ?? []), ...(b.attacks ?? [])]);
     expect(new Set(all).size).toBe(all.length);
     for (const b of CYCLE_BOSSES) expect([b.patterns?.length, b.advanced?.length], b.name).toEqual([3, 1]);
+    expect(stage).toHaveLength(5);
+    for (const b of stage) expect(b.attacks?.length, b.name).toBe(2);
   });
+
+  it('los jefes de escenario usan sus dos ataques sin valores inválidos', () => {
+    for (const b of ENEMIES.filter((e) => e.ai === 'boss')) {
+      const w = createWorld({ ...bossLevel(2, { ...BASE_STATS, maxHp: 1e12 }), cycleBoss: undefined });
+      const boss = spawnEnemy(w, b, w.player.x + 120, w.player.y);
+      run(w, 20);
+      expect(boss.pattern ?? 0, b.name).toBeGreaterThanOrEqual(2);
+      expect([boss.x, boss.y, w.player.x, w.player.y].every(Number.isFinite), b.name).toBe(true);
+    }
+  }, 120_000);
 
   it('aparece en el minuto 20; sin vencerlo, llegar al 30 no supera el nivel', () => {
     const w = createWorld(bossLevel(7, { ...BASE_STATS, maxHp: 1e12, might: 0.001 }));

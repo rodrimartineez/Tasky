@@ -145,15 +145,17 @@ export interface EnemyDef {
   splitsInto?: string;
   /** Jefes: esbirros que invoca (por defecto, osamentas). */
   minion?: string;
-  /** Jefes de ciclo (content/bosses.ts): sus ataques, en orden. Sin esto, un jefe usa el patrón de los de escenario. */
+  /** Jefes de ciclo (content/bosses.ts): sus ataques, en orden. Sin esto es un jefe de escenario (`attacks`). */
   patterns?: BossPattern[];
   /** Jefes de ciclo: ataques que añaden a partir de la segunda vuelta de la rotación. */
   advanced?: BossPattern[];
+  /** Jefes de escenario (content/enemies.ts): sus ataques, en orden, además de invocar esbirros. */
+  attacks?: BossPattern[];
   /** Color de los avisos y destellos del jefe. */
   color?: number;
 }
 
-/** Ataques de los jefes de ciclo (sim/bosses.ts): cada uno es exclusivo de un jefe. */
+/** Ataques de los jefes de ciclo y de escenario (sim/bosses.ts): cada uno es exclusivo de un jefe. */
 export type BossPattern =
   // Guardián del Umbral
   | 'portcullis'
@@ -200,6 +202,17 @@ export type BossPattern =
   | 'clockwork'
   | 'echo'
   | 'rewind'
+  // Jefes de escenario: Roble Anciano, Rey del Pantano, Señor de los Huesos, Titán de Cristal y Señor de la Ceniza
+  | 'roots'
+  | 'acorn'
+  | 'bubbles'
+  | 'tide'
+  | 'ossuary'
+  | 'corridor'
+  | 'prism'
+  | 'shards'
+  | 'firewall'
+  | 'eruption'
   // Dragón del Eclipse
   | 'laser'
   | 'meteors'

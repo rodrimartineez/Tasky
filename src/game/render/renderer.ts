@@ -17,6 +17,8 @@ const VIEW_SHORT = 260;
 /** Lado largo máximo: más allá aparecerían los enemigos dentro de la pantalla. */
 const VIEW_LONG = 580;
 const PROP_CELL = 56;
+/** Altura (px CSS bajo el margen seguro superior) de las flechas de cofres de arriba: la del tiempo de partida. */
+const ARROW_TOP = 30;
 /** Partículas de ambiente en pantalla (estilos en sprites/grounds.ts). */
 const AMBIENT_COUNT = 28;
 
@@ -141,8 +143,14 @@ export class Renderer {
   private reviveAnim = 0;
   private clock = 0;
   private deathBurst = false;
+  /** Márgenes seguros de la pantalla (muesca, isla, barra de inicio) en px CSS, medidos con `insetProbe`. */
+  private insets = { top: 0, right: 0, bottom: 0, left: 0 };
+  private insetsFor = '';
 
-  private constructor(private app: Application) {
+  private constructor(
+    private app: Application,
+    private insetProbe: HTMLElement,
+  ) {
     const layer = () => new Pool(this.world.addChild(new Container()));
     this.props = layer();
     this.under = layer();
@@ -186,7 +194,12 @@ export class Renderer {
           autoDensity: true,
         });
         host.appendChild(app.canvas);
-        const renderer = new Renderer(app);
+        // Elemento invisible con los márgenes seguros como relleno: así el render sabe dónde tapa el sistema.
+        const probe = document.createElement('div');
+        probe.style.cssText =
+          'position:absolute;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)';
+        host.appendChild(probe);
+        const renderer = new Renderer(app, probe);
         renderer.loadTextures();
         return renderer;
       } catch (e) {
@@ -627,7 +640,7 @@ export class Renderer {
     bar.scale.set(7 * ratio, 0.75);
     bar.tint = ratio > 0.35 ? 0x5ee08a : 0xe5484d;
     if (dying !== null) barBack.alpha = bar.alpha = Math.max(0, 1 - dying * 2);
-    if (dying === null) this.drawChestArrows(w, width / zoom / 2, height / zoom / 2);
+    if (dying === null) this.drawChestArrows(w, width, height, zoom);
     this.actors.end();
 
     this.shots.begin();
@@ -642,17 +655,39 @@ export class Renderer {
     this.app.render();
   }
 
-  /** Flechas en el borde de la pantalla hacia los cofres que quedan fuera de ella (como en Vampire Survivors). */
-  private drawChestArrows(w: World, halfW: number, halfH: number) {
+  /** Márgenes seguros actuales (solo se vuelven a medir al cambiar el tamaño de la pantalla). */
+  private safeInsets(width: number, height: number) {
+    const key = `${width}x${height}`;
+    if (key !== this.insetsFor) {
+      this.insetsFor = key;
+      const css = getComputedStyle(this.insetProbe);
+      const px = (v: string) => parseFloat(v) || 0;
+      this.insets = { top: px(css.paddingTop), right: px(css.paddingRight), bottom: px(css.paddingBottom), left: px(css.paddingLeft) };
+    }
+    return this.insets;
+  }
+
+  /**
+   * Flechas en el borde de la pantalla hacia los cofres que quedan fuera de ella (como en Vampire Survivors). Se
+   * quedan dentro de los márgenes seguros y, arriba, a la altura del tiempo de partida (el desenfoque del sistema
+   * en el iPhone taparía el borde).
+   */
+  private drawChestArrows(w: World, width: number, height: number, zoom: number) {
     const p = w.player;
+    const inset = this.safeInsets(width, height);
     const margin = 16;
+    // Distancia en unidades del mundo desde el jugador (centro de la pantalla) hasta cada borde útil.
+    const left = (width / 2 - inset.left) / zoom - margin;
+    const right = (width / 2 - inset.right) / zoom - margin;
+    const top = (height / 2 - inset.top - ARROW_TOP) / zoom;
+    const bottom = (height / 2 - inset.bottom) / zoom - margin;
     for (const item of w.pickups) {
       if (item.kind !== 'chest' || item.dead) continue;
       const dx = item.x - p.x;
       const dy = item.y - p.y;
-      if (Math.abs(dx) < halfW && Math.abs(dy) < halfH) continue;
-      // Punto del borde de la pantalla (con margen) en la dirección del cofre.
-      const k = Math.min((halfW - margin) / (Math.abs(dx) || 1), (halfH - margin) / (Math.abs(dy) || 1));
+      // Punto del borde útil en la dirección del cofre; si el cofre está dentro, se ve y no lleva flecha.
+      const k = Math.min(dx > 0 ? right / dx : dx < 0 ? left / -dx : Infinity, dy > 0 ? bottom / dy : dy < 0 ? top / -dy : Infinity);
+      if (k >= 1) continue;
       const angle = Math.atan2(dy, dx);
       const pulse = 1 + Math.sin(this.clock * 6) * 0.12;
       const x = p.x + dx * k;
@@ -1211,6 +1246,7 @@ export class Renderer {
   }
 
   destroy() {
+    this.insetProbe.remove();
     this.app.destroy({ removeView: true }, { children: true, texture: true, textureSource: true });
   }
 }

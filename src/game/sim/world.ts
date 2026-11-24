@@ -1,6 +1,6 @@
 import { CYCLE_BOSS_AT } from '../content/bosses';
 import { ENEMY_BY_ID } from '../content/enemies';
-import { EGG_HATCH, reaperStrike, spawnCycleBoss, spawnReaper, updateCycleBoss, updateHazards } from './bosses';
+import { EGG_HATCH, reaperStrike, spawnCycleBoss, spawnReaper, updateBoss, updateHazards } from './bosses';
 import { championChance, curseOf, emit, hasArcana, heal, HOOKS, hurtPlayer, maxEnemies, near, queryNear, rand, rebuildGrid, ringPoint, spawnEnemy, WAVES, waveFactor } from './core';
 import { runDensity, survivalBonus } from './difficulty';
 import { MAX_WEAPONS, RUN_SECONDS, TIMELINE, type Enemy, type RunConfig, type RunResult, type World } from './types';
@@ -258,20 +258,11 @@ function updateEnemy(w: World, e: Enemy, dt: number) {
       if (dist < e.radius + PLAYER_RADIUS + 6) reaperStrike(w, e);
       break;
     case 'boss': {
-      if (e.def.patterns) {
-        const velocity = updateCycleBoss(w, e, dt, Math.atan2(dy, dx));
-        if (velocity) [vx, vy] = velocity;
-        break;
-      }
-      // Jefes de escenario: ráfaga radial cada 4 s e invocación de esbirros cada 9 s.
-      e.t1 -= dt;
+      const velocity = updateBoss(w, e, dt, Math.atan2(dy, dx));
+      if (velocity) [vx, vy] = velocity;
+      if (e.def.patterns) break;
+      // Jefes de escenario: además de sus dos ataques (sim/bosses.ts), invocan esbirros cada 9 s.
       e.t2 -= dt;
-      if (e.t1 <= 0) {
-        e.t1 = 6;
-        const offset = rand(w) * Math.PI;
-        for (let i = 0; i < 8; i++) enemyShot(w, e.x, e.y, offset + (i / 8) * Math.PI * 2, 50, e.damage * 0.5);
-        emit(w, { type: 'ring', x: e.x, y: e.y, radius: e.radius + 8, color: 0xc9f27a });
-      }
       if (e.t2 <= 0) {
         e.t2 = 9;
         const minion = ENEMY_BY_ID.get(e.def.minion ?? 'bones');
