@@ -3,7 +3,7 @@ import 'pixi.js/unsafe-eval';
 import { Application, Container, Rectangle, Sprite, Texture, TilingSprite, type ApplicationOptions } from 'pixi.js';
 import { behaviourOf, WEAPON_BY_ID } from '../content/weapons';
 import { COLUMN_HALF, emberRadius } from '../sim/weapons';
-import type { Fx, Pickup, Projectile, World } from '../sim/types';
+import type { Fx, Projectile, World } from '../sim/types';
 import { buildAtlas, buildGroundTile, CIRCLE_RADIUS, WHITE } from '../sprites/atlas';
 import { GROUNDS } from '../sprites/grounds';
 
@@ -141,8 +141,6 @@ export class Renderer {
   private reviveAnim = 0;
   private clock = 0;
   private deathBurst = false;
-  /** Cofres que ya han estado en pantalla: solo los que aún no se han visto llevan flecha. */
-  private seenChests = new WeakSet<Pickup>();
 
   private constructor(private app: Application) {
     const layer = () => new Pool(this.world.addChild(new Container()));
@@ -459,7 +457,6 @@ export class Renderer {
     this.pickups.begin();
     for (const item of w.pickups) {
       if (!visible(item.x, item.y)) continue;
-      if (item.kind === 'chest') this.seenChests.add(item);
       const name =
         item.kind === 'xp'
           ? item.value >= 10
@@ -645,14 +642,15 @@ export class Renderer {
     this.app.render();
   }
 
-  /** Flechas en el borde de la pantalla hacia los cofres que aún no se han visto (como en Vampire Survivors). */
+  /** Flechas en el borde de la pantalla hacia los cofres que quedan fuera de ella (como en Vampire Survivors). */
   private drawChestArrows(w: World, halfW: number, halfH: number) {
     const p = w.player;
     const margin = 16;
     for (const item of w.pickups) {
-      if (item.kind !== 'chest' || item.dead || this.seenChests.has(item)) continue;
+      if (item.kind !== 'chest' || item.dead) continue;
       const dx = item.x - p.x;
       const dy = item.y - p.y;
+      if (Math.abs(dx) < halfW && Math.abs(dy) < halfH) continue;
       // Punto del borde de la pantalla (con margen) en la dirección del cofre.
       const k = Math.min((halfW - margin) / (Math.abs(dx) || 1), (halfH - margin) / (Math.abs(dy) || 1));
       const angle = Math.atan2(dy, dx);
