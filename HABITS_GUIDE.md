@@ -332,8 +332,12 @@ Reglas pedidas por el usuario el 11/11/2026. Todas las fases posteriores deben r
 **Ciclos de 7 niveles y jefes.** Niveles 1–6 normales, el 7 es el jefe del ciclo, 8–13 normales, 14 jefe… sin fin.
 - 10 jefes de ciclo que se alternan (Guardián del Umbral, Madre de la Nidada, Coloso de Piedra, Mago de las
   Sombras, Hidra del Pantano, Señor de la Plaga, Caballero Espectral, Fauces del Abismo, Tejedora del Tiempo, Dragón
-  del Eclipse). Cada uno combina 2–4 ataques de: ráfaga radial, abanico, espiral, embestida, salto tras el jugador,
-  invocación, lluvia de zonas marcadas y anillo que se cierra.
+  del Eclipse). Cada uno tiene 3 ataques propios (+1 avanzado) y ninguno se repite entre jefes: Guardián (reja de
+  rayos, jaula, martillazo; guardias), Madre (huevos, chorro de ácido, crías; nido), Coloso (terremoto, pisotones en
+  cadena, muro que se cierra; puñetazo), Mago (copias, salto, descargas puntería; pentagrama), Hidra (cabezas,
+  latigazos, zambullida; colmillos), Plaga (charcos, contagio, miasma; esporas), Caballero (barrido, doble estocada,
+  espadas fantasma; cruce de rayos), Fauces (gravedad, espiral, mordisco; tentáculos), Tejedora (burbujas de tiempo,
+  reloj, eco; rebobinado) y Dragón (rayos, meteoros, llamarada; rescoldos).
 - Aparece en el minuto 20 (sustituye al jefe de escenario de ese minuto). Hay que vencerlo antes de que llegue La
   Muerte para superar el nivel.
 - Al acabar la rotación vuelven en orden («vuelta» 2, 3…): además de la vida y el daño del nivel, cada vuelta suma

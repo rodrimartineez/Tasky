@@ -45,6 +45,12 @@ describe('jefes de ciclo', () => {
     expect(SPRITES.e_reaper).toBeDefined();
   });
 
+  it('ningún ataque se repite entre jefes y cada jefe tiene 3 propios más 1 avanzado', () => {
+    const all = CYCLE_BOSSES.flatMap((b) => [...(b.patterns ?? []), ...(b.advanced ?? [])]);
+    expect(new Set(all).size).toBe(all.length);
+    for (const b of CYCLE_BOSSES) expect([b.patterns?.length, b.advanced?.length], b.name).toEqual([3, 1]);
+  });
+
   it('aparece en el minuto 20; sin vencerlo, llegar al 30 no supera el nivel', () => {
     const w = createWorld(bossLevel(7, { ...BASE_STATS, maxHp: 1e12, might: 0.001 }));
     w.time = CYCLE_BOSS_AT / TIMELINE - 1;

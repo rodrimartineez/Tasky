@@ -153,25 +153,58 @@ export interface EnemyDef {
   color?: number;
 }
 
-/** Ataques de los jefes de ciclo (sim/bosses.ts). */
+/** Ataques de los jefes de ciclo (sim/bosses.ts): cada uno es exclusivo de un jefe. */
 export type BossPattern =
-  | 'radial'
-  | 'fan'
-  | 'spiral'
-  | 'charge'
-  | 'blink'
+  // Guardián del Umbral
+  | 'portcullis'
+  | 'cage'
+  | 'slam'
   | 'summon'
-  | 'rain'
-  | 'wall'
-  | 'quake'
+  // Madre de la Nidada
   | 'eggs'
-  | 'slow'
+  | 'spit'
+  | 'brood'
+  | 'nest'
+  // Coloso de Piedra
+  | 'quake'
+  | 'stomp'
+  | 'wall'
+  | 'fist'
+  // Mago de las Sombras
   | 'clones'
+  | 'blink'
+  | 'snipe'
+  | 'pentagram'
+  // Hidra del Pantano
   | 'heads'
+  | 'lash'
+  | 'dive'
+  | 'fangs'
+  // Señor de la Plaga
   | 'pools'
+  | 'infect'
+  | 'miasma'
+  | 'spores'
+  // Caballero Espectral
   | 'sweep'
+  | 'lunge'
+  | 'swords'
+  | 'cross'
+  // Fauces del Abismo
+  | 'gravity'
+  | 'spiral'
+  | 'bite'
+  | 'tentacles'
+  // Tejedora del Tiempo
+  | 'slow'
+  | 'clockwork'
+  | 'echo'
+  | 'rewind'
+  // Dragón del Eclipse
   | 'laser'
-  | 'gravity';
+  | 'meteors'
+  | 'flame'
+  | 'embers';
 
 /**
  * Modalidad de la partida (HABITS_GUIDE §11):
@@ -341,6 +374,9 @@ export interface Enemy {
   pattern?: number;
   sub?: number;
   aim?: number;
+  /** Jefes de ciclo: punto de destino o de referencia del ataque en curso. */
+  tx?: number;
+  ty?: number;
 }
 
 export type ProjKind =
