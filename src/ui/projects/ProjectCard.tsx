@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, Circle, CircleAlert, CircleCheck } from 'lucide-react';
 import { today as getToday } from '../../core/clock';
 import type { ProjectSummary } from '../../core/selectors';
+import { usePeople } from '../../state/people';
+import { AvatarStack } from '../collab/Avatar';
 import { StatusBadge } from '../components/StatusBadge';
 import { DueBadge } from '../tasks/DueBadge';
 import { projectColor } from './projectColor';
@@ -15,6 +17,7 @@ interface ProjectCardProps {
 
 export function ProjectCard({ summary, variant }: ProjectCardProps) {
   const { project, pending, completed, nextDue, overdue, nextTask } = summary;
+  const people = usePeople((s) => s.shares.project[project.id]);
   const total = pending + completed;
   const progress = total === 0 ? 0 : completed / total;
 
@@ -32,6 +35,11 @@ export function ProjectCard({ summary, variant }: ProjectCardProps) {
         </h3>
         <StatusBadge status={project.status} />
       </div>
+      {people && people.length > 1 && (
+        <div>
+          <AvatarStack userIds={people} size={20} />
+        </div>
+      )}
 
       {project.description && <p className={styles.description}>{project.description}</p>}
 

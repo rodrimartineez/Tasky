@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Keyboard } from 'lucide-react';
 import { Button } from '../components/Button';
 import { Logo } from '../components/Logo';
+import { Notifications } from '../collab/Notifications';
 import { SyncButton } from '../sync/SyncButton';
 import { DataMenu } from './DataMenu';
 import { ModeSwitch } from './ModeSwitch';
@@ -28,6 +29,7 @@ export function TopBar({ extra, onHelp }: { extra?: ReactNode; onHelp?: () => vo
             Atajos
           </Button>
         )}
+        <Notifications />
         <SyncButton />
         <DataMenu />
       </div>

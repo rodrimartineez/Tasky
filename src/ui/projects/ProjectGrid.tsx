@@ -4,6 +4,7 @@ import { DndContext, MouseSensor, TouchSensor, closestCenter, useSensor, useSens
 import { SortableContext, arrayMove, rectSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { ProjectSummary } from '../../core/selectors';
+import { usePeople } from '../../state/people';
 import { useTasky } from '../../state/store';
 import { ProjectCard } from './ProjectCard';
 import styles from './ProjectGrid.module.css';
@@ -17,14 +18,21 @@ interface ProjectGridProps {
   className: string;
 }
 
-/** Tarjetas de una sección de Inicio, reordenables manteniendo pulsado y arrastrando. */
+/**
+ * Tarjetas de una sección de Inicio, reordenables manteniendo pulsado y arrastrando. El orden es personal: los
+ * proyectos compartidos no se ordenan a mano (van detrás, por nombre) para que nadie cambie el orden de otro.
+ */
 export function ProjectGrid({ summaries, variant, className }: ProjectGridProps) {
   const reorderProject = useTasky((s) => s.reorderProject);
   const sensors = useSensors(useSensor(MouseSensor, { activationConstraint: HOLD }), useSensor(TouchSensor, { activationConstraint: HOLD }));
   // Mientras se arrastra (y en el render en que se suelta) la animación de diseño de motion se apaga:
   // el movimiento lo hace dnd-kit y las dos a la vez harían saltar la tarjeta.
   const [dragging, setDragging] = useState(false);
-  const ids = summaries.map((s) => s.project.id);
+  const shares = usePeople((s) => s.shares.project);
+  const isShared = (id: string) => (shares[id]?.length ?? 0) > 1;
+  const own = summaries.filter((s) => !isShared(s.project.id));
+  const shared = summaries.filter((s) => isShared(s.project.id)).sort((a, b) => a.project.name.localeCompare(b.project.name, 'es'));
+  const ids = own.map((s) => s.project.id);
 
   const start = () => {
     window.addEventListener('click', preventClick, true);
@@ -54,7 +62,7 @@ export function ProjectGrid({ summaries, variant, className }: ProjectGridProps)
       <SortableContext items={ids} strategy={rectSortingStrategy}>
         <div className={className}>
           <AnimatePresence initial={false} mode="popLayout">
-            {summaries.map((summary) => (
+            {[...own, ...shared].map((summary) => (
               <motion.div
                 key={summary.project.id}
                 layout={!dragging}
@@ -63,9 +71,15 @@ export function ProjectGrid({ summaries, variant, className }: ProjectGridProps)
                 exit={{ opacity: 0, scale: 0.96 }}
                 transition={{ duration: 0.2, ease: [0.2, 0.8, 0.2, 1] }}
               >
-                <SortableItem id={summary.project.id}>
-                  <ProjectCard summary={summary} variant={variant} />
-                </SortableItem>
+                {isShared(summary.project.id) ? (
+                  <div className={styles.item}>
+                    <ProjectCard summary={summary} variant={variant} />
+                  </div>
+                ) : (
+                  <SortableItem id={summary.project.id}>
+                    <ProjectCard summary={summary} variant={variant} />
+                  </SortableItem>
+                )}
               </motion.div>
             ))}
           </AnimatePresence>

@@ -1,11 +1,13 @@
 import { useMemo } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { Ellipsis, Lightbulb, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Ellipsis, Lightbulb, Pencil, Plus, Share2, Trash2 } from 'lucide-react';
 import { today as getToday } from '../../core/clock';
 import { daysBetween } from '../../core/dueDates';
 import type { Idea, Timestamp } from '../../core/model';
+import { GENERAL_IDEAS_ID } from '../../core/ideas';
 import { projectIdeas } from '../../core/selectors';
 import { useTasky } from '../../state/store';
+import { Authorship } from '../collab/Authorship';
 import { Button } from '../components/Button';
 import { EmptyState } from '../components/EmptyState';
 import { Menu } from '../components/Menu';
@@ -37,9 +39,11 @@ interface IdeaGridProps {
   onOpen: (idea: Idea) => void;
   onEdit: (idea: Idea) => void;
   onDelete: (idea: Idea) => void;
+  /** Solo en ideas generales: compartir una idea con otra persona. */
+  onShare?: (idea: Idea) => void;
 }
 
-export function IdeaGrid({ projectId, general, onCreate, onOpen, onEdit, onDelete }: IdeaGridProps) {
+export function IdeaGrid({ projectId, general, onCreate, onOpen, onEdit, onDelete, onShare }: IdeaGridProps) {
   const data = useTasky((s) => s.data);
   const deleteIdea = useTasky((s) => s.deleteIdea);
   const ideas = useMemo(() => projectIdeas(data, projectId), [data, projectId]);
@@ -94,6 +98,7 @@ export function IdeaGrid({ projectId, general, onCreate, onOpen, onEdit, onDelet
                   <time className={styles.date} dateTime={idea.createdAt} title={fullFmt.format(new Date(idea.createdAt))}>
                     {createdLabel(idea.createdAt, today)}
                   </time>
+                  <Authorship record={idea} projectId={projectId === GENERAL_IDEAS_ID ? undefined : projectId} ideaId={idea.id} />
                 </button>
                 <div className={styles.cardMenu}>
                   <Menu
@@ -102,6 +107,7 @@ export function IdeaGrid({ projectId, general, onCreate, onOpen, onEdit, onDelet
                     triggerClassName={styles.menuTrigger}
                     items={[
                       { label: 'Editar', icon: <Pencil />, onSelect: () => onEdit(idea) },
+                      ...(onShare ? [{ label: 'Compartir…', icon: <Share2 />, onSelect: () => onShare(idea) }] : []),
                       { label: 'Eliminar', icon: <Trash2 />, danger: true, onSelect: () => onDelete(idea) },
                     ]}
                   />

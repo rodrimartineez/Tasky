@@ -4,6 +4,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { Ellipsis, GripVertical, Pause, Pencil, Play, Trash2 } from 'lucide-react';
 import type { LocalDate, Task } from '../../core/model';
 import { useTasky } from '../../state/store';
+import { Authorship } from '../collab/Authorship';
 import { Menu } from '../components/Menu';
 import { SwipeToDelete } from '../components/SwipeToDelete';
 import { toast } from '../components/Toaster';
@@ -127,6 +128,7 @@ function TaskBody({ task, today, onOpen, onEdit, onDelete }: TaskItemProps) {
           )}
           <ScheduleBadge task={task} today={today} muted={done} />
           {task.dueDate && <DueBadge due={task.dueDate} today={today} muted={done} />}
+          <Authorship record={task} projectId={task.projectId} />
         </span>
         <span className={styles.actions}>
           {!done && (

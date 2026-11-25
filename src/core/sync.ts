@@ -61,3 +61,21 @@ export function pendingChanges(data: TaskyData, versions: ServerVersions): SyncR
   const pending = <T extends SyncRecord>(list: T[]) => list.filter((r) => versions.get(r.id) !== r.updatedAt);
   return { projects: pending(data.projects), phases: pending(data.phases), tasks: pending(data.tasks), ideas: pending(data.ideas) };
 }
+
+/**
+ * Quita del dispositivo (sin lápidas: no se envía nada al servidor) los proyectos, con sus fases, tareas e ideas, y las
+ * ideas a los que se ha perdido el acceso. Devuelve los mismos datos si no hay nada que quitar.
+ */
+export function purgeRecords(data: TaskyData, projectIds: Set<string>, ideaIds: Set<string>): TaskyData {
+  const inLost = (r: { projectId: string }) => projectIds.has(r.projectId);
+  const found =
+    data.projects.some((p) => projectIds.has(p.id)) || data.ideas.some((i) => ideaIds.has(i.id) || inLost(i)) || data.tasks.some(inLost);
+  if (!found) return data;
+  return {
+    ...data,
+    projects: data.projects.filter((p) => !projectIds.has(p.id)),
+    phases: data.phases.filter((f) => !inLost(f)),
+    tasks: data.tasks.filter((t) => !inLost(t)),
+    ideas: data.ideas.filter((i) => !inLost(i) && !ideaIds.has(i.id)),
+  };
+}

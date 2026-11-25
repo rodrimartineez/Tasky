@@ -3,6 +3,8 @@ import { Pencil } from 'lucide-react';
 import { today as getToday } from '../../core/clock';
 import type { Project, Task, TaskStatus } from '../../core/model';
 import { Button } from '../components/Button';
+import { authorsOf, usePeople } from '../../state/people';
+import { Person, useIsShared } from '../collab/Authorship';
 import { Dialog } from '../components/Dialog';
 import { projectColor } from '../projects/projectColor';
 import { DueBadge } from './DueBadge';
@@ -49,6 +51,9 @@ export function TaskDetailDialog({ task, project, onClose, onEdit }: TaskDetailD
 }
 
 function TaskDetails({ task, project }: { task: Task; project: Project }) {
+  const shared = useIsShared({ projectId: project.id });
+  const createdBy = usePeople((s) => authorsOf(s, task).createdBy);
+  const updatedBy = usePeople((s) => authorsOf(s, task).updatedBy);
   const today = getToday();
   const schedule = scheduleSummary(task, today);
   const slot = TIME_SLOT_INFO[task.timeSlot];
@@ -82,6 +87,10 @@ function TaskDetails({ task, project }: { task: Task; project: Project }) {
     ],
     ['Creada', dateTimeFmt.format(new Date(task.createdAt))],
   ];
+  if (shared) {
+    rows.push(['Creada por', <Person key="c" userId={createdBy} />]);
+    if (updatedBy && updatedBy !== createdBy) rows.push(['Modificada por', <Person key="u" userId={updatedBy} />]);
+  }
   if (task.completedAt) rows.push(['Completada', dateTimeFmt.format(new Date(task.completedAt))]);
 
   return (

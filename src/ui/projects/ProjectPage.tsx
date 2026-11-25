@@ -2,10 +2,13 @@ import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { ArrowLeft, Ellipsis, Layers, Lightbulb, ListTodo, Pencil, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Ellipsis, Layers, Lightbulb, ListTodo, Pencil, Plus, Share2, Trash2 } from 'lucide-react';
 import type { Idea, Phase, Task } from '../../core/model';
 import { countProjectItems, findPhase, findProject } from '../../core/selectors';
+import { usePeople } from '../../state/people';
 import { useTasky } from '../../state/store';
+import { AvatarStack } from '../collab/Avatar';
+import { ShareDialog } from '../collab/ShareDialog';
 import { Button } from '../components/Button';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { Fab } from '../components/Fab';
@@ -41,6 +44,8 @@ export function ProjectPage() {
   const isMobile = useMediaQuery(MOBILE_QUERY);
   const [tab, setTab] = useState<Tab>('tasks');
   const [editing, setEditing] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const people = usePeople((s) => s.shares.project[projectId]);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   /** Diálogo de tarea: null = cerrado; { task: undefined } = nueva tarea. */
   const [taskDialog, setTaskDialog] = useState<{ task?: Task } | null>(null);
@@ -191,6 +196,7 @@ export function ProjectPage() {
         <header className={styles.header}>
           <div className={styles.heading}>
             <h1 className={styles.title}>{project.name}</h1>
+            {people && people.length > 1 && <AvatarStack userIds={people} size={22} />}
             {project.description && <p className={styles.description}>{project.description}</p>}
           </div>
           <div className={styles.actions}>
@@ -205,6 +211,7 @@ export function ProjectPage() {
               trigger={<Ellipsis />}
               items={[
                 { label: 'Nueva fase', icon: <Layers />, onSelect: newPhase },
+                { label: 'Compartir…', icon: <Share2 />, onSelect: () => setSharing(true) },
                 { label: 'Editar', icon: <Pencil />, onSelect: () => setEditing(true) },
                 { label: 'Eliminar', icon: <Trash2 />, danger: true, onSelect: () => setConfirmingDelete(true) },
               ]}
@@ -297,6 +304,7 @@ export function ProjectPage() {
       />
       <PhaseFormDialog open={phaseDialog !== null} onClose={() => setPhaseDialog(null)} projectId={project.id} phase={phaseDialog?.phase} />
       <IdeaFormDialog open={ideaDialog !== null} onClose={() => setIdeaDialog(null)} projectId={project.id} idea={ideaDialog?.idea} />
+      <ShareDialog kind="project" target={sharing ? { id: project.id, name: project.name } : undefined} onClose={() => setSharing(false)} />
       <ProjectFormDialog open={editing} onClose={() => setEditing(false)} project={project} />
       <ConfirmDialog
         open={confirmingDelete}

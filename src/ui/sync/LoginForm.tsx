@@ -5,20 +5,23 @@ import { Button } from '../components/Button';
 import { TextField } from '../components/Field';
 import styles from './Sync.module.css';
 
-/** Acceso con email y contraseña. No hay registro: la única cuenta se crea en el panel de Supabase. */
+/**
+ * Acceso con nombre de usuario (o email, para la cuenta original) y contraseña. No hay registro: las cuentas las crea
+ * el administrador desde su menú de sincronización.
+ */
 export function LoginForm({ onDone }: { onDone?: () => void }) {
-  const [email, setEmail] = useState('');
+  const [login, setLogin] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const canSubmit = email.trim().length > 0 && password.length > 0 && !busy;
+  const canSubmit = login.trim().length > 0 && password.length > 0 && !busy;
 
   const submit = async () => {
     if (!canSubmit) return;
     setBusy(true);
     setError(null);
     try {
-      await signIn(email, password);
+      await signIn(login, password);
       onDone?.();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudo iniciar sesión.');
@@ -35,13 +38,13 @@ export function LoginForm({ onDone }: { onDone?: () => void }) {
       }}
     >
       <TextField
-        label="Email"
-        type="email"
+        label="Usuario o email"
         data-autofocus
-        autoComplete="email"
+        autoComplete="username"
+        autoCapitalize="none"
         spellCheck={false}
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
+        value={login}
+        onChange={(e) => setLogin(e.target.value)}
       />
       <TextField
         label="Contraseña"

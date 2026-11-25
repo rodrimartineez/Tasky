@@ -55,6 +55,14 @@ Selector *Proyectos · Hábitos* en la cabecera. Diseño y estado: [HABITS_GUIDE
 - Datos propios: `%APPDATA%\com.tasky.app\habits.json` en escritorio (IndexedDB en web), independientes de `tasky.json`.
 - Para sincronizarlos, vuelve a ejecutar [supabase/schema.sql](supabase/schema.sql) en el SQL Editor de Supabase (es idempotente: añade las tablas de Hábitos sin tocar las de Proyectos).
 
+## Cuentas y compartir
+
+- **Cuentas:** solo el administrador las crea, desde el menú de sincronización (*Crear cuenta para otra persona…*). Cada una entra con su usuario y contraseña y tiene sus propios proyectos, ideas y hábitos, privados.
+- **Compartir:** menú «···» de un proyecto o de una idea general → *Compartir…* con el nombre de usuario. Todos los participantes pueden editarlo; los cambios llegan al momento y la campana avisa de lo que hacen los demás.
+- **Dejar de compartir:** en el mismo diálogo, *Quitar* (quien lo creó) o *Salir* (el resto). Desaparece de las cuentas y dispositivos de quien sale.
+- **Orden:** el orden manual de Inicio es personal; los proyectos compartidos van detrás, por nombre.
+- **Servidor:** sección «Colaboración» de `supabase/schema.sql` y función `tasky-signup` (`npx supabase@latest functions deploy tasky-signup --no-verify-jwt --use-api --remote=yfcidccclkndbqhqpmzp`).
+
 ## Claude (conector MCP)
 
 Gestiona Tasky hablando con Claude (claude.ai o la app del iPhone, con el ordenador apagado). Detalles en la guía, §7.7.

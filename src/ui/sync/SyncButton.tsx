@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { Cloud, CloudAlert, CloudCheck, CloudOff, LogIn, LogOut, RefreshCw, ShieldOff } from 'lucide-react';
+import { Cloud, CloudAlert, CloudCheck, CloudOff, LogIn, LogOut, RefreshCw, ShieldOff, UserPlus } from 'lucide-react';
 import { hasPendingChanges, signOut, syncNow, useSync, type SyncStatus } from '../../state/sync';
+import { usePeople } from '../../state/people';
+import { CreateAccountForm } from '../collab/CreateAccountForm';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { Dialog } from '../components/Dialog';
 import { Menu, type MenuItem } from '../components/Menu';
@@ -29,6 +31,9 @@ const ICON: Record<Exclude<SyncStatus, 'disabled'>, { icon: React.ReactNode; cla
 export function SyncButton() {
   const { status, email, lastSyncedAt, error, requireAuth } = useSync();
   const [loggingIn, setLoggingIn] = useState(false);
+  const [creatingAccount, setCreatingAccount] = useState(false);
+  const isAdmin = usePeople((s) => s.isAdmin);
+  const username = usePeople((s) => (s.me ? s.profiles[s.me] : undefined));
   const [confirmingSignOut, setConfirmingSignOut] = useState(false);
   const [confirmingEverywhere, setConfirmingEverywhere] = useState<{ pending: boolean } | null>(null);
   if (status === 'disabled') return null;
@@ -63,8 +68,9 @@ export function SyncButton() {
       ? [{ label: 'Activar sincronización…', icon: <LogIn />, onSelect: () => setLoggingIn(true) }]
       : [
           { label: 'Sincronizar ahora', icon: <RefreshCw />, onSelect: () => void syncNow() },
+          ...(isAdmin ? [{ label: 'Crear cuenta para otra persona…', icon: <UserPlus />, onSelect: () => setCreatingAccount(true) }] : []),
           {
-            label: `Cerrar sesión (${email})`,
+            label: `Cerrar sesión (${username ?? email})`,
             icon: <LogOut />,
             onSelect: async () => {
               // En la web, cerrar sesión borra los datos del dispositivo: antes se intenta enviar lo pendiente.
@@ -94,6 +100,23 @@ export function SyncButton() {
               onDone={() => {
                 setLoggingIn(false);
                 toast('Sincronización activada.');
+              }}
+            />
+          </div>
+        )}
+      </Dialog>
+      <Dialog
+        open={creatingAccount}
+        onClose={() => setCreatingAccount(false)}
+        title="Crear cuenta"
+        description="Para otra persona: tendrá sus propios datos, privados. Dale su usuario y contraseña para que entre."
+      >
+        {creatingAccount && (
+          <div className={styles.dialogBody}>
+            <CreateAccountForm
+              onDone={(name) => {
+                setCreatingAccount(false);
+                toast(`Cuenta «${name}» creada.`);
               }}
             />
           </div>

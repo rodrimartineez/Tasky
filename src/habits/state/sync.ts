@@ -112,6 +112,8 @@ export function initHabitsSync(b: HabitsSyncBackend | null, localDataLoaded: Pro
     const follow = (email: string | null, prevEmail: string | null) => {
       if (email === prevEmail) return;
       stopSession?.();
+      // Cuenta distinta a la de los datos del dispositivo: no hereda hábitos ajenos.
+      if (email && useSync.getState().accountSwitched) useHabits.getState().clearLocalData();
       if (email) startSession(b);
       else if (prevEmail && useSync.getState().requireAuth) useHabits.getState().clearLocalData();
     };

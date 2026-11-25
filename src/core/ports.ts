@@ -1,4 +1,5 @@
 import type { LocalDate, TaskyData } from './model';
+import type { Authors, CollabSnapshot } from './collab';
 import type { SyncRecords } from './sync';
 
 export interface Backup {
@@ -31,6 +32,7 @@ export interface FileExport {
 
 /** Sesión iniciada en el servidor de sincronización. */
 export interface SyncSession {
+  userId: string;
   email: string;
 }
 
@@ -62,12 +64,22 @@ export interface SyncBackend {
    */
   onRemoteChange(listener: () => void): () => void;
   /** Registros cambiados en el servidor después del cursor (0 = todos) y el nuevo cursor. */
-  pull(since: number): Promise<{ records: SyncRecords; cursor: number }>;
+  pull(since: number): Promise<{ records: SyncRecords; cursor: number; authors?: Authors }>;
   /**
    * Envía cambios locales. El servidor ignora los que son más antiguos que su versión;
    * de esos devuelve la versión del servidor para incorporarla.
    */
   push(records: SyncRecords): Promise<SyncRecords>;
+  /** Solo el administrador: crea una cuenta con nombre de usuario y contraseña (no inicia sesión con ella). Lanza un Error con un mensaje para el usuario. */
+  signUp(username: string, password: string): Promise<void>;
+  /** Personas, participantes de lo compartido y avisos de actividad. */
+  fetchCollab(): Promise<CollabSnapshot>;
+  /** Comparte con otra persona (por nombre de usuario). Lanza un Error con un mensaje para el usuario. */
+  share(kind: 'project' | 'idea', id: string, username: string): Promise<void>;
+  /** Quita a una persona (o a uno mismo: salir) de un proyecto o idea compartidos. */
+  unshare(kind: 'project' | 'idea', id: string, userId: string): Promise<void>;
+  /** Marca como vistos los avisos actuales. */
+  markNotificationsSeen(): Promise<void>;
   /**
    * Autorización de asistentes (§7.7). Devuelve la petición a confirmar, o directamente la URL de vuelta
    * si el usuario ya la había autorizado antes.

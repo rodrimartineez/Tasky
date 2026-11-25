@@ -5,6 +5,7 @@ import { GENERAL_IDEAS_ID } from '../../core/ideas';
 import type { Idea } from '../../core/model';
 import { projectIdeas } from '../../core/selectors';
 import { useTasky } from '../../state/store';
+import { ShareDialog } from '../collab/ShareDialog';
 import { Button } from '../components/Button';
 import { Fab } from '../components/Fab';
 import { Kbd } from '../components/Kbd';
@@ -29,6 +30,7 @@ export function IdeasPage() {
   const [detailId, setDetailId] = useState<string | null>(null);
   const detail = data.ideas.find((i) => i.id === detailId && !i.deletedAt);
   const [deleting, setDeleting] = useState<Idea | null>(null);
+  const [sharing, setSharing] = useState<Idea | null>(null);
   const newIdea = () => setDialog({});
 
   useShortcut('Escape', () => navigate('/'));
@@ -70,12 +72,17 @@ export function IdeasPage() {
           setDialog({ idea });
         }}
         onDelete={setDeleting}
+        onShare={(idea) => setSharing(idea)}
       />
 
       {isMobile && <Fab label="Nueva idea" onClick={newIdea} />}
       <IdeaDetailDialog
         idea={detail}
         onClose={() => setDetailId(null)}
+        onShare={(idea) => {
+          setDetailId(null);
+          setSharing(idea);
+        }}
         onEdit={(idea) => {
           setDetailId(null);
           setDialog({ idea });
@@ -93,6 +100,7 @@ export function IdeasPage() {
           toast('Idea eliminada.');
         }}
       />
+      <ShareDialog kind="idea" target={sharing ? { id: sharing.id, name: sharing.title } : undefined} onClose={() => setSharing(null)} />
       <IdeaFormDialog open={dialog !== null} onClose={() => setDialog(null)} projectId={GENERAL_IDEAS_ID} idea={dialog?.idea} />
     </div>
   );

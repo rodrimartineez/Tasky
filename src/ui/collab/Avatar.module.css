@@ -1,0 +1,24 @@
+.avatar {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: var(--size);
+  height: var(--size);
+  border-radius: 50%;
+  background: hsl(var(--hue) 55% 42%);
+  color: #fff;
+  font-size: calc(var(--size) * 0.5);
+  font-weight: 650;
+  line-height: 1;
+  text-transform: uppercase;
+  user-select: none;
+  box-shadow: 0 0 0 2px var(--bg);
+}
+
+.stack {
+  display: inline-flex;
+  align-items: center;
+}
+.stack .avatar + .avatar {
+  margin-left: calc(var(--size) * -0.3);
+}

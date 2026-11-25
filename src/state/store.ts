@@ -4,7 +4,7 @@ import { DataError, emptyData, parseData } from '../core/data';
 import { newId } from '../core/ids';
 import type { TaskyData } from '../core/model';
 import type { FileExport, Storage } from '../core/ports';
-import { countRecords, mergeRemote, type SyncRecords } from '../core/sync';
+import { countRecords, mergeRemote, purgeRecords, type SyncRecords } from '../core/sync';
 import { createProject, deleteProject, reorderProject, updateProject, type ProjectInput, type ProjectPatch } from '../core/projects';
 import { createIdea, deleteIdea, updateIdea, type IdeaInput } from '../core/ideas';
 import { createPhase, deletePhase, movePhase, updatePhase, type PhaseInput } from '../core/phases';
@@ -30,6 +30,8 @@ interface TaskyState {
   applyRemote(records: SyncRecords): void;
   /** Borra los datos de este dispositivo (al cerrar sesión en la web). */
   clearLocalData(): void;
+  /** Quita del dispositivo lo que han dejado de compartir conmigo (sin enviar nada al servidor). */
+  purge(projectIds: Set<string>, ideaIds: Set<string>): void;
   createProject(input: ProjectInput): string;
   updateProject(id: string, patch: ProjectPatch): void;
   deleteProject(id: string): void;
@@ -143,6 +145,10 @@ export const useTasky = create<TaskyState>()((set, get) => {
     },
 
     clearLocalData: () => commit(() => emptyData()),
+
+    purge(projectIds, ideaIds) {
+      if (purgeRecords(get().data, projectIds, ideaIds) !== get().data) commit((d) => purgeRecords(d, projectIds, ideaIds));
+    },
 
     createProject(input) {
       const id = newId();

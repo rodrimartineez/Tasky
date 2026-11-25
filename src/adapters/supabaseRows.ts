@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { ideaSchema, phaseSchema, projectSchema, taskSchema, type Idea, type Phase, type Project, type Task } from '../core/model';
+import type { Authors } from '../core/collab';
 import { noRecords, type SyncRecords } from '../core/sync';
 
 /**
@@ -109,18 +110,27 @@ export function fail(error: { message: string } | null): never {
 }
 
 /** Convierte filas a registros validados; una fila inválida se descarta sin romper la sincronización. */
-function collect(table: Table, rows: Row[], into: SyncRecords) {
+function collect(table: Table, rows: Row[], into: SyncRecords, authors?: Authors) {
   for (const row of rows) {
     try {
-      (into[table] as unknown[]).push(fromRow[table](row));
+      const record = fromRow[table](row);
+      (into[table] as unknown[]).push(record);
+      // Creador (user_id) y último en modificar (updated_by, vacío en datos anteriores a las cuentas compartidas).
+      if (authors && typeof row.user_id === 'string') {
+        authors[record.id] = { createdBy: row.user_id, updatedBy: (row.updated_by as string | null) ?? row.user_id, version: record.updatedAt };
+      }
     } catch (e) {
       console.error(`Fila de ${table} no válida, se ignora`, row.id, e);
     }
   }
 }
 
-export async function pullRecords(client: SupabaseLike, since: number): Promise<{ records: SyncRecords; cursor: number }> {
+export async function pullRecords(
+  client: SupabaseLike,
+  since: number,
+): Promise<{ records: SyncRecords; cursor: number; authors: Authors }> {
   const records = noRecords();
+  const authors: Authors = {};
   let cursor = since;
   for (const table of TABLES) {
     for (let from = 0; ; from += PAGE) {
@@ -132,12 +142,12 @@ export async function pullRecords(client: SupabaseLike, since: number): Promise<
         .range(from, from + PAGE - 1);
       if (error) fail(error);
       const rows = (data ?? []) as Row[];
-      collect(table, rows, records);
+      collect(table, rows, records, authors);
       for (const r of rows) cursor = Math.max(cursor, Number(r.server_seq));
       if (rows.length < PAGE) break;
     }
   }
-  return { records, cursor };
+  return { records, cursor, authors };
 }
 
 export async function pushRecords(client: SupabaseLike, records: SyncRecords): Promise<SyncRecords> {

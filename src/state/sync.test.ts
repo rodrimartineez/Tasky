@@ -18,7 +18,7 @@ function fakeServer() {
     ideas: new Map(),
   };
   const tables = Object.keys(rows) as Table[];
-  let listener: ((s: { email: string } | null) => void) | null = null;
+  let listener: ((s: { email: string; userId: string } | null) => void) | null = null;
   let remote: (() => void) | null = null;
   const offline = { value: false };
 
@@ -35,7 +35,12 @@ function fakeServer() {
       listener = l;
       return () => {};
     },
-    signIn: async (email) => listener?.({ email }),
+    signIn: async (email) => listener?.({ email, userId: email }),
+    signUp: async () => {},
+    fetchCollab: async () => ({ profiles: {}, shares: { project: {}, idea: {} }, owners: {}, isAdmin: false, activity: [], seenAt: new Date(0).toISOString() }),
+    share: async () => {},
+    unshare: async () => {},
+    markNotificationsSeen: async () => {},
     signOut: async (everywhere) => {
       // Como Supabase: cerrar todas las sesiones necesita al servidor; la de este dispositivo no.
       if (everywhere && offline.value) throw new Error('Sin conexión.');

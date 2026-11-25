@@ -1,6 +1,8 @@
 import type { CSSProperties } from 'react';
-import { Pencil } from 'lucide-react';
+import { Pencil, Share2 } from 'lucide-react';
 import type { Idea, Project } from '../../core/model';
+import { authorsOf, usePeople } from '../../state/people';
+import { Person, useIsShared } from '../collab/Authorship';
 import { Button } from '../components/Button';
 import { Dialog } from '../components/Dialog';
 import { projectColor } from '../projects/projectColor';
@@ -15,10 +17,15 @@ interface IdeaDetailDialogProps {
   project?: Project;
   onClose: () => void;
   onEdit: (idea: Idea) => void;
+  /** Solo en ideas generales: compartir con otra persona. */
+  onShare?: (idea: Idea) => void;
 }
 
 /** Vista de solo lectura de una idea. */
-export function IdeaDetailDialog({ idea, project, onClose, onEdit }: IdeaDetailDialogProps) {
+export function IdeaDetailDialog({ idea, project, onClose, onEdit, onShare }: IdeaDetailDialogProps) {
+  const shared = useIsShared({ projectId: project?.id, ideaId: idea?.id });
+  const createdBy = usePeople((s) => (idea ? authorsOf(s, idea).createdBy : null));
+  const updatedBy = usePeople((s) => (idea ? authorsOf(s, idea).updatedBy : null));
   return (
     <Dialog
       open={!!idea}
@@ -30,6 +37,11 @@ export function IdeaDetailDialog({ idea, project, onClose, onEdit }: IdeaDetailD
             <Button variant="ghost" onClick={onClose} shortcut="Esc">
               Cerrar
             </Button>
+            {onShare && (
+              <Button icon={<Share2 />} onClick={() => onShare(idea)}>
+                Compartir
+              </Button>
+            )}
             <Button variant="primary" icon={<Pencil />} data-autofocus onClick={() => onEdit(idea)}>
               Editar
             </Button>
@@ -56,6 +68,22 @@ export function IdeaDetailDialog({ idea, project, onClose, onEdit }: IdeaDetailD
             )}
             <dt className={styles.term}>Creada</dt>
             <dd className={styles.value}>{dateTimeFmt.format(new Date(idea.createdAt))}</dd>
+            {shared && (
+              <>
+                <dt className={styles.term}>Creada por</dt>
+                <dd className={styles.value}>
+                  <Person userId={createdBy} />
+                </dd>
+                {updatedBy && updatedBy !== createdBy && (
+                  <>
+                    <dt className={styles.term}>Modificada por</dt>
+                    <dd className={styles.value}>
+                      <Person userId={updatedBy} />
+                    </dd>
+                  </>
+                )}
+              </>
+            )}
             {idea.updatedAt !== idea.createdAt && (
               <>
                 <dt className={styles.term}>Modificada</dt>
