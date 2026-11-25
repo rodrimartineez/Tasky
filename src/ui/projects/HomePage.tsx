@@ -1,9 +1,11 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { Archive, ChevronRight, FolderKanban, Hourglass, Plus, Telescope } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Archive, ChevronRight, FolderKanban, Hourglass, Lightbulb, Plus, Telescope } from 'lucide-react';
 import type { ProjectStatus } from '../../core/model';
 import { today } from '../../core/clock';
-import { projectSummariesByStatus, todayTasks } from '../../core/selectors';
+import { GENERAL_IDEAS_ID } from '../../core/ideas';
+import { projectIdeas, projectSummariesByStatus, todayTasks } from '../../core/selectors';
 import { useTasky } from '../../state/store';
 import { Button } from '../components/Button';
 import { EmptyState } from '../components/EmptyState';
@@ -142,6 +144,7 @@ export function HomePage() {
   }, [data]);
   const active = sections[0].summaries;
   const pendingTasks = active.reduce((sum, s) => sum + s.pending, 0);
+  const generalIdeas = useMemo(() => projectIdeas(data, GENERAL_IDEAS_ID).length, [data]);
   const isEmpty = sections.every((s) => s.summaries.length === 0);
 
   return (
@@ -157,11 +160,18 @@ export function HomePage() {
                 }`}
           </p>
         </div>
-        {!isMobile && (
-          <Button variant="primary" icon={<Plus />} shortcut="P" onClick={() => setCreating(true)}>
-            Nuevo proyecto
-          </Button>
-        )}
+        <div className={styles.introActions}>
+          <Link to="/ideas" className={styles.ideasLink}>
+            <Lightbulb />
+            Ideas
+            <span className={styles.ideasCount}>{generalIdeas}</span>
+          </Link>
+          {!isMobile && (
+            <Button variant="primary" icon={<Plus />} shortcut="P" onClick={() => setCreating(true)}>
+              Nuevo proyecto
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* «Hoy» solo existe si hay algo para hoy. */}

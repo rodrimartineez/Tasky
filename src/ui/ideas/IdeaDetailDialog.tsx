@@ -11,7 +11,8 @@ const dateTimeFmt = new Intl.DateTimeFormat('es-ES', { dateStyle: 'long', timeSt
 interface IdeaDetailDialogProps {
   /** Idea mostrada; sin idea, el diálogo está cerrado. */
   idea?: Idea;
-  project: Project;
+  /** Proyecto de la idea; sin proyecto es una idea general. */
+  project?: Project;
   onClose: () => void;
   onEdit: (idea: Idea) => void;
 }
@@ -44,11 +45,15 @@ export function IdeaDetailDialog({ idea, project, onClose, onEdit }: IdeaDetailD
             <p className={`${styles.description} ${styles.muted}`}>Sin descripción.</p>
           )}
           <dl className={styles.list}>
-            <dt className={styles.term}>Proyecto</dt>
-            <dd className={styles.value}>
-              <span className={styles.dot} style={{ '--project': projectColor(project.id) } as CSSProperties} aria-hidden />
-              {project.name}
-            </dd>
+            {project && (
+              <>
+                <dt className={styles.term}>Proyecto</dt>
+                <dd className={styles.value}>
+                  <span className={styles.dot} style={{ '--project': projectColor(project.id) } as CSSProperties} aria-hidden />
+                  {project.name}
+                </dd>
+              </>
+            )}
             <dt className={styles.term}>Creada</dt>
             <dd className={styles.value}>{dateTimeFmt.format(new Date(idea.createdAt))}</dd>
             {idea.updatedAt !== idea.createdAt && (

@@ -8,7 +8,7 @@ Reglas:
 - Para trabajar en un proyecto necesitas su id real: obtenlo con get_project_by_name o get_projects. Nunca inventes ids.
 - Si get_project_by_name devuelve certain=false (varias coincidencias, coincidencia parcial o ninguna), pregunta al usuario a qué proyecto se refiere ANTES de crear o modificar nada.
 - Crea un proyecto (create_project) solo cuando el usuario lo pida o acepte, y comprueba antes con get_project_by_name que no existe ya.
-- Tarea = algo concreto que hacer. Idea = algo a explorar o recordar más adelante. Si no está claro qué es, pregunta antes de crearlo.
+- Tarea = algo concreto que hacer. Idea = algo a explorar o recordar más adelante; si no es de ningún proyecto, es una idea general (create_idea sin project_id). Si no está claro qué es, pregunta antes de crearlo.
 - Títulos breves y accionables en el idioma del usuario (las tareas empiezan por un verbo); la descripción añade el contexto útil (criterios de terminado, notas). No inventes detalles.
 - Para desglosar un proyecto usa create_tasks con todas las tareas en orden de trabajo; el orden de la lista es el orden en Tasky (la primera abierta es «la siguiente»). Usa move_task para reordenar.
 - Un proyecto organiza sus tareas en fases (get_project las lista con sus tareas; cada tarea indica su phase). Tienes acceso completo: create_phase / update_phase / move_phase / delete_phase gestionan las fases; para meter una tarea en una fase pasa phase_id en create_task, create_tasks o update_task (phase_id = null la saca de la fase). Eliminar una fase NO borra sus tareas: quedan sueltas. Sin phase_id, las tareas nuevas quedan sin fase.
@@ -333,18 +333,20 @@ export function createTaskyMcpServer(service: TaskyService): McpServer {
     'get_ideas',
     {
       title: 'Listar ideas',
-      description: 'Ideas de un proyecto, o de todos si no se indica project_id.',
-      inputSchema: z.object({ project_id: id.optional() }),
+      description:
+        'Ideas de un proyecto (project_id), solo las ideas generales sin proyecto (general = true), o todas (proyectos y generales) si no se indica nada.',
+      inputSchema: z.object({ project_id: id.optional(), general: z.boolean().optional() }),
       annotations: READ,
     },
-    ({ project_id }) => run(() => service.getIdeas(project_id)),
+    ({ project_id, general }) => run(() => service.getIdeas(project_id, general)),
   );
   server.registerTool(
     'create_idea',
     {
       title: 'Crear idea',
-      description: 'Guarda una idea en un proyecto. Requiere el id real del proyecto.',
-      inputSchema: z.object({ project_id: id, title: z.string().min(1).max(200), description: z.string().max(2000).optional() }),
+      description:
+        'Guarda una idea en un proyecto (con su id real) o, sin project_id, como idea general para futuros proyectos u otras cosas que no pertenecen a ninguno.',
+      inputSchema: z.object({ project_id: id.optional(), title: z.string().min(1).max(200), description: z.string().max(2000).optional() }),
       annotations: WRITE,
     },
     ({ project_id, title, description }) => run(() => service.createIdea(project_id, { title, description })),

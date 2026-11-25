@@ -1,5 +1,11 @@
 import type { Idea, TaskyData, Timestamp } from './model';
 
+/**
+ * `projectId` reservado para las ideas generales (sin proyecto). Es un uuid válido y la tabla de Supabase no
+ * tiene clave foránea, así que se sincronizan como cualquier idea y la cascada de borrado nunca las alcanza.
+ */
+export const GENERAL_IDEAS_ID = '00000000-0000-0000-0000-000000000000';
+
 export interface IdeaInput {
   title: string;
   description: string;

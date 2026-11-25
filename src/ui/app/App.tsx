@@ -10,6 +10,7 @@ import { LoadError } from './LoadError';
 import { Splash } from './Splash';
 import { HomePage } from '../projects/HomePage';
 import { ProjectPage } from '../projects/ProjectPage';
+import { IdeasPage } from '../ideas/IdeasPage';
 
 /** Modo Hábitos: se descarga solo al entrar en él (Proyectos no carga nada del juego). */
 const HabitsApp = lazy(() => import('../../habits/ui/HabitsApp'));
@@ -38,6 +39,7 @@ export function App() {
           <Routes>
             <Route element={<AppLayout />}>
               <Route index element={<HomePage />} />
+              <Route path="ideas" element={<IdeasPage />} />
               <Route path="project/:projectId" element={<ProjectPage />} />
               <Route path="project/:projectId/phase/:phaseId" element={<ProjectPage />} />
               <Route path="*" element={<Navigate to="/" replace />} />

@@ -30,6 +30,8 @@ function createdLabel(createdAt: Timestamp, todayDate: string): string {
 
 interface IdeaGridProps {
   projectId: string;
+  /** Ideas generales: cambia los textos para que no hablen del proyecto. */
+  general?: boolean;
   onCreate: () => void;
   /** Tocar la idea abre su detalle; el menú «···» edita o elimina. */
   onOpen: (idea: Idea) => void;
@@ -37,7 +39,7 @@ interface IdeaGridProps {
   onDelete: (idea: Idea) => void;
 }
 
-export function IdeaGrid({ projectId, onCreate, onOpen, onEdit, onDelete }: IdeaGridProps) {
+export function IdeaGrid({ projectId, general, onCreate, onOpen, onEdit, onDelete }: IdeaGridProps) {
   const data = useTasky((s) => s.data);
   const deleteIdea = useTasky((s) => s.deleteIdea);
   const ideas = useMemo(() => projectIdeas(data, projectId), [data, projectId]);
@@ -48,7 +50,11 @@ export function IdeaGrid({ projectId, onCreate, onOpen, onEdit, onDelete }: Idea
       <EmptyState
         icon={<Lightbulb />}
         title="Sin ideas todavía"
-        description="Apunta aquí conceptos, funcionalidades o posibilidades para más adelante, sin compromiso."
+        description={
+          general
+            ? 'Guarda aquí ideas para futuros proyectos o cualquier cosa que no encaje todavía en uno.'
+            : 'Apunta aquí conceptos, funcionalidades o posibilidades para más adelante, sin compromiso.'
+        }
         action={
           <Button icon={<Plus />} shortcut="I" onClick={onCreate}>
             Nueva idea
@@ -59,7 +65,7 @@ export function IdeaGrid({ projectId, onCreate, onOpen, onEdit, onDelete }: Idea
   }
 
   return (
-    <ul className={styles.grid} aria-label="Ideas del proyecto">
+    <ul className={styles.grid} aria-label={general ? 'Ideas generales' : 'Ideas del proyecto'}>
       <AnimatePresence initial={false} mode="popLayout">
         {ideas.map((idea) => (
           <motion.li

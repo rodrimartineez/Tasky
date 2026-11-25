@@ -142,6 +142,19 @@ describe('servicio MCP', () => {
     expect((await service.getIdeas(undefined)).ideas).toHaveLength(0);
   });
 
+  it('guarda ideas generales sin proyecto y las lista aparte o junto a las demás', async () => {
+    const { service } = setup();
+    const created = (await service.createIdea(undefined, { title: 'App de recetas' })).created!;
+    expect(created).toMatchObject({ project_id: null });
+    expect((await service.createIdea(undefined, { title: 'app de RECETAS' })).already_existed?.id).toBe(created.id);
+    await service.createIdea('deep', { title: 'De proyecto' });
+    expect((await service.getIdeas(undefined, true)).ideas.map((i) => i.title)).toEqual(['App de recetas']);
+    expect((await service.getIdeas(undefined)).ideas).toHaveLength(2);
+    expect((await service.getProjects()).general_ideas).toBe(1);
+    await service.deleteIdea(created.id);
+    expect((await service.getIdeas(undefined, true)).ideas).toHaveLength(0);
+  });
+
   it('si otro dispositivo cambió lo mismo a la vez, avisa en vez de pisarlo', async () => {
     const { service, repo } = setup();
     const id = (await service.createTask('wynot', { title: 'A' })).created!.id;

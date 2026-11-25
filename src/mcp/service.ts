@@ -1,5 +1,5 @@
 import { emptyData } from '../core/data';
-import { createIdea, deleteIdea, updateIdea } from '../core/ideas';
+import { createIdea, deleteIdea, GENERAL_IDEAS_ID, updateIdea } from '../core/ideas';
 import type { Idea, LocalDate, Phase, Project, ProjectStatus, Task, TaskStatus, TaskyData, TimeSlot, Timestamp } from '../core/model';
 import { createPhase, deletePhase, movePhase, updatePhase } from '../core/phases';
 import { createProject, updateProject } from '../core/projects';
@@ -152,8 +152,8 @@ export function createTaskyService(repo: TaskyRepository, env: ServiceEnv) {
 
   const ideaView = (data: TaskyData, i: Idea) => ({
     id: i.id,
-    project_id: i.projectId,
-    project: projectName(data, i.projectId),
+    project_id: i.projectId === GENERAL_IDEAS_ID ? null : i.projectId,
+    project: i.projectId === GENERAL_IDEAS_ID ? 'Ideas generales (sin proyecto)' : projectName(data, i.projectId),
     title: i.title,
     description: i.description,
     created_at: i.createdAt,
@@ -197,7 +197,8 @@ export function createTaskyService(repo: TaskyRepository, env: ServiceEnv) {
 
   return {
     async getProjects() {
-      return { projects: projectViews(await load()), today: env.today() };
+      const data = await load();
+      return { projects: projectViews(data), general_ideas: projectIdeas(data, GENERAL_IDEAS_ID).length, today: env.today() };
     },
 
     async getProject(projectId: string) {
@@ -390,23 +391,28 @@ export function createTaskyService(repo: TaskyRepository, env: ServiceEnv) {
       return { deleted: taskView(data, deleted!) };
     },
 
-    async getIdeas(projectId: string | undefined) {
+    /** Con project_id, las de ese proyecto; con `general`, solo las generales; sin nada, todas (proyectos y generales). */
+    async getIdeas(projectId: string | undefined, general = false) {
       const data = await load();
-      const ids = projectId ? [requireProject(data, projectId).id] : data.projects.filter((p) => !p.deletedAt).map((p) => p.id);
+      const ids = general
+        ? [GENERAL_IDEAS_ID]
+        : projectId
+          ? [requireProject(data, projectId).id]
+          : [...data.projects.filter((p) => !p.deletedAt).map((p) => p.id), GENERAL_IDEAS_ID];
       return { ideas: ids.flatMap((id) => projectIdeas(data, id).map((i) => ideaView(data, i))) };
     },
 
-    /** Si el proyecto ya tiene una idea con ese título, la devuelve sin duplicarla. */
-    async createIdea(projectId: string, input: { title: string; description?: string }) {
+    /** Sin proyecto es una idea general. Si ya existe una con ese título en el mismo sitio, la devuelve sin duplicarla. */
+    async createIdea(projectId: string | undefined, input: { title: string; description?: string }) {
       const id = env.newId();
       let existing: Idea | undefined;
       const data = await mutate((d) => {
-        requireProject(d, projectId);
-        existing = ideaTitled(d, projectId, input.title);
-        return existing ? d : createIdea(d, projectId, { title: input.title, description: input.description ?? '' }, id, env.now());
+        const target = projectId ? requireProject(d, projectId).id : GENERAL_IDEAS_ID;
+        existing = ideaTitled(d, target, input.title);
+        return existing ? d : createIdea(d, target, { title: input.title, description: input.description ?? '' }, id, env.now());
       });
       return existing
-        ? { already_existed: ideaView(data, existing), note: 'Ya había una idea con ese título en el proyecto; no se ha duplicado.' }
+        ? { already_existed: ideaView(data, existing), note: 'Ya había una idea con ese título en el mismo sitio; no se ha duplicado.' }
         : { created: ideaView(data, requireIdea(data, id)) };
     },
 
