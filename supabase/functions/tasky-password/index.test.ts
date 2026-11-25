@@ -16,12 +16,13 @@ const newSession = (userId: string) => {
 const userOf = (token: string) => db.users.find((u) => u.id === db.sessions.get(token));
 
 vi.mock('npm:@supabase/supabase-js@2', () => ({
-  createClient: () => ({
+  createClient: (_url: string, key: string) => ({
     auth: {
       getUser: async (token: string) => ({ data: { user: userOf(token) ?? null } }),
       signInWithPassword: async ({ email, password }: { email: string; password: string }) => {
+        if (key === 'clave-falsa') return { error: Object.assign(new Error('Invalid API key'), { code: undefined }) };
         const u = db.users.find((x) => x.email === email && x.password === password);
-        if (!u) return { error: new Error('invalid') };
+        if (!u) return { error: Object.assign(new Error('invalid'), { code: 'invalid_credentials' }) };
         newSession(u.id);
         return { error: null };
       },
@@ -60,11 +61,11 @@ beforeEach(async () => {
   db.sessions = new Map();
 });
 
-const call = (token: string | null, body: unknown) =>
+const call = (token: string | null, body: unknown, apikey = 'pub') =>
   handler(
     new Request('http://x/tasky-password', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', apikey: 'pub', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      headers: { 'Content-Type': 'application/json', apikey, ...(token ? { Authorization: `Bearer ${token}` } : {}) },
       body: JSON.stringify(body),
     }),
   );
@@ -121,6 +122,15 @@ describe('tasky-password', () => {
     expect(db.users[2].pending).toBe(false);
     // Ya no es provisional: otro cambio sin la actual se rechaza.
     expect((await call(t, { new_password: 'otra-mas-1234' })).status).toBe(403);
+  });
+
+  it('una apikey falsa no salta las comprobaciones de contraseña', async () => {
+    const t = newSession('nuevo');
+    expect((await call(t, { new_password: 'provisional-1' }, 'clave-falsa')).status).toBe(503);
+    expect(db.users[2].pending).toBe(true);
+    const a = newSession('ana');
+    expect((await call(a, { current_password: 'clave-actual-1', new_password: 'nueva-clave-12' }, 'clave-falsa')).status).toBe(503);
+    expect(pass('ana')).toBe('clave-actual-1');
   });
 
   it('la contraseña nueva debe tener 10-72 caracteres', async () => {

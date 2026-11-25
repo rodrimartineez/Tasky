@@ -40,17 +40,27 @@ Deno.serve(async (req) => {
 
   // Cliente solo para comprobar contraseñas (con la clave pública que envía la app; no guarda sesión).
   const verifier = createClient(url, req.headers.get('apikey') ?? Deno.env.get('SUPABASE_ANON_KEY')!, options);
-  const matches = async (password: string) =>
-    !(await verifier.auth.signInWithPassword({ email: user.email!, password })).error;
+  // Solo «credenciales incorrectas» cuenta como «no coincide». Cualquier otro error (clave `apikey` no válida enviada
+  // por el cliente, límite de intentos, red) se lanza: si no, una `apikey` falsa saltaría la comprobación de la provisional.
+  const matches = async (password: string) => {
+    const { error } = await verifier.auth.signInWithPassword({ email: user.email!, password });
+    if (!error) return true;
+    if ((error as { code?: string }).code === 'invalid_credentials') return false;
+    throw error;
+  };
 
   const pending = await admin.rpc('tasky_password_pending', { p_user: user.id });
   if (pending.error) return json({ error: 'No se pudo cambiar la contraseña.' }, 500);
 
-  if (pending.data !== true) {
-    if (!current || !(await matches(current))) return json({ error: 'La contraseña actual no es correcta.' }, 403);
-    if (current === next) return json({ error: 'La nueva contraseña debe ser distinta de la actual.' }, 400);
-  } else if (await matches(next)) {
-    return json({ error: 'Elige una contraseña distinta de la provisional.' }, 400);
+  try {
+    if (pending.data !== true) {
+      if (!current || !(await matches(current))) return json({ error: 'La contraseña actual no es correcta.' }, 403);
+      if (current === next) return json({ error: 'La nueva contraseña debe ser distinta de la actual.' }, 400);
+    } else if (await matches(next)) {
+      return json({ error: 'Elige una contraseña distinta de la provisional.' }, 400);
+    }
+  } catch {
+    return json({ error: 'No se pudo comprobar la contraseña. Inténtalo de nuevo en unos minutos.' }, 503);
   }
 
   const updated = await admin.auth.admin.updateUserById(user.id, { password: next });
