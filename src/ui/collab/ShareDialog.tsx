@@ -10,6 +10,8 @@ import { toast } from '../components/Toaster';
 import { Avatar } from './Avatar';
 import styles from './ShareDialog.module.css';
 
+const NONE: string[] = [];
+
 interface ShareDialogProps {
   kind: 'project' | 'idea';
   /** Elemento a compartir; sin él, el diálogo está cerrado. */
@@ -20,7 +22,8 @@ interface ShareDialogProps {
 /** Comparte un proyecto o una idea con otra persona por su nombre de usuario. Todos los participantes pueden editarlo. */
 export function ShareDialog({ kind, target, onClose }: ShareDialogProps) {
   const signedIn = useSync((s) => s.userId !== null);
-  const participants = usePeople((s) => (target ? (s.shares[kind][target.id] ?? []) : []));
+  // Sin lista se devuelve siempre la misma vacía: una nueva en cada lectura haría re-renderizar sin fin.
+  const participants = usePeople((s) => (target ? s.shares[kind][target.id] : undefined)) ?? NONE;
   const names = usePeople((s) => s.profiles);
   const me = usePeople((s) => s.me);
   const owner = usePeople((s) => (target ? s.owners[target.id] : undefined));
