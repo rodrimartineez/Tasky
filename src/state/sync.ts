@@ -21,6 +21,8 @@ interface SyncState {
   userId: string | null;
   /** La sesión que acaba de empezar es de otra cuenta que la de los datos guardados en este dispositivo (se han vaciado). */
   accountSwitched: boolean;
+  /** Contraseña provisional: hasta que la cambie no se muestra ni se sincroniza nada (el servidor tampoco da datos). */
+  mustChangePassword: boolean;
   lastSyncedAt: string | null;
   error: string | null;
 }
@@ -31,6 +33,7 @@ export const useSync = create<SyncState>()(() => ({
   email: null,
   userId: null,
   accountSwitched: false,
+  mustChangePassword: false,
   lastSyncedAt: null,
   error: null,
 }));
@@ -105,7 +108,7 @@ async function refreshCollab(b: SyncBackend) {
 /** Descarga lo nuevo y envía lo pendiente. Si ya hay una pasada en curso, se repite al terminar. */
 export function syncNow(): Promise<void> {
   const b = backend;
-  if (!b || !useSync.getState().email) return Promise.resolve();
+  if (!b || !useSync.getState().email || useSync.getState().mustChangePassword) return Promise.resolve();
   if (running) {
     again = true;
     return running;
@@ -148,7 +151,7 @@ function startSession(session: SyncSession) {
   } catch {
     // Sin almacenamiento local no hay datos de otra cuenta que proteger.
   }
-  useSync.setState({ email, userId, accountSwitched, error: null });
+  useSync.setState({ email, userId, accountSwitched, mustChangePassword: false, error: null });
 
   let pushTimer: ReturnType<typeof setTimeout> | undefined;
   const unsubscribeData = useTasky.subscribe((state, prev) => {
@@ -184,13 +187,21 @@ function startSession(session: SyncSession) {
     window.removeEventListener('focus', onOnline);
     stopSession = null;
   };
-  void syncNow();
+  // El servidor decide: con contraseña provisional no hay datos hasta cambiarla. Sin conexión no se puede saber: se sigue.
+  void b
+    .mustChangePassword()
+    .catch(() => false)
+    .then((must) => {
+      if (userId !== useSync.getState().userId) return;
+      useSync.setState({ mustChangePassword: must });
+      return syncNow();
+    });
 }
 
 function endSession() {
   stopSession?.();
   const wasSignedIn = useSync.getState().email !== null;
-  useSync.setState({ status: 'signed_out', email: null, userId: null, lastSyncedAt: null, error: null });
+  useSync.setState({ status: 'signed_out', email: null, userId: null, mustChangePassword: false, lastSyncedAt: null, error: null });
   resetPeople(null);
   // Web: al cerrar sesión no quedan datos en el dispositivo.
   if (wasSignedIn && useSync.getState().requireAuth) useTasky.getState().clearLocalData();
@@ -225,6 +236,16 @@ export async function createAccount(username: string, password: string) {
   await backend.signUp(username, password);
 }
 
+/** Cambia la contraseña de la cuenta actual (`current` null solo con contraseña provisional) y desbloquea la app. */
+export async function changePassword(current: string | null, next: string) {
+  if (!backend) throw new Error('La sincronización no está configurada.');
+  await backend.changePassword(current, next);
+  if (useSync.getState().mustChangePassword) {
+    useSync.setState({ mustChangePassword: false });
+    void syncNow();
+  }
+}
+
 /** Comparte un proyecto o una idea y descarga el nuevo reparto de participantes. */
 export async function share(kind: 'project' | 'idea', id: string, username: string) {
   if (!backend) throw new Error('La sincronización no está configurada.');
@@ -242,9 +263,8 @@ export async function unshare(kind: 'project' | 'idea', id: string, userId: stri
 /** Avisa al servidor de que se han visto los avisos actuales. */
 export const markNotificationsSeen = async () => backend?.markNotificationsSeen();
 
-/** Con `everywhere` se cierran también las demás sesiones de la cuenta; si falla, lanza y no cierra nada. */
-export async function signOut(everywhere = false) {
-  await backend?.signOut(everywhere);
+export async function signOut() {
+  await backend?.signOut();
   endSession();
 }
 

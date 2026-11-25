@@ -3,7 +3,7 @@ import type { Idea, Project, Task } from '../core/model';
 import type { SyncBackend } from '../core/ports';
 import { noRecords, type SyncRecords } from '../core/sync';
 import { useTasky } from './store';
-import { initSync, signOut, syncNow, useSync } from './sync';
+import { changePassword, initSync, signOut, syncNow, useSync } from './sync';
 
 type Rec = Project | Task | Idea;
 type Table = keyof SyncRecords;
@@ -21,6 +21,8 @@ function fakeServer() {
   let listener: ((s: { email: string; userId: string } | null) => void) | null = null;
   let remote: (() => void) | null = null;
   const offline = { value: false };
+  /** Cuenta con contraseña provisional: el servidor no entrega datos hasta que la cambie. */
+  const provisional = { value: false, pulls: 0 };
 
   const write = (table: Table, rec: Rec) => {
     const old = rows[table].get(rec.id);
@@ -40,12 +42,12 @@ function fakeServer() {
     fetchCollab: async () => ({ profiles: {}, shares: { project: {}, idea: {} }, owners: {}, isAdmin: false, activity: [], seenAt: new Date(0).toISOString() }),
     share: async () => {},
     unshare: async () => {},
-    markNotificationsSeen: async () => {},
-    signOut: async (everywhere) => {
-      // Como Supabase: cerrar todas las sesiones necesita al servidor; la de este dispositivo no.
-      if (everywhere && offline.value) throw new Error('Sin conexión.');
-      listener?.(null);
+    mustChangePassword: async () => provisional.value,
+    changePassword: async () => {
+      provisional.value = false;
     },
+    markNotificationsSeen: async () => {},
+    signOut: async () => listener?.(null),
     getAuthorizationRequest: async () => ({ redirectUrl: '' }),
     decideAuthorization: async () => '',
     onRemoteChange(l) {
@@ -53,6 +55,8 @@ function fakeServer() {
       return () => (remote = null);
     },
     async pull(since) {
+      if (provisional.value) throw new Error('Sin acceso.');
+      provisional.pulls++;
       const records = noRecords();
       let cursor = since;
       for (const t of tables)
@@ -74,7 +78,7 @@ function fakeServer() {
     write(table, rec);
     remote?.();
   };
-  return { backend, offline, write, writeAndNotify, get: (t: Table, id: string) => rows[t].get(id)?.rec };
+  return { backend, offline, provisional, write, writeAndNotify, get: (t: Table, id: string) => rows[t].get(id)?.rec };
 }
 
 const server = fakeServer();
@@ -150,17 +154,24 @@ describe('sincronización con el servidor', () => {
     });
   });
 
-  it('si no se pueden cerrar todas las sesiones, la de este dispositivo sigue abierta y con sus datos', async () => {
-    server.offline.value = true;
-    await expect(signOut(true)).rejects.toThrow('Sin conexión.');
-    server.offline.value = false;
-    expect(useSync.getState().email).toBe('yo@ejemplo.com');
-    expect(useTasky.getState().data.projects.length).toBeGreaterThan(0);
-  });
-
   it('cerrar sesión en la web borra los datos del dispositivo', async () => {
     await signOut();
     expect(useSync.getState().status).toBe('signed_out');
     expect(useTasky.getState().data.projects).toEqual([]);
+  });
+
+  it('con contraseña provisional no se sincroniza ni se entra hasta cambiarla', async () => {
+    server.provisional.value = true;
+    server.provisional.pulls = 0;
+    await server.backend.signIn('nuevo@ejemplo.com', 'provisional');
+    await new Promise((r) => setTimeout(r, 20));
+    expect(useSync.getState().mustChangePassword).toBe(true);
+    await syncNow();
+    expect(server.provisional.pulls).toBe(0);
+
+    await changePassword(null, 'mi-propia-clave-9');
+    expect(useSync.getState().mustChangePassword).toBe(false);
+    await syncNow();
+    expect(server.provisional.pulls).toBeGreaterThan(0);
   });
 });

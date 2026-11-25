@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Cloud, CloudAlert, CloudCheck, CloudOff, LogIn, LogOut, RefreshCw, ShieldOff, UserPlus } from 'lucide-react';
+import { Cloud, CloudAlert, CloudCheck, CloudOff, KeyRound, LogIn, LogOut, RefreshCw, UserPlus } from 'lucide-react';
 import { hasPendingChanges, signOut, syncNow, useSync, type SyncStatus } from '../../state/sync';
 import { usePeople } from '../../state/people';
 import { CreateAccountForm } from '../collab/CreateAccountForm';
@@ -7,6 +7,7 @@ import { ConfirmDialog } from '../components/ConfirmDialog';
 import { Dialog } from '../components/Dialog';
 import { Menu, type MenuItem } from '../components/Menu';
 import { toast } from '../components/Toaster';
+import { ChangePasswordForm } from './ChangePasswordForm';
 import { LoginForm } from './LoginForm';
 import styles from './Sync.module.css';
 
@@ -32,10 +33,10 @@ export function SyncButton() {
   const { status, email, lastSyncedAt, error, requireAuth } = useSync();
   const [loggingIn, setLoggingIn] = useState(false);
   const [creatingAccount, setCreatingAccount] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
   const isAdmin = usePeople((s) => s.isAdmin);
   const username = usePeople((s) => (s.me ? s.profiles[s.me] : undefined));
   const [confirmingSignOut, setConfirmingSignOut] = useState(false);
-  const [confirmingEverywhere, setConfirmingEverywhere] = useState<{ pending: boolean } | null>(null);
   if (status === 'disabled') return null;
 
   const label = {
@@ -53,22 +54,13 @@ export function SyncButton() {
     toast('Sesión cerrada.');
   };
 
-  const doSignOutEverywhere = async () => {
-    setConfirmingEverywhere(null);
-    try {
-      await signOut(true);
-      toast('Sesión cerrada en todos los dispositivos.');
-    } catch (e) {
-      toast(`No se pudo cerrar la sesión: ${e instanceof Error ? e.message : 'error desconocido'}`, 'error');
-    }
-  };
-
   const items: MenuItem[] =
     status === 'signed_out'
       ? [{ label: 'Activar sincronización…', icon: <LogIn />, onSelect: () => setLoggingIn(true) }]
       : [
           { label: 'Sincronizar ahora', icon: <RefreshCw />, onSelect: () => void syncNow() },
           ...(isAdmin ? [{ label: 'Crear cuenta para otra persona…', icon: <UserPlus />, onSelect: () => setCreatingAccount(true) }] : []),
+          { label: 'Cambiar contraseña…', icon: <KeyRound />, onSelect: () => setChangingPassword(true) },
           {
             label: `Cerrar sesión (${username ?? email})`,
             icon: <LogOut />,
@@ -77,14 +69,6 @@ export function SyncButton() {
               if (requireAuth) await syncNow();
               if (requireAuth && hasPendingChanges()) setConfirmingSignOut(true);
               else void doSignOut();
-            },
-          },
-          {
-            label: 'Cerrar sesión en todos los dispositivos…',
-            icon: <ShieldOff />,
-            onSelect: async () => {
-              if (requireAuth) await syncNow();
-              setConfirmingEverywhere({ pending: requireAuth && hasPendingChanges() });
             },
           },
         ];
@@ -109,7 +93,7 @@ export function SyncButton() {
         open={creatingAccount}
         onClose={() => setCreatingAccount(false)}
         title="Crear cuenta"
-        description="Para otra persona: tendrá sus propios datos, privados. Dale su usuario y contraseña para que entre."
+        description="Para otra persona: tendrá sus propios datos, privados. Dale su usuario y una contraseña provisional: tendrá que cambiarla al entrar."
       >
         {creatingAccount && (
           <div className={styles.dialogBody}>
@@ -122,6 +106,18 @@ export function SyncButton() {
           </div>
         )}
       </Dialog>
+      <Dialog open={changingPassword} onClose={() => setChangingPassword(false)} title="Cambiar contraseña">
+        {changingPassword && (
+          <div className={styles.dialogBody}>
+            <ChangePasswordForm
+              onDone={() => {
+                setChangingPassword(false);
+                toast('Contraseña cambiada. Se han cerrado las demás sesiones.');
+              }}
+            />
+          </div>
+        )}
+      </Dialog>
       <ConfirmDialog
         open={confirmingSignOut}
         title="¿Cerrar sesión con cambios sin enviar?"
@@ -129,16 +125,6 @@ export function SyncButton() {
         confirmLabel="Cerrar sesión"
         onClose={() => setConfirmingSignOut(false)}
         onConfirm={() => void doSignOut()}
-      />
-      <ConfirmDialog
-        open={confirmingEverywhere !== null}
-        title="¿Cerrar sesión en todos los dispositivos?"
-        description={`Se revocan todas las sesiones de tu cuenta: este dispositivo, los demás (cuando caduque su acceso actual, normalmente en menos de una hora) y los asistentes conectados como Claude. Úsalo si pierdes un dispositivo o sospechas que alguien conoce tu contraseña (cámbiala también).${
-          confirmingEverywhere?.pending ? ' Hay cambios que aún no han llegado al servidor: se perderán.' : ''
-        }`}
-        confirmLabel="Cerrar todas"
-        onClose={() => setConfirmingEverywhere(null)}
-        onConfirm={() => void doSignOutEverywhere()}
       />
     </>
   );

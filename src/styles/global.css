@@ -77,3 +77,12 @@ button {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Elementos que abren su menú al mantener pulsado: en táctil, sin selección de texto ni menú nativo. */
+@media (pointer: coarse) {
+  [data-longpress] {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+}

@@ -5,6 +5,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { ChevronRight, Ellipsis, GripVertical, Layers, Pencil, Trash2 } from 'lucide-react';
 import type { Phase } from '../../core/model';
 import { Menu } from '../components/Menu';
+import { useLongPressMenu } from '../components/useLongPressMenu';
 import row from '../tasks/TaskItem.module.css';
 import styles from './PhaseItem.module.css';
 
@@ -21,12 +22,14 @@ export function SortablePhaseItem({ phase, open, done, onEdit, onDelete }: Phase
   const { setNodeRef, setActivatorNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({ id: phase.id });
   const style: CSSProperties = { transform: CSS.Translate.toString(transform), transition };
   const total = open + done;
+  const { menu, press } = useLongPressMenu();
 
   return (
     <div ref={setNodeRef} style={style} className={isDragging ? row.lifted : undefined}>
       <div
         className={`${row.row} ${styles.phase} ${isDragging ? row.dragging : ''}`}
         onMouseDown={listeners?.onMouseDown as React.MouseEventHandler | undefined}
+        {...press}
       >
         <button
           ref={setActivatorNodeRef}
@@ -53,6 +56,7 @@ export function SortablePhaseItem({ phase, open, done, onEdit, onDelete }: Phase
             label={`Acciones de la fase «${phase.name}»`}
             trigger={<Ellipsis />}
             triggerClassName={row.menuTrigger}
+            {...menu}
             items={[
               { label: 'Editar', icon: <Pencil />, onSelect: () => onEdit(phase) },
               { label: 'Eliminar', icon: <Trash2 />, danger: true, onSelect: () => onDelete(phase) },

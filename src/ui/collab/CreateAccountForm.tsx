@@ -14,12 +14,12 @@ export function CreateAccountForm({ onDone }: { onDone: (username: string) => vo
   const [busy, setBusy] = useState(false);
   const name = username.trim().toLowerCase();
   const validName = USERNAME_PATTERN.test(name);
-  const validPassword = password.length >= 8;
+  const validPassword = password.length >= 10;
   const hint =
     username.trim() && !validName
       ? 'Usuario: de 3 a 20 caracteres (letras sin tilde, números o «_»).'
       : password && !validPassword
-        ? 'La contraseña necesita al menos 8 caracteres.'
+        ? 'La contraseña necesita al menos 10 caracteres.'
         : null;
 
   const submit = async () => {

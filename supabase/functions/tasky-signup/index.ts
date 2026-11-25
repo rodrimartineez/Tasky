@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
   if (!/^[a-z0-9_]{3,20}$/.test(username)) {
     return json({ error: 'El usuario debe tener de 3 a 20 caracteres: letras sin tilde, números o guion bajo.' }, 400);
   }
-  if (password.length < 8 || password.length > 72) return json({ error: 'La contraseña debe tener entre 8 y 72 caracteres.' }, 400);
+  if (password.length < 10 || password.length > 72) return json({ error: 'La contraseña debe tener entre 10 y 72 caracteres.' }, 400);
 
   const taken = await admin.from('profiles').select('user_id').eq('username', username).maybeSingle();
   if (taken.data) return json({ error: 'Ese nombre de usuario ya está en uso.' }, 409);

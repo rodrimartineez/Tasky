@@ -8,6 +8,7 @@ import { Authorship } from '../collab/Authorship';
 import { Menu } from '../components/Menu';
 import { SwipeToDelete } from '../components/SwipeToDelete';
 import { toast } from '../components/Toaster';
+import { useLongPressMenu } from '../components/useLongPressMenu';
 import { DueBadge } from './DueBadge';
 import { ScheduleBadge } from './schedule';
 import { TaskCheckbox } from './TaskCheckbox';
@@ -35,6 +36,7 @@ export function SortableTaskItem({ task, today, ...actions }: TaskItemProps) {
     id: task.id,
   });
   const style: CSSProperties = { transform: CSS.Translate.toString(transform), transition };
+  const { menu, press } = useLongPressMenu();
 
   return (
     <div ref={setNodeRef} style={style} className={isDragging ? styles.lifted : undefined}>
@@ -42,6 +44,7 @@ export function SortableTaskItem({ task, today, ...actions }: TaskItemProps) {
         <div
           className={`${styles.row} ${isDragging ? styles.dragging : ''}`}
           onMouseDown={listeners?.onMouseDown as React.MouseEventHandler | undefined}
+          {...press}
         >
           <button
             ref={setActivatorNodeRef}
@@ -54,7 +57,7 @@ export function SortableTaskItem({ task, today, ...actions }: TaskItemProps) {
           >
             <GripVertical />
           </button>
-          <TaskBody task={task} today={today} {...actions} />
+          <TaskBody task={task} today={today} menu={menu} {...actions} />
         </div>
       </SwipeToDeleteTask>
     </div>
@@ -63,11 +66,12 @@ export function SortableTaskItem({ task, today, ...actions }: TaskItemProps) {
 
 /** Fila de una tarea completada (sin arrastre). */
 export function DoneTaskItem({ task, today, ...actions }: TaskItemProps) {
+  const { menu, press } = useLongPressMenu();
   return (
     <SwipeToDeleteTask task={task}>
-      <div className={`${styles.row} ${styles.done}`}>
+      <div className={`${styles.row} ${styles.done}`} {...press}>
         <span className={styles.handleSpacer} />
-        <TaskBody task={task} today={today} {...actions} />
+        <TaskBody task={task} today={today} menu={menu} {...actions} />
       </div>
     </SwipeToDeleteTask>
   );
@@ -90,7 +94,7 @@ function SwipeToDeleteTask({ task, children }: { task: Task; children: React.Rea
   );
 }
 
-function TaskBody({ task, today, onOpen, onEdit, onDelete }: TaskItemProps) {
+function TaskBody({ task, today, menu, onOpen, onEdit, onDelete }: TaskItemProps & { menu: ReturnType<typeof useLongPressMenu>['menu'] }) {
   const updateTask = useTasky((s) => s.updateTask);
   const [completing, setCompleting] = useState(false);
   const done = task.status === 'done';
@@ -119,6 +123,7 @@ function TaskBody({ task, today, onOpen, onEdit, onDelete }: TaskItemProps) {
       </button>
       <span className={styles.meta}>
         <span className={styles.badges}>
+          <Authorship record={task} projectId={task.projectId} />
           {inProgress && <span className={styles.progressChip}>En curso</span>}
           {!done && task.timeSlot !== 'all_day' && (
             <span className={styles.slot} title={`Franja: ${TIME_SLOT_INFO[task.timeSlot].label.toLowerCase()}`}>
@@ -128,7 +133,6 @@ function TaskBody({ task, today, onOpen, onEdit, onDelete }: TaskItemProps) {
           )}
           <ScheduleBadge task={task} today={today} muted={done} />
           {task.dueDate && <DueBadge due={task.dueDate} today={today} muted={done} />}
-          <Authorship record={task} projectId={task.projectId} />
         </span>
         <span className={styles.actions}>
           {!done && (
@@ -146,6 +150,7 @@ function TaskBody({ task, today, onOpen, onEdit, onDelete }: TaskItemProps) {
             label={`Acciones de «${task.title}»`}
             trigger={<Ellipsis />}
             triggerClassName={styles.menuTrigger}
+            {...menu}
             items={[
               { label: 'Editar', icon: <Pencil />, onSelect: () => onEdit(task) },
               { label: 'Eliminar', icon: <Trash2 />, danger: true, onSelect: () => onDelete(task) },

@@ -51,11 +51,9 @@ export function createSupabaseSync(url: string, key: string): SyncBackend {
       fail(error);
     },
 
-    async signOut(everywhere = false) {
+    async signOut() {
       // 'local' borra la sesión del dispositivo antes de avisar al servidor: sin red también se cierra aquí.
-      // 'global' solo la borra si el servidor ha revocado todas las sesiones.
-      const { error } = await client.auth.signOut({ scope: everywhere ? 'global' : 'local' });
-      if (error && everywhere) fail(error);
+      await client.auth.signOut({ scope: 'local' });
     },
 
     async getAuthorizationRequest(id) {
@@ -76,6 +74,20 @@ export function createSupabaseSync(url: string, key: string): SyncBackend {
 
     async signUp(username, password) {
       const { error } = await client.functions.invoke('tasky-signup', { body: { username, password } });
+      if (!error) return;
+      const detail = await (error as { context?: Response }).context?.json?.().catch(() => null);
+      if (detail?.error) throw new Error(detail.error);
+      fail(error);
+    },
+
+    async mustChangePassword() {
+      const { data, error } = await client.rpc('tasky_must_change_password');
+      if (error) fail(error);
+      return data === true;
+    },
+
+    async changePassword(current, next) {
+      const { error } = await client.functions.invoke('tasky-password', { body: { current_password: current, new_password: next } });
       if (!error) return;
       const detail = await (error as { context?: Response }).context?.json?.().catch(() => null);
       if (detail?.error) throw new Error(detail.error);

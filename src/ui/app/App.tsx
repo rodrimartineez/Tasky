@@ -5,6 +5,7 @@ import { useTasky } from '../../state/store';
 import { useSync } from '../../state/sync';
 import { ConsentPage } from '../sync/ConsentPage';
 import { LoginPage } from '../sync/LoginPage';
+import { PasswordPage } from '../sync/PasswordPage';
 import { AppLayout } from './AppLayout';
 import { LoadError } from './LoadError';
 import { Splash } from './Splash';
@@ -24,13 +25,16 @@ export function App() {
   const status = useTasky((s) => s.status);
   const requireAuth = useSync((s) => s.requireAuth);
   const syncStatus = useSync((s) => s.status);
+  const mustChangePassword = useSync((s) => s.mustChangePassword);
   // Web: sin sesión no se muestra ningún dato (ni mientras se comprueba la sesión).
-  const locked = requireAuth && (syncStatus === 'checking' || syncStatus === 'signed_out');
+  // Con contraseña provisional tampoco (en ningún modo): hasta cambiarla solo se ve la pantalla de cambio.
+  const locked = (requireAuth && (syncStatus === 'checking' || syncStatus === 'signed_out')) || mustChangePassword;
   const [splash, setSplash] = useState(() => !prefersReducedMotion());
 
   return (
     <MotionConfig reducedMotion="user">
       {requireAuth && syncStatus === 'signed_out' && <LoginPage />}
+      {mustChangePassword && <PasswordPage />}
       {!locked && status === 'ready' && isConsentRoute() && (
         <ConsentPage authorizationId={new URLSearchParams(window.location.search).get('authorization_id')} />
       )}

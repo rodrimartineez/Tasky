@@ -13,6 +13,7 @@ import { EmptyState } from '../components/EmptyState';
 import { Menu } from '../components/Menu';
 import { SwipeToDelete } from '../components/SwipeToDelete';
 import { toast } from '../components/Toaster';
+import { useLongPressMenu } from '../components/useLongPressMenu';
 import styles from './IdeaGrid.module.css';
 
 const dateFmt = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short' });
@@ -88,35 +89,46 @@ export function IdeaGrid({ projectId, general, onCreate, onOpen, onEdit, onDelet
                 toast('Idea eliminada.');
               }}
             >
-              <div className={styles.cardWrap}>
-                <button type="button" className={styles.card} onClick={() => onOpen(idea)}>
-                  <span className={styles.icon}>
-                    <Lightbulb />
-                  </span>
-                  <span className={styles.title}>{idea.title}</span>
-                  {idea.description && <span className={styles.description}>{idea.description}</span>}
-                  <time className={styles.date} dateTime={idea.createdAt} title={fullFmt.format(new Date(idea.createdAt))}>
-                    {createdLabel(idea.createdAt, today)}
-                  </time>
-                  <Authorship record={idea} projectId={projectId === GENERAL_IDEAS_ID ? undefined : projectId} ideaId={idea.id} />
-                </button>
-                <div className={styles.cardMenu}>
-                  <Menu
-                    label={`Acciones de «${idea.title}»`}
-                    trigger={<Ellipsis />}
-                    triggerClassName={styles.menuTrigger}
-                    items={[
-                      { label: 'Editar', icon: <Pencil />, onSelect: () => onEdit(idea) },
-                      ...(onShare ? [{ label: 'Compartir…', icon: <Share2 />, onSelect: () => onShare(idea) }] : []),
-                      { label: 'Eliminar', icon: <Trash2 />, danger: true, onSelect: () => onDelete(idea) },
-                    ]}
-                  />
-                </div>
-              </div>
+              <IdeaCard idea={idea} projectId={projectId} today={today} onOpen={onOpen} onEdit={onEdit} onDelete={onDelete} onShare={onShare} />
             </SwipeToDelete>
           </motion.li>
         ))}
       </AnimatePresence>
     </ul>
+  );
+}
+
+type IdeaCardProps = Pick<IdeaGridProps, 'projectId' | 'onOpen' | 'onEdit' | 'onDelete' | 'onShare'> & { idea: Idea; today: string };
+
+/** Tarjeta de una idea: tocarla abre su detalle; «···» o mantenerla pulsada abre su menú. */
+function IdeaCard({ idea, projectId, today, onOpen, onEdit, onDelete, onShare }: IdeaCardProps) {
+  const { menu, press } = useLongPressMenu();
+  return (
+    <div className={styles.cardWrap} {...press}>
+      <button type="button" className={styles.card} onClick={() => onOpen(idea)}>
+        <span className={styles.icon}>
+          <Lightbulb />
+        </span>
+        <span className={styles.title}>{idea.title}</span>
+        {idea.description && <span className={styles.description}>{idea.description}</span>}
+        <time className={styles.date} dateTime={idea.createdAt} title={fullFmt.format(new Date(idea.createdAt))}>
+          {createdLabel(idea.createdAt, today)}
+        </time>
+        <Authorship record={idea} projectId={projectId === GENERAL_IDEAS_ID ? undefined : projectId} ideaId={idea.id} />
+      </button>
+      <div className={styles.cardMenu}>
+        <Menu
+          label={`Acciones de «${idea.title}»`}
+          trigger={<Ellipsis />}
+          triggerClassName={styles.menuTrigger}
+          {...menu}
+          items={[
+            { label: 'Editar', icon: <Pencil />, onSelect: () => onEdit(idea) },
+            ...(onShare ? [{ label: 'Compartir…', icon: <Share2 />, onSelect: () => onShare(idea) }] : []),
+            { label: 'Eliminar', icon: <Trash2 />, danger: true, onSelect: () => onDelete(idea) },
+          ]}
+        />
+      </div>
+    </div>
   );
 }

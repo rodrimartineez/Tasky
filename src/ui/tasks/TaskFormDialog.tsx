@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { CalendarPlus, Trash2, X } from 'lucide-react';
+import { CalendarPlus, ChevronRight, Trash2, X } from 'lucide-react';
 import { today as getToday } from '../../core/clock';
 import { addDays, endOfWeek, isScheduledOn, weekday } from '../../core/dueDates';
 import type { LocalDate, Task, TaskStatus, TimeSlot } from '../../core/model';
@@ -170,11 +170,13 @@ function TaskForm({
       )}
 
       {/* Programación: cuándo se va a hacer. */}
-      <fieldset className={styles.group}>
-        <legend className={styles.legend}>
+      <details className={styles.group}>
+        <summary className={styles.legend}>
+          <ChevronRight />
           ¿Cuándo lo harás?
           <span className={form.hint}>{schedule ?? 'Sin programar'}</span>
-        </legend>
+        </summary>
+        <div className={styles.body}>
 
         <div className={styles.chips} role="group" aria-label="Días programados">
           {scheduledDays.map((day) => (
@@ -235,15 +237,17 @@ function TaskForm({
             <span className={form.hint}>{scheduledDays.length === 0 ? 'Elige antes algún día' : 'Los mismos días de la semana'}</span>
           </span>
         </label>
-      </fieldset>
+        </div>
+      </details>
 
       {/* Fecha límite: cuándo debe estar terminada. Independiente de la programación. */}
-      <fieldset className={styles.group}>
-        <legend className={styles.legend}>
+      <details className={styles.group}>
+        <summary className={styles.legend}>
+          <ChevronRight />
           Fecha límite
           <span className={form.hint}>{dueDate ? dueLabel(dueDate, today) : 'Opcional'}</span>
-        </legend>
-        <div className={styles.chips}>
+        </summary>
+        <div className={`${styles.chips} ${styles.bodyRow}`}>
           <input
             type="date"
             aria-label="Fecha límite"
@@ -268,7 +272,7 @@ function TaskForm({
             </button>
           )}
         </div>
-      </fieldset>
+      </details>
 
       {task && (
         <div className={form.field}>

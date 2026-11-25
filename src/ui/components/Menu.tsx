@@ -16,11 +16,16 @@ interface MenuProps {
   items: MenuItem[];
   /** Estilo alternativo del botón (p. ej. discreto dentro de una fila). */
   triggerClassName?: string;
+  /** Control desde fuera (p. ej. al mantener pulsada la tarjeta, ver useLongPressMenu); sin ellos el menú se gestiona solo. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 /** Menú desplegable accesible: flechas para moverse, Enter para elegir, Esc o clic fuera para cerrar. */
-export function Menu({ label, trigger, items, triggerClassName }: MenuProps) {
-  const [open, setOpen] = useState(false);
+export function Menu({ label, trigger, items, triggerClassName, open: controlledOpen, onOpenChange }: MenuProps) {
+  const [ownOpen, setOwnOpen] = useState(false);
+  const open = controlledOpen ?? ownOpen;
+  const setOpen = onOpenChange ?? setOwnOpen;
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   useOverlay(open);
@@ -33,7 +38,7 @@ export function Menu({ label, trigger, items, triggerClassName }: MenuProps) {
     document.addEventListener('pointerdown', onPointerDown);
     rootRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
     return () => document.removeEventListener('pointerdown', onPointerDown);
-  }, [open]);
+  }, [open, setOpen]);
 
   const close = () => {
     setOpen(false);
@@ -66,7 +71,7 @@ export function Menu({ label, trigger, items, triggerClassName }: MenuProps) {
         title={label}
         aria-haspopup="menu"
         aria-expanded={open}
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => setOpen(!open)}
       >
         {trigger}
       </button>

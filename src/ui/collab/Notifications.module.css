@@ -1,8 +1,10 @@
 .root {
   position: relative;
+  flex: none;
 }
 .trigger {
   position: relative;
+  flex: none;
   display: grid;
   place-items: center;
   width: 34px;
@@ -84,4 +86,18 @@
   text-align: center;
   font-size: var(--fs-sm);
   color: var(--text-faint);
+}
+
+/* Móvil: el panel se ancla a la cabecera (no a la campana) y ocupa su ancho, sin salirse de la pantalla. */
+@media (max-width: 520px) {
+  .root {
+    position: static;
+  }
+  .panel {
+    left: var(--space-3);
+    right: var(--space-3);
+    top: calc(100% + var(--space-1));
+    width: auto;
+    max-height: min(60vh, 420px);
+  }
 }

@@ -15,6 +15,7 @@ import { Fab } from '../components/Fab';
 import { toast } from '../components/Toaster';
 import { Kbd } from '../components/Kbd';
 import { Menu } from '../components/Menu';
+import { useLongPressMenu } from '../components/useLongPressMenu';
 import { Segmented } from '../components/Segmented';
 import { PROJECT_STATUS_OPTIONS } from '../components/StatusBadge';
 import { MOBILE_QUERY, useMediaQuery } from '../components/useMediaQuery';
@@ -42,6 +43,7 @@ export function ProjectPage() {
   const deleteIdea = useTasky((s) => s.deleteIdea);
   const deletePhase = useTasky((s) => s.deletePhase);
   const isMobile = useMediaQuery(MOBILE_QUERY);
+  const { menu: headerMenu, press: headerPress } = useLongPressMenu();
   const [tab, setTab] = useState<Tab>('tasks');
   const [editing, setEditing] = useState(false);
   const [sharing, setSharing] = useState(false);
@@ -169,7 +171,7 @@ export function ProjectPage() {
 
       {phase ? (
         <header className={`${styles.header} ${styles.phaseHeader}`}>
-          <div className={styles.heading}>
+          <div className={styles.heading} {...headerPress}>
             <p className={styles.eyebrow}>
               <Layers /> Fase
             </p>
@@ -184,6 +186,7 @@ export function ProjectPage() {
             )}
             <Menu
               label="Acciones de la fase"
+              {...headerMenu}
               trigger={<Ellipsis />}
               items={[
                 { label: 'Editar', icon: <Pencil />, onSelect: () => setPhaseDialog({ phase }) },
@@ -194,7 +197,7 @@ export function ProjectPage() {
         </header>
       ) : (
         <header className={styles.header}>
-          <div className={styles.heading}>
+          <div className={styles.heading} {...headerPress}>
             <h1 className={styles.title}>{project.name}</h1>
             {people && people.length > 1 && <AvatarStack userIds={people} size={22} />}
             {project.description && <p className={styles.description}>{project.description}</p>}
@@ -208,6 +211,7 @@ export function ProjectPage() {
             />
             <Menu
               label="Acciones del proyecto"
+              {...headerMenu}
               trigger={<Ellipsis />}
               items={[
                 { label: 'Nueva fase', icon: <Layers />, onSelect: newPhase },

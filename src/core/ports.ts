@@ -52,12 +52,8 @@ export interface SyncBackend {
   onSessionChange(listener: (session: SyncSession | null) => void): () => void;
   /** Lanza un Error con un mensaje para el usuario si no se puede iniciar sesión. */
   signIn(email: string, password: string): Promise<void>;
-  /**
-   * Cierra la sesión de este dispositivo (aunque no haya red). Con `everywhere`, revoca en el servidor
-   * todas las sesiones de la cuenta (otros dispositivos y asistentes); si no se puede, lanza un Error y
-   * la sesión sigue abierta.
-   */
-  signOut(everywhere?: boolean): Promise<void>;
+  /** Cierra la sesión de este dispositivo (aunque no haya red). */
+  signOut(): Promise<void>;
   /**
    * Avisa (sin datos) en cuanto cambia algo en el servidor, venga de otro dispositivo o de un asistente,
    * para descargarlo al momento con pull. Devuelve la función para dejar de escuchar.
@@ -72,6 +68,13 @@ export interface SyncBackend {
   push(records: SyncRecords): Promise<SyncRecords>;
   /** Solo el administrador: crea una cuenta con nombre de usuario y contraseña (no inicia sesión con ella). Lanza un Error con un mensaje para el usuario. */
   signUp(username: string, password: string): Promise<void>;
+  /** ¿La cuenta aún tiene la contraseña provisional? El servidor le niega los datos hasta que la cambie. */
+  mustChangePassword(): Promise<boolean>;
+  /**
+   * Cambia la contraseña de la cuenta con sesión iniciada. `current` es obligatoria salvo con contraseña provisional.
+   * Lanza un Error con un mensaje para el usuario (p. ej. contraseña actual incorrecta). Cierra las demás sesiones.
+   */
+  changePassword(current: string | null, next: string): Promise<void>;
   /** Personas, participantes de lo compartido y avisos de actividad. */
   fetchCollab(): Promise<CollabSnapshot>;
   /** Comparte con otra persona (por nombre de usuario). Lanza un Error con un mensaje para el usuario. */
