@@ -8,6 +8,7 @@ import { Dialog } from '../components/Dialog';
 import { Menu, type MenuItem } from '../components/Menu';
 import { toast } from '../components/Toaster';
 import { ChangePasswordForm } from './ChangePasswordForm';
+import { useBackupMenu } from '../app/DataMenu';
 import { LoginForm } from './LoginForm';
 import styles from './Sync.module.css';
 
@@ -34,6 +35,7 @@ export function SyncButton() {
   const [loggingIn, setLoggingIn] = useState(false);
   const [creatingAccount, setCreatingAccount] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
+  const backup = useBackupMenu();
   const isAdmin = usePeople((s) => s.isAdmin);
   const username = usePeople((s) => (s.me ? s.profiles[s.me] : undefined));
   const [confirmingSignOut, setConfirmingSignOut] = useState(false);
@@ -54,7 +56,7 @@ export function SyncButton() {
     toast('Sesión cerrada.');
   };
 
-  const items: MenuItem[] =
+  const syncItems: MenuItem[] =
     status === 'signed_out'
       ? [{ label: 'Activar sincronización…', icon: <LogIn />, onSelect: () => setLoggingIn(true) }]
       : [
@@ -73,10 +75,12 @@ export function SyncButton() {
           },
         ];
 
+  const items = [...syncItems, ...backup.items];
   const { icon, className } = ICON[status];
   return (
     <>
-      <Menu label={label} trigger={<span className={className}>{icon}</span>} items={items} />
+      <Menu label={label} trigger={<span className={`${styles.indicator} ${className ?? ''}`}>{icon}</span>} items={items} />
+      {backup.extra}
       <Dialog open={loggingIn} onClose={() => setLoggingIn(false)} title="Activar sincronización">
         {loggingIn && (
           <div className={styles.dialogBody}>

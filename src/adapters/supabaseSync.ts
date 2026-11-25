@@ -91,6 +91,7 @@ export function createSupabaseSync(url: string, key: string): SyncBackend {
       if (!error) return;
       const detail = await (error as { context?: Response }).context?.json?.().catch(() => null);
       if (detail?.error) throw new Error(detail.error);
+      if (detail?.code === 'NOT_FOUND') throw new Error('El servidor aún no tiene activado el cambio de contraseña.');
       fail(error);
     },
 

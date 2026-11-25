@@ -60,6 +60,10 @@
 }
 
 /* ── Indicador de la cabecera ── */
+.indicator {
+  display: grid;
+  place-items: center;
+}
 .syncing svg {
   animation: spin 1s linear infinite;
 }
