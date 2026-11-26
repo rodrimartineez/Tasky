@@ -53,7 +53,7 @@ export function RichText({ text }: { text: string }) {
         'text' in p ? (
           <Fragment key={i}>{p.text}</Fragment>
         ) : (
-          <a key={i} className={styles.link} href={p.url} target="_blank" rel="noopener noreferrer" title={p.url} onClick={(e) => e.stopPropagation()}>
+          <a key={i} className={styles.link} href={p.url} target="_blank" rel="noopener noreferrer" title={p.url}>
             {p.label}
             <ExternalLink aria-hidden />
           </a>

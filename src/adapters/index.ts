@@ -78,7 +78,7 @@ function openExternalLinksInBrowser() {
     e.preventDefault();
     // Chrome si está instalado; si no, el navegador predeterminado.
     void openUrl(link.href, 'chrome').catch(() => openUrl(link.href));
-  });
+  }, true);
 }
 
 /** Único punto donde se decide la plataforma. El resto de la app solo conoce los puertos. */
