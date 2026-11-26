@@ -70,13 +70,14 @@ function reloadOnStaleChunks() {
   );
 }
 
-/** Escritorio: los enlaces externos (target=_blank) se abren en el navegador del sistema, no dentro de la app. */
+/** Escritorio: los enlaces externos (target=_blank) se abren en Google Chrome (o el navegador predeterminado), no dentro de la app. */
 function openExternalLinksInBrowser() {
   document.addEventListener('click', (e) => {
     const link = (e.target as Element).closest<HTMLAnchorElement>('a[target="_blank"]');
     if (!link || !/^https?:\/\//.test(link.href)) return;
     e.preventDefault();
-    void openUrl(link.href);
+    // Chrome si está instalado; si no, el navegador predeterminado.
+    void openUrl(link.href, 'chrome').catch(() => openUrl(link.href));
   });
 }
 

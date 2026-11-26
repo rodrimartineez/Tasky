@@ -8,7 +8,15 @@
   "permissions": [
     "core:default",
     "fs:default",
-    "opener:allow-open-url",
+    {
+      "identifier": "opener:allow-open-url",
+      "allow": [
+        { "url": "https://*" },
+        { "url": "http://*" },
+        { "url": "https://*", "app": "chrome" },
+        { "url": "http://*", "app": "chrome" }
+      ]
+    },
     "fs:allow-appdata-read-recursive",
     "fs:allow-appdata-write-recursive",
     "fs:allow-download-write"
