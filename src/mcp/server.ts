@@ -12,6 +12,7 @@ Reglas:
 - Títulos breves y accionables en el idioma del usuario (las tareas empiezan por un verbo); la descripción añade el contexto útil (criterios de terminado, notas). No inventes detalles.
 - Para desglosar un proyecto usa create_tasks con todas las tareas en orden de trabajo; el orden de la lista es el orden en Tasky (la primera abierta es «la siguiente»). Usa move_task para reordenar.
 - Un proyecto organiza sus tareas en fases (get_project las lista con sus tareas; cada tarea indica su phase). Tienes acceso completo: create_phase / update_phase / move_phase / delete_phase gestionan las fases; para meter una tarea en una fase pasa phase_id en create_task, create_tasks o update_task (phase_id = null la saca de la fase). Eliminar una fase NO borra sus tareas: quedan sueltas. Sin phase_id, las tareas nuevas quedan sin fase.
+- Las ideas generales se organizan en grupos (get_idea_groups / create_idea_group / update_idea_group / delete_idea_group). Para crear una idea dentro de un grupo pasa group_id en create_idea; para moverla, group_id en update_idea (null la saca del grupo). Eliminar un grupo NO borra sus ideas: quedan sin grupo. Si el usuario nombra un grupo, búscalo con get_idea_groups antes de crear otro.
 - Repetir una creación no duplica: si ya hay una tarea abierta, una idea o un proyecto con el mismo título, se devuelve en already_existed. Ante un error de conexión puedes reintentar con seguridad.
 - Estados: todo = pendiente, in_progress = en curso, done = completada. Marca in_progress al empezar una tarea y done (complete_task) SOLO cuando el trabajo esté terminado y verificado (pruebas pasadas, comprobado en la app…). Si no se ha podido verificar, déjala en curso y explica qué falta en su descripción.
 - Para localizar una tarea o idea por su texto, consulta primero get_tasks, get_project o get_ideas y usa su id. Si hay varias candidatas, pregunta.
@@ -334,32 +335,43 @@ export function createTaskyMcpServer(service: TaskyService): McpServer {
     {
       title: 'Listar ideas',
       description:
-        'Ideas de un proyecto (project_id), solo las ideas generales sin proyecto (general = true), o todas (proyectos y generales) si no se indica nada.',
-      inputSchema: z.object({ project_id: id.optional(), general: z.boolean().optional() }),
+        'Ideas de un proyecto (project_id), de un grupo de ideas generales (group_id), solo las ideas generales sin proyecto (general = true, de todos los grupos y sueltas), o todas (proyectos y generales) si no se indica nada. Cada idea general indica su group.',
+      inputSchema: z.object({ project_id: id.optional(), group_id: id.optional(), general: z.boolean().optional() }),
       annotations: READ,
     },
-    ({ project_id, general }) => run(() => service.getIdeas(project_id, general)),
+    ({ project_id, group_id, general }) => run(() => service.getIdeas(project_id, general, group_id)),
   );
   server.registerTool(
     'create_idea',
     {
       title: 'Crear idea',
       description:
-        'Guarda una idea en un proyecto (con su id real) o, sin project_id, como idea general para futuros proyectos u otras cosas que no pertenecen a ninguno.',
-      inputSchema: z.object({ project_id: id.optional(), title: z.string().min(1).max(200), description: z.string().max(2000).optional() }),
+        'Guarda una idea en un proyecto (con su id real) o, sin project_id, como idea general para futuros proyectos u otras cosas que no pertenecen a ninguno. Con group_id (solo ideas generales), la crea dentro de ese grupo.',
+      inputSchema: z.object({
+        project_id: id.optional(),
+        group_id: id.optional(),
+        title: z.string().min(1).max(200),
+        description: z.string().max(2000).optional(),
+      }),
       annotations: WRITE,
     },
-    ({ project_id, title, description }) => run(() => service.createIdea(project_id, { title, description })),
+    ({ project_id, group_id, title, description }) => run(() => service.createIdea(project_id, { title, description }, group_id)),
   );
   server.registerTool(
     'update_idea',
     {
       title: 'Modificar idea',
-      description: 'Cambia el título o la descripción de una idea (lo que no se indique se conserva).',
-      inputSchema: z.object({ idea_id: id, title: z.string().min(1).max(200).optional(), description: z.string().max(2000).optional() }),
+      description:
+        'Cambia el título o la descripción de una idea (lo que no se indique se conserva). En ideas generales, group_id la mueve a ese grupo y group_id = null la deja sin grupo.',
+      inputSchema: z.object({
+        idea_id: id,
+        title: z.string().min(1).max(200).optional(),
+        description: z.string().max(2000).optional(),
+        group_id: id.nullable().optional(),
+      }),
       annotations: WRITE,
     },
-    ({ idea_id, title, description }) => run(() => service.updateIdea(idea_id, { title, description })),
+    ({ idea_id, title, description, group_id }) => run(() => service.updateIdea(idea_id, { title, description, groupId: group_id })),
   );
   server.registerTool(
     'delete_idea',
@@ -370,6 +382,51 @@ export function createTaskyMcpServer(service: TaskyService): McpServer {
       annotations: DELETE,
     },
     ({ idea_id }) => run(() => service.deleteIdea(idea_id)),
+  );
+
+  // ── Grupos de ideas generales ──
+  server.registerTool(
+    'get_idea_groups',
+    {
+      title: 'Listar grupos de ideas',
+      description:
+        'Grupos en los que se organizan las ideas generales (en su orden), con cuántas ideas tiene cada uno y cuántas hay sin grupo.',
+      inputSchema: z.object({}),
+      annotations: READ,
+    },
+    () => run(() => service.getIdeaGroups()),
+  );
+  server.registerTool(
+    'create_idea_group',
+    {
+      title: 'Crear grupo de ideas',
+      description:
+        'Crea un grupo para organizar ideas generales (va al final). Si ya existe uno con ese nombre, lo devuelve en already_existed.',
+      inputSchema: z.object({ name: z.string().min(1).max(120), description: z.string().max(1000).optional() }),
+      annotations: WRITE,
+    },
+    ({ name, description }) => run(() => service.createIdeaGroup({ name, description })),
+  );
+  server.registerTool(
+    'update_idea_group',
+    {
+      title: 'Modificar grupo de ideas',
+      description: 'Cambia el nombre o la descripción de un grupo de ideas (lo que no se indique se conserva).',
+      inputSchema: z.object({ group_id: id, name: z.string().min(1).max(120).optional(), description: z.string().max(1000).optional() }),
+      annotations: WRITE,
+    },
+    ({ group_id, name, description }) => run(() => service.updateIdeaGroup(group_id, { name, description })),
+  );
+  server.registerTool(
+    'delete_idea_group',
+    {
+      title: 'Eliminar grupo de ideas',
+      description:
+        'Elimina un grupo de ideas. Sus ideas NO se borran: quedan sin grupo. Confirma con el usuario antes de usarla salvo que lo haya pedido explícitamente.',
+      inputSchema: z.object({ group_id: id }),
+      annotations: DELETE,
+    },
+    ({ group_id }) => run(() => service.deleteIdeaGroup(group_id)),
   );
 
   return server;

@@ -105,7 +105,7 @@ describe('fases', () => {
 
   it('una tarea cuya fase se borró en otro dispositivo cuenta como suelta', () => {
     const d = createPhase(setup(), 'p', { name: 'F', description: '' }, 'f', T0, ['a']);
-    const remote = { projects: [], phases: [{ ...d.phases[0], deletedAt: T1, updatedAt: T1 }], tasks: [], ideas: [] };
+    const remote = { projects: [], phases: [{ ...d.phases[0], deletedAt: T1, updatedAt: T1 }], tasks: [], ideas: [], ideaGroups: [] };
     const merged = mergeRemote(d, remote, T1);
     expect(merged.tasks.find((t) => t.id === 'a')?.phaseId).toBe('f');
     expect(outline(merged)).toContain('a');

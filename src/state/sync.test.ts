@@ -1,11 +1,11 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import type { Idea, Project, Task } from '../core/model';
+import type { Idea, IdeaGroup, Project, Task } from '../core/model';
 import type { SyncBackend } from '../core/ports';
 import { noRecords, type SyncRecords } from '../core/sync';
 import { useTasky } from './store';
 import { changePassword, initSync, signOut, syncNow, useSync } from './sync';
 
-type Rec = Project | Task | Idea;
+type Rec = Project | Task | Idea | IdeaGroup;
 type Table = keyof SyncRecords;
 
 /** Servidor en memoria con las mismas reglas que supabase/schema.sql: última escritura gana y número de cambio. */
@@ -16,6 +16,7 @@ function fakeServer() {
     phases: new Map(),
     tasks: new Map(),
     ideas: new Map(),
+    ideaGroups: new Map(),
   };
   const tables = Object.keys(rows) as Table[];
   let listener: ((s: { email: string; userId: string } | null) => void) | null = null;
@@ -136,11 +137,14 @@ describe('sincronización con el servidor', () => {
     server.writeAndNotify('tasks', {
       id: 'desde-claude',
       projectId: p.id,
+      phaseId: null,
       title: 'Creada por Claude',
       description: '',
       status: 'todo',
       dueDate: null,
       timeSlot: 'evening',
+      scheduledDays: [],
+      repeatWeekly: false,
       rank: 'a0',
       completedAt: null,
       createdAt: T_FUTURE,

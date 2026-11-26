@@ -1,9 +1,31 @@
 import { emptyData } from '../core/data';
-import { createIdea, deleteIdea, GENERAL_IDEAS_ID, updateIdea } from '../core/ideas';
-import type { Idea, LocalDate, Phase, Project, ProjectStatus, Task, TaskStatus, TaskyData, TimeSlot, Timestamp } from '../core/model';
+import {
+  createIdea,
+  createIdeaGroup,
+  deleteIdea,
+  deleteIdeaGroup,
+  findIdeaGroup,
+  GENERAL_IDEAS_ID,
+  setIdeaGroup,
+  updateIdea,
+  updateIdeaGroup,
+} from '../core/ideas';
+import type {
+  Idea,
+  IdeaGroup,
+  LocalDate,
+  Phase,
+  Project,
+  ProjectStatus,
+  Task,
+  TaskStatus,
+  TaskyData,
+  TimeSlot,
+  Timestamp,
+} from '../core/model';
 import { createPhase, deletePhase, movePhase, updatePhase } from '../core/phases';
 import { createProject, updateProject } from '../core/projects';
-import { findPhase, projectIdeas, projectPhases, projectSummariesByStatus, projectTasks } from '../core/selectors';
+import { findPhase, groupIdeas, ideaGroups, projectIdeas, projectPhases, projectSummariesByStatus, projectTasks } from '../core/selectors';
 import { countRecords, pendingChanges, rememberVersions, type ServerVersions, type SyncRecords } from '../core/sync';
 import { createTask, deleteTask, moveTask, taskOrder, updateTask, type TaskPatch } from '../core/tasks';
 
@@ -101,6 +123,11 @@ export function createTaskyService(repo: TaskyRepository, env: ServiceEnv) {
     if (!idea) throw new ToolError(`No existe ninguna idea con id «${id}». Usa get_ideas.`);
     return idea;
   }
+  function requireGroup(data: TaskyData, id: string): IdeaGroup {
+    const group = findIdeaGroup(data, id);
+    if (!group) throw new ToolError(`No existe ningún grupo de ideas con id «${id}». Usa get_idea_groups.`);
+    return group;
+  }
 
   // ── Idempotencia: repetir una creación (p. ej. un reintento tras un corte) no duplica nada ──
   const sameText = (a: string, b: string) => normalize(a) === normalize(b);
@@ -150,15 +177,25 @@ export function createTaskyService(repo: TaskyRepository, env: ServiceEnv) {
     completed_at: t.completedAt,
   });
 
-  const ideaView = (data: TaskyData, i: Idea) => ({
-    id: i.id,
-    project_id: i.projectId === GENERAL_IDEAS_ID ? null : i.projectId,
-    project: i.projectId === GENERAL_IDEAS_ID ? 'Ideas generales (sin proyecto)' : projectName(data, i.projectId),
-    title: i.title,
-    description: i.description,
-    created_at: i.createdAt,
+  const ideaView = (data: TaskyData, i: Idea) => {
+    const group = i.projectId === GENERAL_IDEAS_ID && i.groupId ? findIdeaGroup(data, i.groupId) : undefined;
+    return {
+      id: i.id,
+      project_id: i.projectId === GENERAL_IDEAS_ID ? null : i.projectId,
+      project: i.projectId === GENERAL_IDEAS_ID ? 'Ideas generales (sin proyecto)' : projectName(data, i.projectId),
+      group_id: group?.id ?? null,
+      group: group?.name ?? null,
+      title: i.title,
+      description: i.description,
+      created_at: i.createdAt,
+    };
+  };
+  const groupView = (data: TaskyData, g: IdeaGroup) => ({
+    id: g.id,
+    name: g.name,
+    description: g.description,
+    ideas: groupIdeas(data, g.id).length,
   });
-
   const phaseView = (data: TaskyData, f: Phase) => ({
     id: f.id,
     project_id: f.projectId,
@@ -198,7 +235,12 @@ export function createTaskyService(repo: TaskyRepository, env: ServiceEnv) {
   return {
     async getProjects() {
       const data = await load();
-      return { projects: projectViews(data), general_ideas: projectIdeas(data, GENERAL_IDEAS_ID).length, today: env.today() };
+      return {
+        projects: projectViews(data),
+        general_ideas: projectIdeas(data, GENERAL_IDEAS_ID).length,
+        idea_groups: ideaGroups(data).map((g) => groupView(data, g)),
+        today: env.today(),
+      };
     },
 
     async getProject(projectId: string) {
@@ -391,9 +433,13 @@ export function createTaskyService(repo: TaskyRepository, env: ServiceEnv) {
       return { deleted: taskView(data, deleted!) };
     },
 
-    /** Con project_id, las de ese proyecto; con `general`, solo las generales; sin nada, todas (proyectos y generales). */
-    async getIdeas(projectId: string | undefined, general = false) {
+    /**
+     * Con project_id, las de ese proyecto; con group_id, las de ese grupo de ideas generales; con `general`, solo las
+     * generales (de todos los grupos y sueltas); sin nada, todas (proyectos y generales).
+     */
+    async getIdeas(projectId: string | undefined, general = false, groupId?: string) {
       const data = await load();
+      if (groupId) return { ideas: groupIdeas(data, requireGroup(data, groupId).id).map((i) => ideaView(data, i)) };
       const ids = general
         ? [GENERAL_IDEAS_ID]
         : projectId
@@ -402,24 +448,40 @@ export function createTaskyService(repo: TaskyRepository, env: ServiceEnv) {
       return { ideas: ids.flatMap((id) => projectIdeas(data, id).map((i) => ideaView(data, i))) };
     },
 
-    /** Sin proyecto es una idea general. Si ya existe una con ese título en el mismo sitio, la devuelve sin duplicarla. */
-    async createIdea(projectId: string | undefined, input: { title: string; description?: string }) {
+    /**
+     * Sin proyecto es una idea general (con group_id, dentro de ese grupo). Si ya existe una con ese título en el mismo
+     * sitio, la devuelve sin duplicarla.
+     */
+    async createIdea(projectId: string | undefined, input: { title: string; description?: string }, groupId?: string) {
+      if (projectId && groupId) throw new ToolError('Los grupos son solo para ideas generales: indica project_id o group_id, no ambos.');
       const id = env.newId();
       let existing: Idea | undefined;
       const data = await mutate((d) => {
         const target = projectId ? requireProject(d, projectId).id : GENERAL_IDEAS_ID;
+        const group = groupId ? requireGroup(d, groupId).id : null;
         existing = ideaTitled(d, target, input.title);
-        return existing ? d : createIdea(d, target, { title: input.title, description: input.description ?? '' }, id, env.now());
+        return existing ? d : createIdea(d, target, { title: input.title, description: input.description ?? '' }, id, env.now(), group);
       });
       return existing
         ? { already_existed: ideaView(data, existing), note: 'Ya había una idea con ese título en el mismo sitio; no se ha duplicado.' }
         : { created: ideaView(data, requireIdea(data, id)) };
     },
 
-    async updateIdea(ideaId: string, patch: { title?: string; description?: string }) {
+    /** `groupId`: mueve una idea general a ese grupo (null = la saca del grupo). */
+    async updateIdea(ideaId: string, patch: { title?: string; description?: string; groupId?: string | null }) {
       const data = await mutate((d) => {
         const idea = requireIdea(d, ideaId);
-        return updateIdea(d, ideaId, { title: patch.title ?? idea.title, description: patch.description ?? idea.description }, env.now());
+        let next = updateIdea(
+          d,
+          ideaId,
+          { title: patch.title ?? idea.title, description: patch.description ?? idea.description },
+          env.now(),
+        );
+        if (patch.groupId !== undefined) {
+          if (idea.projectId !== GENERAL_IDEAS_ID) throw new ToolError('Solo las ideas generales (sin proyecto) pueden ir en un grupo.');
+          next = setIdeaGroup(next, ideaId, patch.groupId === null ? null : requireGroup(next, patch.groupId).id, env.now());
+        }
+        return next;
       });
       return { updated: ideaView(data, requireIdea(data, ideaId)) };
     },
@@ -431,6 +493,51 @@ export function createTaskyService(repo: TaskyRepository, env: ServiceEnv) {
         return deleteIdea(d, ideaId, env.now());
       });
       return { deleted: ideaView(data, deleted!) };
+    },
+
+    // ── Grupos de ideas generales ──
+
+    async getIdeaGroups() {
+      const data = await load();
+      return { groups: ideaGroups(data).map((g) => groupView(data, g)), ungrouped_ideas: groupIdeas(data, null).length };
+    },
+
+    /** Si ya existe un grupo con ese nombre, lo devuelve sin duplicarlo. */
+    async createIdeaGroup(input: { name: string; description?: string }) {
+      const id = env.newId();
+      let existing: IdeaGroup | undefined;
+      const data = await mutate((d) => {
+        existing = ideaGroups(d).find((g) => sameText(g.name, input.name));
+        return existing ? d : createIdeaGroup(d, { name: input.name, description: input.description ?? '' }, id, env.now());
+      });
+      return existing
+        ? { already_existed: groupView(data, existing), note: 'Ya había un grupo con ese nombre; no se ha duplicado.' }
+        : { created: groupView(data, requireGroup(data, id)) };
+    },
+
+    async updateIdeaGroup(groupId: string, patch: { name?: string; description?: string }) {
+      const data = await mutate((d) => {
+        const group = requireGroup(d, groupId);
+        return updateIdeaGroup(
+          d,
+          groupId,
+          { name: patch.name ?? group.name, description: patch.description ?? group.description },
+          env.now(),
+        );
+      });
+      return { updated: groupView(data, requireGroup(data, groupId)) };
+    },
+
+    /** Sus ideas no se borran: quedan sin grupo. */
+    async deleteIdeaGroup(groupId: string) {
+      let deleted: IdeaGroup | undefined;
+      let moved = 0;
+      await mutate((d) => {
+        deleted = requireGroup(d, groupId);
+        moved = groupIdeas(d, groupId).length;
+        return deleteIdeaGroup(d, groupId, env.now());
+      });
+      return { deleted: { id: deleted!.id, name: deleted!.name }, ideas_left_ungrouped: moved };
     },
   };
 }

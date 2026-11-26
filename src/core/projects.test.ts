@@ -68,7 +68,7 @@ describe('deleteProject', () => {
           deletedAt: null,
         },
       ],
-      ideas: [{ id: 'i1', projectId: 'p1', title: 'y', description: '', createdAt: T0, updatedAt: T0, deletedAt: null }],
+      ideas: [{ id: 'i1', projectId: 'p1', groupId: null, title: 'y', description: '', createdAt: T0, updatedAt: T0, deletedAt: null }],
     };
     const after = deleteProject(data, 'p1', T1);
     expect(findProject(after, 'p1')).toBeUndefined();

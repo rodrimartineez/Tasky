@@ -5,7 +5,7 @@ import { today as getToday } from '../../core/clock';
 import { daysBetween } from '../../core/dueDates';
 import type { Idea, Timestamp } from '../../core/model';
 import { GENERAL_IDEAS_ID } from '../../core/ideas';
-import { projectIdeas } from '../../core/selectors';
+import { groupIdeas, projectIdeas } from '../../core/selectors';
 import { useTasky } from '../../state/store';
 import { Authorship } from '../collab/Authorship';
 import { Button } from '../components/Button';
@@ -35,6 +35,8 @@ interface IdeaGridProps {
   projectId: string;
   /** Ideas generales: cambia los textos para que no hablen del proyecto. */
   general?: boolean;
+  /** Ideas generales: las de este grupo (null o sin indicar = las sueltas). */
+  groupId?: string | null;
   onCreate: () => void;
   /** Tocar la idea abre su detalle; el menú «···» edita o elimina. */
   onOpen: (idea: Idea) => void;
@@ -44,10 +46,10 @@ interface IdeaGridProps {
   onShare?: (idea: Idea) => void;
 }
 
-export function IdeaGrid({ projectId, general, onCreate, onOpen, onEdit, onDelete, onShare }: IdeaGridProps) {
+export function IdeaGrid({ projectId, general, groupId = null, onCreate, onOpen, onEdit, onDelete, onShare }: IdeaGridProps) {
   const data = useTasky((s) => s.data);
   const deleteIdea = useTasky((s) => s.deleteIdea);
-  const ideas = useMemo(() => projectIdeas(data, projectId), [data, projectId]);
+  const ideas = useMemo(() => (general ? groupIdeas(data, groupId) : projectIdeas(data, projectId)), [data, projectId, general, groupId]);
   const today = getToday();
 
   if (ideas.length === 0) {
@@ -56,9 +58,11 @@ export function IdeaGrid({ projectId, general, onCreate, onOpen, onEdit, onDelet
         icon={<Lightbulb />}
         title="Sin ideas todavía"
         description={
-          general
-            ? 'Guarda aquí ideas para futuros proyectos o cualquier cosa que no encaje todavía en uno.'
-            : 'Apunta aquí conceptos, funcionalidades o posibilidades para más adelante, sin compromiso.'
+          general && groupId
+            ? 'Añade aquí las ideas de este grupo.'
+            : general
+              ? 'Guarda aquí ideas para futuros proyectos o cualquier cosa que no encaje todavía en uno.'
+              : 'Apunta aquí conceptos, funcionalidades o posibilidades para más adelante, sin compromiso.'
         }
         action={
           <Button icon={<Plus />} shortcut="I" onClick={onCreate}>

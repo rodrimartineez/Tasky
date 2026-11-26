@@ -14,7 +14,7 @@ function memoryRepo(initial: SyncRecords) {
     async save(records) {
       saves.push(records);
       const newer = noRecords();
-      for (const table of ['projects', 'phases', 'tasks', 'ideas'] as const) {
+      for (const table of ['projects', 'phases', 'tasks', 'ideas', 'ideaGroups'] as const) {
         const list = state[table] as { id: string; updatedAt: string }[];
         for (const rec of records[table] as { id: string; updatedAt: string }[]) {
           const i = list.findIndex((r) => r.id === rec.id);
@@ -43,7 +43,7 @@ function setup() {
   d = createProject(d, { name: 'Deep Lake', description: '' }, 'deep', T0);
   d = createProject(d, { name: 'Borrado', description: '' }, 'gone', T0);
   d = deleteProject(d, 'gone', T0);
-  const mem = memoryRepo({ projects: d.projects, phases: d.phases, tasks: d.tasks, ideas: d.ideas });
+  const mem = memoryRepo({ projects: d.projects, phases: d.phases, tasks: d.tasks, ideas: d.ideas, ideaGroups: d.ideaGroups });
   return { ...mem, service: createTaskyService(mem.repo, env) };
 }
 
@@ -153,6 +153,24 @@ describe('servicio MCP', () => {
     expect((await service.getProjects()).general_ideas).toBe(1);
     await service.deleteIdea(created.id);
     expect((await service.getIdeas(undefined, true)).ideas).toHaveLength(0);
+  });
+
+  it('organiza las ideas generales en grupos', async () => {
+    const { service } = setup();
+    const group = (await service.createIdeaGroup({ name: 'Viajes' })).created!;
+    expect((await service.createIdeaGroup({ name: 'viajes' })).already_existed?.id).toBe(group.id);
+    const idea = (await service.createIdea(undefined, { title: 'Japón' }, group.id)).created!;
+    expect(idea).toMatchObject({ group_id: group.id, group: 'Viajes' });
+    await service.createIdea(undefined, { title: 'Suelta' });
+    expect((await service.getIdeas(undefined, false, group.id)).ideas.map((i) => i.title)).toEqual(['Japón']);
+    expect(await service.getIdeaGroups()).toMatchObject({ groups: [{ name: 'Viajes', ideas: 1 }], ungrouped_ideas: 1 });
+    await expect(service.createIdea('deep', { title: 'X' }, group.id)).rejects.toThrow('solo para ideas generales');
+
+    const moved = (await service.updateIdea(idea.id, { groupId: null })).updated;
+    expect(moved.group_id).toBeNull();
+    await service.updateIdea(idea.id, { groupId: group.id });
+    expect(await service.deleteIdeaGroup(group.id)).toMatchObject({ ideas_left_ungrouped: 1 });
+    expect((await service.getIdeas(undefined, true)).ideas.every((i) => i.group_id === null)).toBe(true);
   });
 
   it('si otro dispositivo cambió lo mismo a la vez, avisa en vez de pisarlo', async () => {

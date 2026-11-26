@@ -50,6 +50,7 @@ describe('projectSummariesByStatus', () => {
     ],
     phases: [],
     ideas: [],
+    ideaGroups: [],
   };
 
   it('filtra por estado, excluye borrados y ordena por actualización reciente', () => {

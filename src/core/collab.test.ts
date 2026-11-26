@@ -46,8 +46,8 @@ describe('purgeRecords', () => {
       { ...base, id: 'p2', name: 'B', description: '', status: 'active' as const, rank: null },
     ],
     ideas: [
-      { ...base, id: 'i1', projectId: 'p1', title: 'x', description: '' },
-      { ...base, id: 'i2', projectId: 'g', title: 'y', description: '' },
+      { ...base, id: 'i1', projectId: 'p1', groupId: null, title: 'x', description: '' },
+      { ...base, id: 'i2', projectId: 'g', groupId: null, title: 'y', description: '' },
     ],
   };
 

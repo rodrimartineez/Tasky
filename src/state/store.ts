@@ -6,7 +6,17 @@ import type { TaskyData } from '../core/model';
 import type { FileExport, Storage } from '../core/ports';
 import { countRecords, mergeRemote, purgeRecords, type SyncRecords } from '../core/sync';
 import { createProject, deleteProject, reorderProject, updateProject, type ProjectInput, type ProjectPatch } from '../core/projects';
-import { createIdea, deleteIdea, updateIdea, type IdeaInput } from '../core/ideas';
+import {
+  createIdea,
+  createIdeaGroup,
+  deleteIdea,
+  deleteIdeaGroup,
+  setIdeaGroup,
+  updateIdea,
+  updateIdeaGroup,
+  type IdeaGroupInput,
+  type IdeaInput,
+} from '../core/ideas';
 import { createPhase, deletePhase, movePhase, updatePhase, type PhaseInput } from '../core/phases';
 import { createTask, deleteTask, moveTask, updateTask, type TaskInput, type TaskPatch } from '../core/tasks';
 
@@ -49,9 +59,16 @@ interface TaskyState {
   /** Coloca la tarea entre dos vecinas (null = extremo de la lista). */
   moveTask(id: string, beforeId: string | null, afterId: string | null): void;
   deleteTask(id: string): void;
-  createIdea(projectId: string, input: IdeaInput): string;
+  /** `groupId`: grupo de ideas generales donde crearla (null = suelta). */
+  createIdea(projectId: string, input: IdeaInput, groupId?: string | null): string;
   updateIdea(id: string, input: IdeaInput): void;
   deleteIdea(id: string): void;
+  /** Mueve una idea general a un grupo (null = suelta). */
+  setIdeaGroup(id: string, groupId: string | null): void;
+  createIdeaGroup(input: IdeaGroupInput): string;
+  updateIdeaGroup(id: string, input: IdeaGroupInput): void;
+  /** Sus ideas no se borran: quedan sueltas. */
+  deleteIdeaGroup(id: string): void;
 }
 
 let storage: Storage | null = null;
@@ -177,12 +194,21 @@ export const useTasky = create<TaskyState>()((set, get) => {
     moveTask: (id, beforeId, afterId) => commit((d) => moveTask(d, id, beforeId, afterId, now())),
     deleteTask: (id) => commit((d) => deleteTask(d, id, now())),
 
-    createIdea(projectId, input) {
+    createIdea(projectId, input, groupId = null) {
       const id = newId();
-      commit((d) => createIdea(d, projectId, input, id, now()));
+      commit((d) => createIdea(d, projectId, input, id, now(), groupId));
       return id;
     },
     updateIdea: (id, input) => commit((d) => updateIdea(d, id, input, now())),
     deleteIdea: (id) => commit((d) => deleteIdea(d, id, now())),
+    setIdeaGroup: (id, groupId) => commit((d) => setIdeaGroup(d, id, groupId, now())),
+
+    createIdeaGroup(input) {
+      const id = newId();
+      commit((d) => createIdeaGroup(d, input, id, now()));
+      return id;
+    },
+    updateIdeaGroup: (id, input) => commit((d) => updateIdeaGroup(d, id, input, now())),
+    deleteIdeaGroup: (id) => commit((d) => deleteIdeaGroup(d, id, now())),
   };
 });

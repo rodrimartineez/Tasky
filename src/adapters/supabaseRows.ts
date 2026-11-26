@@ -1,5 +1,16 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { ideaSchema, phaseSchema, projectSchema, taskSchema, type Idea, type Phase, type Project, type Task } from '../core/model';
+import {
+  ideaGroupSchema,
+  ideaSchema,
+  phaseSchema,
+  projectSchema,
+  taskSchema,
+  type Idea,
+  type IdeaGroup,
+  type Phase,
+  type Project,
+  type Task,
+} from '../core/model';
 import type { Authors } from '../core/collab';
 import { noRecords, type SyncRecords } from '../core/sync';
 
@@ -12,7 +23,16 @@ export type SupabaseLike = SupabaseClient<any, any, any>;
 
 /** Filas tal como están en Postgres (snake_case). Ver supabase/schema.sql. */
 export type Row = Record<string, unknown> & { id: string; server_seq: number };
-export type Table = 'projects' | 'phases' | 'tasks' | 'ideas';
+export type Table = keyof SyncRecords;
+
+/** Nombre de cada colección en Postgres. */
+export const TABLE_NAMES: Record<Table, string> = {
+  projects: 'projects',
+  phases: 'phases',
+  tasks: 'tasks',
+  ideas: 'ideas',
+  ideaGroups: 'idea_groups',
+};
 
 const PAGE = 1000;
 const BATCH = 500;
@@ -65,15 +85,26 @@ export const fromRow: { [K in Table]: (r: Row) => SyncRecords[K][number] } = {
     ideaSchema.parse({
       id: r.id,
       projectId: r.project_id,
+      groupId: r.group_id ?? null,
       title: r.title,
       description: r.description,
       createdAt: ts(r.created_at),
       updatedAt: ts(r.updated_at),
       deletedAt: ts(r.deleted_at),
     }),
+  ideaGroups: (r) =>
+    ideaGroupSchema.parse({
+      id: r.id,
+      name: r.name,
+      description: r.description,
+      rank: r.rank,
+      createdAt: ts(r.created_at),
+      updatedAt: ts(r.updated_at),
+      deletedAt: ts(r.deleted_at),
+    }),
 };
 
-const base = (r: Project | Phase | Task | Idea) => ({
+const base = (r: Project | Phase | Task | Idea | IdeaGroup) => ({
   id: r.id,
   created_at: r.createdAt,
   updated_at: r.updatedAt,
@@ -97,10 +128,11 @@ export const toRow = {
     rank: t.rank,
     completed_at: t.completedAt,
   }),
-  ideas: (i: Idea) => ({ ...base(i), project_id: i.projectId, title: i.title, description: i.description }),
+  ideas: (i: Idea) => ({ ...base(i), project_id: i.projectId, group_id: i.groupId, title: i.title, description: i.description }),
+  ideaGroups: (g: IdeaGroup) => ({ ...base(g), name: g.name, description: g.description, rank: g.rank }),
 };
 
-export const TABLES: Table[] = ['projects', 'phases', 'tasks', 'ideas'];
+export const TABLES: Table[] = ['projects', 'phases', 'tasks', 'ideas', 'ideaGroups'];
 
 /** Errores de red y de servidor con un mensaje comprensible. */
 export function fail(error: { message: string } | null): never {
@@ -135,7 +167,7 @@ export async function pullRecords(
   for (const table of TABLES) {
     for (let from = 0; ; from += PAGE) {
       const { data, error } = await client
-        .from(table)
+        .from(TABLE_NAMES[table])
         .select('*')
         .gt('server_seq', since)
         .order('server_seq')
@@ -153,16 +185,16 @@ export async function pullRecords(
 export async function pushRecords(client: SupabaseLike, records: SyncRecords): Promise<SyncRecords> {
   const newerOnServer = noRecords();
   for (const table of TABLES) {
-    const list = records[table] as (Project & Phase & Task & Idea)[];
+    const list = records[table] as (Project & Phase & Task & Idea & IdeaGroup)[];
     for (let i = 0; i < list.length; i += BATCH) {
       const rows = list.slice(i, i + BATCH).map((r) => toRow[table](r));
       // El trigger del servidor ignora (y no devuelve) las filas más antiguas que las suyas.
-      const { data, error } = await client.from(table).upsert(rows, { onConflict: 'id' }).select('id');
+      const { data, error } = await client.from(TABLE_NAMES[table]).upsert(rows, { onConflict: 'id' }).select('id');
       if (error) fail(error);
       const accepted = new Set((data ?? []).map((r) => r.id as string));
       const rejected = rows.map((r) => r.id).filter((id) => !accepted.has(id));
       if (rejected.length === 0) continue;
-      const fetched = await client.from(table).select('*').in('id', rejected);
+      const fetched = await client.from(TABLE_NAMES[table]).select('*').in('id', rejected);
       if (fetched.error) fail(fetched.error);
       collect(table, (fetched.data ?? []) as Row[], newerOnServer);
     }

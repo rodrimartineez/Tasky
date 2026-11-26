@@ -91,6 +91,7 @@ Página de proyecto                                  Atajos: T nueva tarea · I 
 | Crear | Tecla **I** (dentro de un proyecto) o botón → diálogo con foco en el título. Enter crea. |
 | Editar / eliminar | Clic en la idea → mismo diálogo. Sin estado ni orden manual (más recientes primero). En táctil, deslizar a la izquierda para borrar, igual que las tareas. |
 | Diferenciación visual | Tarjetas tipo nota en cuadrícula, icono de bombilla, acento ámbar suave, sin checkbox. |
+| Grupos (solo ideas generales) | Carpetas de ideas generales: nombre y descripción opcional, propias de cada cuenta (no se comparten). **G** crea un grupo y lo abre; dentro, **I** crea ideas en él. En móvil, el «+» de Ideas crea grupos y el de un grupo crea ideas. Una idea cambia de grupo desde su formulario. Eliminar un grupo no borra sus ideas: quedan sin grupo. Una idea compartida cuyo grupo no es tuyo se ve sin grupo. Tabla `idea_groups` y columna `ideas.group_id` en Supabase. |
 
 ### 3.5 Pantalla principal
 - Sin login en escritorio. Es la primera pantalla al abrir.
@@ -117,6 +118,8 @@ Flujos objetivo:
 | `T` | Página de proyecto o de fase | Nueva tarea (abre la pestaña Tareas si hace falta; dentro de una fase, en esa fase) |
 | `F` | Página de proyecto | Nueva fase (puede incorporar tareas existentes) |
 | `I` | Página de proyecto | Nueva idea (abre la pestaña Ideas si hace falta) |
+| `G` | Ideas generales | Nuevo grupo de ideas (se abre al crearlo) |
+| `I` | Ideas generales o grupo de ideas | Nueva idea (dentro de un grupo, en ese grupo; fuera, sin grupo) |
 | `Enter` | Diálogo de creación/edición (campo de una línea) | Confirmar |
 | `Ctrl` + `Enter` | Diálogo, dentro de la descripción | Confirmar (Enter solo hace salto de línea) |
 | `Esc` | Diálogo / menú abierto | Cerrar sin guardar |

@@ -64,6 +64,7 @@ function onlyNew(records: SyncRecords): SyncRecords {
     phases: unknown(records.phases),
     tasks: unknown(records.tasks),
     ideas: unknown(records.ideas),
+    ideaGroups: unknown(records.ideaGroups),
   };
 }
 

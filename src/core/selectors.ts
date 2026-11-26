@@ -1,8 +1,9 @@
-import type { Idea, LocalDate, Phase, Project, ProjectStatus, Task, TaskyData, TimeSlot } from './model';
+import type { Idea, IdeaGroup, LocalDate, Phase, Project, ProjectStatus, Task, TaskyData, TimeSlot } from './model';
 import { isScheduledOn } from './dueDates';
 import { compareProjects } from './projects';
 import { compareRank } from './rank';
 import { taskOrder } from './tasks';
+import { GENERAL_IDEAS_ID } from './ideas';
 
 export interface ProjectSummary {
   project: Project;
@@ -140,6 +141,20 @@ export function projectIdeas(data: TaskyData, projectId: string): Idea[] {
   return data.ideas
     .filter((i) => i.projectId === projectId && !i.deletedAt)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id));
+}
+
+/** Grupos de ideas generales, en su orden. */
+export function ideaGroups(data: TaskyData): IdeaGroup[] {
+  return data.ideaGroups.filter((g) => !g.deletedAt).sort(compareRank);
+}
+
+/**
+ * Ideas generales de un grupo (null = sueltas), de la más reciente a la más antigua. Una idea cuyo grupo no existe
+ * aquí (borrado, o de otra persona que la comparte) cuenta como suelta.
+ */
+export function groupIdeas(data: TaskyData, groupId: string | null): Idea[] {
+  const live = new Set(data.ideaGroups.filter((g) => !g.deletedAt).map((g) => g.id));
+  return projectIdeas(data, GENERAL_IDEAS_ID).filter((i) => (i.groupId && live.has(i.groupId) ? i.groupId : null) === groupId);
 }
 
 export function countProjectItems(data: TaskyData, projectId: string): { tasks: number; ideas: number } {

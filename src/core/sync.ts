@@ -1,4 +1,4 @@
-import type { Idea, Phase, Project, Task, TaskyData, Timestamp } from './model';
+import type { Idea, IdeaGroup, Phase, Project, Task, TaskyData, Timestamp } from './model';
 
 /** Registros que se envían o se reciben del servidor (incluye lápidas). */
 export interface SyncRecords {
@@ -6,16 +6,17 @@ export interface SyncRecords {
   phases: Phase[];
   tasks: Task[];
   ideas: Idea[];
+  ideaGroups: IdeaGroup[];
 }
 
 /** Versión (`updatedAt`) que el servidor tiene de cada registro, por id. Solo vive en memoria. */
 export type ServerVersions = Map<string, Timestamp>;
 
-type SyncRecord = Project | Phase | Task | Idea;
+type SyncRecord = Project | Phase | Task | Idea | IdeaGroup;
 
-export const noRecords = (): SyncRecords => ({ projects: [], phases: [], tasks: [], ideas: [] });
+export const noRecords = (): SyncRecords => ({ projects: [], phases: [], tasks: [], ideas: [], ideaGroups: [] });
 
-export const countRecords = (r: SyncRecords) => r.projects.length + r.phases.length + r.tasks.length + r.ideas.length;
+export const countRecords = (r: SyncRecords) => r.projects.length + r.phases.length + r.tasks.length + r.ideas.length + r.ideaGroups.length;
 
 const newer = (a: Timestamp, b: Timestamp) => Date.parse(a) > Date.parse(b);
 
@@ -48,18 +49,26 @@ export function mergeRemote(local: TaskyData, remote: SyncRecords, now: Timestam
     phases: mergeList(local.phases, remote.phases).map(cascade),
     tasks: mergeList(local.tasks, remote.tasks).map(cascade),
     ideas: mergeList(local.ideas, remote.ideas).map(cascade),
+    ideaGroups: mergeList(local.ideaGroups, remote.ideaGroups),
   };
 }
 
 /** Anota qué versión de cada registro tiene ya el servidor. */
 export function rememberVersions(versions: ServerVersions, records: SyncRecords) {
-  for (const r of [...records.projects, ...records.phases, ...records.tasks, ...records.ideas]) versions.set(r.id, r.updatedAt);
+  for (const r of [...records.projects, ...records.phases, ...records.tasks, ...records.ideas, ...records.ideaGroups])
+    versions.set(r.id, r.updatedAt);
 }
 
 /** Registros locales que el servidor aún no tiene en su versión actual (nuevos o modificados). */
 export function pendingChanges(data: TaskyData, versions: ServerVersions): SyncRecords {
   const pending = <T extends SyncRecord>(list: T[]) => list.filter((r) => versions.get(r.id) !== r.updatedAt);
-  return { projects: pending(data.projects), phases: pending(data.phases), tasks: pending(data.tasks), ideas: pending(data.ideas) };
+  return {
+    projects: pending(data.projects),
+    phases: pending(data.phases),
+    tasks: pending(data.tasks),
+    ideas: pending(data.ideas),
+    ideaGroups: pending(data.ideaGroups),
+  };
 }
 
 /**

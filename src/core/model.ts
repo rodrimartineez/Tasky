@@ -63,8 +63,18 @@ export const taskSchema = z.object({
 export const ideaSchema = z.object({
   ...baseRecord,
   projectId: z.string().min(1),
+  /** Grupo de ideas generales al que pertenece. null = suelta (las ideas anteriores a los grupos quedan así). */
+  groupId: z.string().min(1).nullable().default(null),
   title: z.string().min(1),
   description: z.string(),
+});
+
+/** Grupo de ideas generales (solo de su dueño: no se comparte). `rank` = orden manual entre grupos. */
+export const ideaGroupSchema = z.object({
+  ...baseRecord,
+  name: z.string().min(1),
+  description: z.string(),
+  rank: z.string().min(1),
 });
 
 export const taskyDataSchema = z.object({
@@ -74,6 +84,8 @@ export const taskyDataSchema = z.object({
   phases: z.array(phaseSchema).default([]),
   tasks: z.array(taskSchema),
   ideas: z.array(ideaSchema),
+  /** Los datos anteriores a los grupos de ideas no tienen ninguno. */
+  ideaGroups: z.array(ideaGroupSchema).default([]),
 });
 
 export type Timestamp = string;
@@ -85,4 +97,5 @@ export type Project = z.infer<typeof projectSchema>;
 export type Phase = z.infer<typeof phaseSchema>;
 export type Task = z.infer<typeof taskSchema>;
 export type Idea = z.infer<typeof ideaSchema>;
+export type IdeaGroup = z.infer<typeof ideaGroupSchema>;
 export type TaskyData = z.infer<typeof taskyDataSchema>;

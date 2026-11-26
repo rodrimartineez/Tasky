@@ -19,7 +19,14 @@ export function parseHabitsData(raw: unknown, now: Timestamp): HabitsData {
     throw new HabitsDataError('Los hábitos se guardaron con una versión más reciente de Tasky. Actualiza la aplicación.');
   }
   const result = habitsDataSchema.safeParse(raw);
-  if (!result.success) throw new HabitsDataError('Los datos de hábitos están dañados o incompletos.');
+  if (!result.success) {
+    // Un valor de enumeración desconocido (p. ej. un tipo de asiento nuevo) viene de una versión más reciente de
+    // Tasky que no ha subido schemaVersion: no son datos dañados.
+    if (result.error.issues.some((i) => i.code === 'invalid_value')) {
+      throw new HabitsDataError('Los hábitos se guardaron con una versión más reciente de Tasky. Actualiza la aplicación.');
+    }
+    throw new HabitsDataError('Los datos de hábitos están dañados o incompletos.');
+  }
   return purgeTombstones(result.data, now);
 }
 
