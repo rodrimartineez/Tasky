@@ -5,6 +5,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { ChevronRight, Ellipsis, GripVertical, Layers, Pencil, Trash2 } from 'lucide-react';
 import type { Phase } from '../../core/model';
 import { Menu } from '../components/Menu';
+import { previewText } from '../components/RichText';
 import { useLongPressMenu } from '../components/useLongPressMenu';
 import row from '../tasks/TaskItem.module.css';
 import styles from './PhaseItem.module.css';
@@ -46,7 +47,7 @@ export function SortablePhaseItem({ phase, open, done, onEdit, onDelete }: Phase
         </span>
         <Link to={`/project/${phase.projectId}/phase/${phase.id}`} className={row.content} draggable={false}>
           <span className={`${row.title} ${styles.name}`}>{phase.name}</span>
-          {phase.description && <span className={row.description}>{phase.description}</span>}
+          {phase.description && <span className={row.description}>{previewText(phase.description)}</span>}
         </Link>
         <span className={row.actions}>
           <span className={styles.count} title={`${done} de ${total} tareas completadas`}>

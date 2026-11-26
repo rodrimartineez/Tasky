@@ -10,6 +10,7 @@ import { useTasky } from '../../state/store';
 import { Authorship } from '../collab/Authorship';
 import { Button } from '../components/Button';
 import { EmptyState } from '../components/EmptyState';
+import { previewText } from '../components/RichText';
 import { Menu } from '../components/Menu';
 import { SwipeToDelete } from '../components/SwipeToDelete';
 import { toast } from '../components/Toaster';
@@ -114,7 +115,7 @@ function IdeaCard({ idea, projectId, today, onOpen, onEdit, onDelete, onShare }:
           <Lightbulb />
         </span>
         <span className={styles.title}>{idea.title}</span>
-        {idea.description && <span className={styles.description}>{idea.description}</span>}
+        {idea.description && <span className={styles.description}>{previewText(idea.description)}</span>}
         <time className={styles.date} dateTime={idea.createdAt} title={fullFmt.format(new Date(idea.createdAt))}>
           {createdLabel(idea.createdAt, today)}
         </time>

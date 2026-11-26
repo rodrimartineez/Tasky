@@ -10,6 +10,7 @@ import { Button } from '../components/Button';
 import { Fab } from '../components/Fab';
 import { Kbd } from '../components/Kbd';
 import { Menu } from '../components/Menu';
+import { RichText } from '../components/RichText';
 import { MOBILE_QUERY, TOUCH_QUERY, useMediaQuery } from '../components/useMediaQuery';
 import { useLongPressMenu } from '../components/useLongPressMenu';
 import { ConfirmDialog } from '../components/ConfirmDialog';
@@ -88,7 +89,7 @@ export function IdeasPage() {
             </p>
             <h1 className={styles.title}>{group.name}</h1>
             <p className={styles.description}>
-              {group.description || (count === 0 ? 'Todavía no hay ideas en este grupo.' : ideasLabel(count))}
+              {group.description ? <RichText text={group.description} /> : (count === 0 ? 'Todavía no hay ideas en este grupo.' : ideasLabel(count))}
               {count === 0 && !isTouch ? ' Pulsa I para añadir la primera.' : ''}
             </p>
           </div>

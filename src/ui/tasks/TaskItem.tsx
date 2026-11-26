@@ -6,6 +6,7 @@ import type { LocalDate, Task } from '../../core/model';
 import { useTasky } from '../../state/store';
 import { Authorship } from '../collab/Authorship';
 import { Menu } from '../components/Menu';
+import { previewText } from '../components/RichText';
 import { SwipeToDelete } from '../components/SwipeToDelete';
 import { toast } from '../components/Toaster';
 import { useLongPressMenu } from '../components/useLongPressMenu';
@@ -119,7 +120,7 @@ function TaskBody({ task, today, menu, onOpen, onEdit, onDelete }: TaskItemProps
       />
       <button type="button" className={`${styles.content} ${completing ? styles.completing : ''}`} onClick={() => onOpen(task)}>
         <span className={styles.title}>{task.title}</span>
-        {task.description && <span className={styles.description}>{task.description}</span>}
+        {task.description && <span className={styles.description}>{previewText(task.description)}</span>}
       </button>
       <span className={styles.meta}>
         <span className={styles.badges}>

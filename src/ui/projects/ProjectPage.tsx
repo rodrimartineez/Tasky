@@ -15,6 +15,7 @@ import { Fab } from '../components/Fab';
 import { toast } from '../components/Toaster';
 import { Kbd } from '../components/Kbd';
 import { Menu } from '../components/Menu';
+import { RichText } from '../components/RichText';
 import { useLongPressMenu } from '../components/useLongPressMenu';
 import { Segmented } from '../components/Segmented';
 import { PROJECT_STATUS_OPTIONS } from '../components/StatusBadge';
@@ -176,7 +177,7 @@ export function ProjectPage() {
               <Layers /> Fase
             </p>
             <h1 className={styles.title}>{phase.name}</h1>
-            {phase.description && <p className={styles.description}>{phase.description}</p>}
+            {phase.description && <p className={styles.description}><RichText text={phase.description} /></p>}
           </div>
           <div className={styles.actions}>
             {!isMobile && (
@@ -200,7 +201,7 @@ export function ProjectPage() {
           <div className={styles.heading} {...headerPress}>
             <h1 className={styles.title}>{project.name}</h1>
             {people && people.length > 1 && <AvatarStack userIds={people} size={22} />}
-            {project.description && <p className={styles.description}>{project.description}</p>}
+            {project.description && <p className={styles.description}><RichText text={project.description} /></p>}
           </div>
           <div className={styles.actions}>
             <Segmented

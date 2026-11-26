@@ -1,0 +1,33 @@
+/* Enlace de una descripción: un botón discreto con el nombre del sitio. */
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  padding: 1px 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--orange-300);
+  font-size: var(--fs-xs);
+  font-weight: 550;
+  line-height: 1.5;
+  text-decoration: none;
+  vertical-align: baseline;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    border-color var(--dur-fast) var(--ease),
+    background var(--dur-fast) var(--ease);
+}
+.link:hover {
+  border-color: var(--orange-500);
+  background: var(--surface-3);
+}
+.link svg {
+  flex: none;
+  width: 11px;
+  height: 11px;
+}

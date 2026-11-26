@@ -90,6 +90,7 @@
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 1;
   overflow: hidden;
+  overflow-wrap: anywhere;
 }
 .featured .description {
   -webkit-line-clamp: 2;

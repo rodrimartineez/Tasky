@@ -8,6 +8,7 @@
   "permissions": [
     "core:default",
     "fs:default",
+    "opener:allow-open-url",
     "fs:allow-appdata-read-recursive",
     "fs:allow-appdata-write-recursive",
     "fs:allow-download-write"

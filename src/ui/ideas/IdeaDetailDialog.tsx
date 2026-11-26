@@ -6,6 +6,7 @@ import { Person, useIsShared } from '../collab/Authorship';
 import { Button } from '../components/Button';
 import { Dialog } from '../components/Dialog';
 import { projectColor } from '../projects/projectColor';
+import { RichText } from '../components/RichText';
 import styles from '../components/Details.module.css';
 
 const dateTimeFmt = new Intl.DateTimeFormat('es-ES', { dateStyle: 'long', timeStyle: 'short' });
@@ -52,7 +53,7 @@ export function IdeaDetailDialog({ idea, project, onClose, onEdit, onShare }: Id
       {idea && (
         <>
           {idea.description ? (
-            <p className={styles.description}>{idea.description}</p>
+            <p className={styles.description}><RichText text={idea.description} /></p>
           ) : (
             <p className={`${styles.description} ${styles.muted}`}>Sin descripción.</p>
           )}

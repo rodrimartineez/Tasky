@@ -6,6 +6,7 @@ import type { ProjectSummary } from '../../core/selectors';
 import { usePeople } from '../../state/people';
 import { AvatarStack } from '../collab/Avatar';
 import { StatusBadge } from '../components/StatusBadge';
+import { previewText } from '../components/RichText';
 import { DueBadge } from '../tasks/DueBadge';
 import { projectColor } from './projectColor';
 import styles from './ProjectCard.module.css';
@@ -41,7 +42,7 @@ export function ProjectCard({ summary, variant }: ProjectCardProps) {
         </div>
       )}
 
-      {project.description && <p className={styles.description}>{project.description}</p>}
+      {project.description && <p className={styles.description}>{previewText(project.description)}</p>}
 
       {nextTask && (
         <p className={styles.next} title={`Siguiente tarea: ${nextTask.title}`}>

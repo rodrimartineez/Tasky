@@ -1,4 +1,5 @@
 import { isTauri } from '@tauri-apps/api/core';
+import { openUrl } from '@tauri-apps/plugin-opener';
 import { BaseDirectory, writeTextFile } from '@tauri-apps/plugin-fs';
 import { registerSW } from 'virtual:pwa-register';
 import type { FileExport, Storage, SyncBackend } from '../core/ports';
@@ -69,10 +70,23 @@ function reloadOnStaleChunks() {
   );
 }
 
+/** Escritorio: los enlaces externos (target=_blank) se abren en el navegador del sistema, no dentro de la app. */
+function openExternalLinksInBrowser() {
+  document.addEventListener('click', (e) => {
+    const link = (e.target as Element).closest<HTMLAnchorElement>('a[target="_blank"]');
+    if (!link || !/^https?:\/\//.test(link.href)) return;
+    e.preventDefault();
+    void openUrl(link.href);
+  });
+}
+
 /** Único punto donde se decide la plataforma. El resto de la app solo conoce los puertos. */
 export function createPlatform(): Platform {
   const sync = createSync();
-  if (isTauri()) return { storage: tauriStorage, fileExport: tauriExport, sync, requireAuth: false };
+  if (isTauri()) {
+    openExternalLinksInBrowser();
+    return { storage: tauriStorage, fileExport: tauriExport, sync, requireAuth: false };
+  }
   // Navegador/PWA: service worker para funcionar sin conexión (solo en el build; en desarrollo no hay).
   if (import.meta.env.PROD) {
     registerSW({ immediate: true });

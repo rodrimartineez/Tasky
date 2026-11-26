@@ -6,6 +6,7 @@ import type { IdeaGroup } from '../../core/model';
 import { groupIdeas, ideaGroups } from '../../core/selectors';
 import { useTasky } from '../../state/store';
 import { Menu } from '../components/Menu';
+import { previewText } from '../components/RichText';
 import { useLongPressMenu } from '../components/useLongPressMenu';
 import ideaStyles from './IdeaGrid.module.css';
 import styles from './IdeaGroupGrid.module.css';
@@ -49,7 +50,7 @@ function GroupCard({ group, count, onEdit, onDelete }: IdeaGroupGridProps & { gr
           <Folder />
         </span>
         <span className={ideaStyles.title}>{group.name}</span>
-        {group.description && <span className={ideaStyles.description}>{group.description}</span>}
+        {group.description && <span className={ideaStyles.description}>{previewText(group.description)}</span>}
         <span className={ideaStyles.date}>{count === 0 ? 'Sin ideas' : `${count} ${count === 1 ? 'idea' : 'ideas'}`}</span>
       </Link>
       <div className={ideaStyles.cardMenu}>

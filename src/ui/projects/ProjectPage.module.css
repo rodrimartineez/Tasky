@@ -53,6 +53,7 @@
   max-width: 680px;
   color: var(--text-muted);
   white-space: pre-line;
+  overflow-wrap: anywhere;
 }
 
 .actions {

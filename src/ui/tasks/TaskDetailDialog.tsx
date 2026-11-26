@@ -10,6 +10,7 @@ import { projectColor } from '../projects/projectColor';
 import { DueBadge } from './DueBadge';
 import { scheduleSummary } from './schedule';
 import { TIME_SLOT_INFO } from './timeSlot';
+import { RichText } from '../components/RichText';
 import styles from '../components/Details.module.css';
 
 export const TASK_STATUS_LABEL: Record<TaskStatus, string> = { todo: 'Pendiente', in_progress: 'En curso', done: 'Completada' };
@@ -95,7 +96,7 @@ function TaskDetails({ task, project }: { task: Task; project: Project }) {
 
   return (
     <>
-      {task.description && <p className={styles.description}>{task.description}</p>}
+      {task.description && <p className={styles.description}><RichText text={task.description} /></p>}
       <dl className={styles.list}>
         {rows.map(([term, value]) => (
           <Fragment key={term}>
