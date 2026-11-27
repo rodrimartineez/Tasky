@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ARCANA } from '../../game/content/arcana';
 import { buildRunConfig } from '../../game/content/run';
-import { SKINS } from '../../game/content/skins';
 import { emptyHabitsData } from './data';
 import { economyOf, EconomyError, finishRun, priceOf, startRun } from './economy';
 import { ensureProfile } from './habits';
@@ -69,17 +68,16 @@ describe('estadísticas y logros (Fase 10)', () => {
     expect(done.has('level_7')).toBe(false);
   });
 
-  it('los logros tienen ids únicos y los aspectos de logro apuntan a logros que existen', () => {
+  it('los logros tienen ids únicos', () => {
     const ids = ACHIEVEMENTS.map((a) => a.id);
     expect(new Set(ids).size).toBe(ids.length);
-    for (const s of SKINS.filter((x) => x.achievement)) expect(ids).toContain(s.achievement);
     // Sin datos, ninguno está hecho y el progreso nunca pasa de la meta.
     const empty = recordsOf(economyOf(withRewards(0), START, PROD), withRewards(0));
     expect(achievementsOf(empty).every((a) => !a.done && a.value <= a.def.goal)).toBe(true);
   });
 
-  it('los aspectos de logro no se compran con oro', () => {
-    for (const s of SKINS) expect(priceOf(`skin:${s.id}`)).toBe(s.achievement ? Infinity : s.price);
+  it('los aspectos ya no se venden', () => {
+    expect(priceOf('skin:ember')).toBe(Infinity);
   });
 });
 

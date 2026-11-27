@@ -6,8 +6,8 @@ import type { HabitsData } from './model';
 /**
  * Estadísticas, récords y logros (Fase 10, propuestas E2 y C2). Todo se deduce del ledger ya reproducido
  * (`economyOf`) y de las recompensas de hábitos: no se guarda nada nuevo, así que funciona igual en todos los
- * dispositivos y con los datos que ya existen. Los logros nunca dan puntos, intentos ni poder: algunos regalan un
- * aspecto (content/skins.ts).
+ * dispositivos y con los datos que ya existen. Los logros nunca dan puntos, intentos ni poder: algunos regalan una
+ * carta de arcana (content/arcana.ts).
  */
 
 export interface Totals {

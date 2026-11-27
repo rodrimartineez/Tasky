@@ -106,7 +106,7 @@ export const EVOLUTIONS: EvolutionDef[] = [
     'storm',
     'horn',
     { id: 'tempest', name: 'Tormenta Eléctrica', description: 'Cada rayo cae dos veces.', icon: 'w_tempest', color: 0xe3b8ff },
-    { damage: 200, cooldown: 2.6, amount: 5, area: 80 },
+    { damage: 185, cooldown: 2.6, amount: 5, area: 80 },
   ),
   evolution(
     'pentagram',
@@ -167,6 +167,24 @@ export const EVOLUTIONS: EvolutionDef[] = [
     { passives: ['feather'], maxed: true },
     { id: 'gunastrophe', name: 'Pistolastrofe', description: 'Oleadas de pistolas que entran por la esquina y rebotan por toda la pantalla.', icon: 'w_gunastrophe', proj: 'x_gun', interval: 0.2 },
     { damage: 10, cooldown: 4.5, amount: 2, area: 6, speed: 150, duration: 3, knockback: 5 },
+  ),
+  evolution(
+    'chain',
+    'clover',
+    { id: 'judgement', name: 'Juicio en Cadena', description: 'Cada salto del rayo se bifurca en dos y sus golpes son a menudo críticos.', icon: 'w_judgement', color: 0xfff0a0, crit: 0.1 },
+    { damage: 34, cooldown: 1, amount: 2, pierce: 12, area: 80, knockback: 6 },
+  ),
+  evolution(
+    'quake',
+    'scales',
+    { id: 'sunquake', name: 'Cataclismo del Alba', description: 'Ondas enormes que aturden; al llegar a su borde estallan columnas de luz.', icon: 'w_sunquake', color: 0xffe08a, interval: 0.3 },
+    { damage: 78, cooldown: 2.1, amount: 2, area: 100, duration: 0.4, knockback: 90 },
+  ),
+  evolution(
+    'vortex',
+    'lodestone',
+    { id: 'eventhorizon', name: 'Horizonte de Sucesos', description: 'Vórtices que lo engullen todo, también la experiencia, y acaban en una implosión devastadora.', icon: 'w_eventhorizon', color: 0xff7ac3 },
+    { damage: 21, cooldown: 3.5, amount: 2, area: 60, speed: 160, duration: 3 },
   ),
 ];
 

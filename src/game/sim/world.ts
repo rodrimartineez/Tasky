@@ -340,6 +340,7 @@ function gainXp(w: World, amount: number) {
     p.level += 1;
     p.xpNext = xpForLevel(p.level);
     w.pendingLevels += 1;
+    emit(w, { type: 'surge', x: p.x, y: p.y, color: 0x7fe3ff, power: 1 });
   }
 }
 

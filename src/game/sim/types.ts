@@ -279,8 +279,6 @@ export interface RunConfig {
   arcana?: string[];
   /** Multiplicador del oro de la partida (estudios de equilibrio). Por defecto 1. */
   goldScale?: number;
-  /** Aspecto del personaje (solo visual): tinte y aura. */
-  skin?: { tint: number; aura?: number };
 }
 
 export interface WeaponState {
@@ -424,7 +422,11 @@ export type ProjKind =
   /** Dragón que vuela en ocho sobre el jugador y lanza rayos. */
   | 'dragon'
   /** Galaxia que gira sobre toda la pantalla. */
-  | 'galaxy';
+  | 'galaxy'
+  /** Onda expansiva (Martillo del Alba): crece desde (sx, sy) hasta `orbitR` y golpea una vez a cada enemigo. */
+  | 'wave'
+  /** Esfera que viaja a (tx, ty) y se abre en un vórtice de radio `orbitR` que atrae y daña (Singularidad). */
+  | 'vortex';
 
 export interface Projectile {
   kind: ProjKind;
@@ -482,7 +484,15 @@ export type Fx =
   | { type: 'line'; x: number; y: number; x2: number; y2: number; color: number }
   | { type: 'shake'; power: number }
   /** Resurrección: el render anima al héroe y un halo dorado mientras la simulación hace una pausa breve. */
-  | { type: 'revive'; x: number; y: number };
+  | { type: 'revive'; x: number; y: number }
+  /** Muerte de un enemigo: 0 normal, 1 élite o veterano, 2 jefe (destello, chispas y, en los grandes, onda). */
+  | { type: 'death'; x: number; y: number; size: 0 | 1 | 2 }
+  /** Subida de poder en el jugador (nivel, sobremejora, evolución): columna de luz y chispas; `power` 1–3. */
+  | { type: 'surge'; x: number; y: number; color: number; power: number }
+  /** Destello de toda la pantalla (`power` 0–1). */
+  | { type: 'flash'; color: number; power: number }
+  /** Pausa de impacto: la partida va a cámara lenta unos instantes (solo con pantalla; la simulación no cambia). */
+  | { type: 'hitstop'; seconds: number };
 
 /**
  * Zona de peligro de los jefes. Se avisa hasta `at`; entonces:

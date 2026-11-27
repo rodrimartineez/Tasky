@@ -227,7 +227,11 @@ export function killEnemy(w: World, e: Enemy) {
       spawnEnemy(w, child, e.x + 6, e.y - 2);
     }
   }
-  emit(w, { type: 'puff', x: e.x, y: e.y, color: 0xffffff, count: boss ? 24 : e.elite ? 12 : 4 });
+  emit(w, { type: 'death', x: e.x, y: e.y, size: boss ? 2 : e.elite || e.champion ? 1 : 0 });
+  if (boss) {
+    emit(w, { type: 'flash', color: e.def.color ?? 0xffffff, power: 0.7 });
+    emit(w, { type: 'hitstop', seconds: 0.5 });
+  } else if (e.elite) emit(w, { type: 'hitstop', seconds: 0.08 });
 }
 
 /**

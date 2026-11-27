@@ -2,7 +2,7 @@ import type { Stats } from '../sim/types';
 
 /**
  * Personajes jugables, en orden de desbloqueo. Cada uno cambia de verdad la forma de jugar: arma inicial propia
- * y un rasgo que modifica sus estadísticas (siempre una virtud pagada con un defecto). Los precios están en
+ * (dos personajes normales nunca empiezan con la misma; los legendarios quedan fuera de esa regla) y un rasgo que modifica sus estadísticas (siempre una virtud pagada con un defecto). Los precios están en
  * oro (ANALISIS_ECONOMIA.md §7); el primero es gratis.
  */
 export interface CharacterDef {
@@ -192,7 +192,7 @@ export const CHARACTERS: CharacterDef[] = [
     name: 'Centella',
     sprite: 'c_centella',
     price: 230_000,
-    weapon: 'spark',
+    weapon: 'chain',
     trait: '+1 proyectil en cada arma y +10 % de velocidad, pero −35 % de vida y ataca un 15 % más despacio.',
     apply: (s) => {
       s.amount += 1;
@@ -206,7 +206,7 @@ export const CHARACTERS: CharacterDef[] = [
     name: 'Caballero del Alba',
     sprite: 'c_knight',
     price: 300_000,
-    weapon: 'lance',
+    weapon: 'quake',
     trait: '+25 % de daño, +15 % de vida y +2 de armadura, pero un 15 % más lento y ataca un 10 % más despacio.',
     apply: (s) => {
       s.might *= 1.25;
@@ -221,7 +221,7 @@ export const CHARACTERS: CharacterDef[] = [
     name: 'Archimaga',
     sprite: 'c_archmage',
     price: 400_000,
-    weapon: 'storm',
+    weapon: 'vortex',
     trait: '+15 % de daño, de área y de duración y ataca un 10 % más rápido, pero −40 % de vida.',
     apply: (s) => {
       s.might *= 1.15;

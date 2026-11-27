@@ -82,10 +82,10 @@ function dummy(w: World, x: number, y: number) {
 
 describe('catálogo cerrado', () => {
   it('solo las armas, evoluciones y pasivas de la lista, cada arma con una única evolución', () => {
-    const bases = ['whip', 'spark', 'lance', 'axe', 'boomerang', 'orbs', 'firewand', 'ember', 'cloud', 'ricochet', 'storm', 'pentagram', 'mana', 'clock', 'laurel', 'vento', 'victory', 'misspell', 'phaser', 'unearthly', 'ammo', 'tuna1'];
+    const bases = ['whip', 'spark', 'lance', 'axe', 'boomerang', 'orbs', 'firewand', 'ember', 'cloud', 'ricochet', 'storm', 'pentagram', 'mana', 'clock', 'laurel', 'vento', 'victory', 'misspell', 'phaser', 'unearthly', 'ammo', 'chain', 'quake', 'vortex', 'tuna1'];
     expect(WEAPONS.map((x) => x.id)).toEqual(bases);
     expect(TUNA_FORMS.map((x) => x.id)).toEqual(['tuna1', 'tuna2', 'tuna3', 'tuna4', 'tuna5', 'tuna6']);
-    expect(EVOLUTIONS).toHaveLength(21);
+    expect(EVOLUTIONS).toHaveLength(24);
     expect(PASSIVES).toHaveLength(19);
     for (const weapon of WEAPONS.filter((x) => x.id !== 'tuna1'))
       expect(
@@ -121,6 +121,10 @@ describe('catálogo cerrado', () => {
     expect(recipe('photonstorm')).toEqual(['phaser', 'hourglass', 'max']);
     expect(recipe('spirit')).toEqual(['unearthly', 'tiramisu', 'max']);
     expect(recipe('gunastrophe')).toEqual(['ammo', 'feather', 'max']);
+    // Armas propias de Tasky (27/11/2026), con pasivas que ya existían.
+    expect(recipe('judgement')).toEqual(['chain', 'clover']);
+    expect(recipe('sunquake')).toEqual(['quake', 'scales']);
+    expect(recipe('eventhorizon')).toEqual(['vortex', 'lodestone']);
     for (const e of EVOLUTIONS) {
       expect(WEAPONS.some((x) => x.id === e.def.id), e.def.name).toBe(false);
       expect(WEAPON_BY_ID.get(e.def.id)).toBe(e.def);
@@ -679,7 +683,11 @@ describe('niveles de armas y pasivas (máximo propio + hasta 999)', () => {
     const top = statsAt(def, max);
     expect(statsAt(def, max + 1).damage).toBeGreaterThan(top.damage);
     expect(statsAt(def, max + 100).damage).toBeCloseTo(top.damage * (1 + 100 * OVERLEVEL.damage), 5);
-    expect(statsAt(def, max + 100).amount).toBe(top.amount + 2);
+    expect(statsAt(def, max + 100).amount).toBe(top.amount + OVERLEVEL.amountMax);
+    // Cada hito (cada 5 niveles) da un proyectil más, y el tamaño crece de forma visible (×2 como mucho).
+    expect(statsAt(def, max + OVERLEVEL.milestone).amount).toBe(top.amount + 1);
+    expect(statsAt(def, max + 10).area).toBeGreaterThan(top.area * 1.15);
+    expect(statsAt(def, max + 200).area).toBeCloseTo(top.area * OVERLEVEL.areaMax, 5);
     expect(statsAt(def, 5000)).toEqual(statsAt(def, WEAPON_LEVEL_CAP));
     expect(statsAt(def, WEAPON_LEVEL_CAP).cooldown).toBeGreaterThan(0.1);
   });

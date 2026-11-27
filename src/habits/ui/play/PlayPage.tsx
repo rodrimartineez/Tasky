@@ -3,7 +3,6 @@ import { FlaskConical, HeartHandshake, Lock, Play, Swords } from 'lucide-react';
 import { ARCANA, MAX_ARCANA } from '../../../game/content/arcana';
 import { CHARACTERS } from '../../../game/content/characters';
 import { buildRunConfig } from '../../../game/content/run';
-import { SKINS } from '../../../game/content/skins';
 import { STAGES } from '../../../game/content/stages';
 import { EVOLUTIONS } from '../../../game/content/evolutions';
 import { WEAPON_BY_ID, WEAPONS } from '../../../game/content/weapons';
@@ -46,14 +45,14 @@ const MODES: { id: RunMode; name: string }[] = [
   { id: 'mirror', name: 'Reflejo' },
 ];
 
-/** Arcanas, darkanas y aspecto elegidos: preferencia de este dispositivo (no cambian la progresión, no hace falta sincronizarlos). */
+/** Arcanas y darkanas elegidas: preferencia de este dispositivo (no cambian la progresión, no hace falta sincronizarlas). */
 const EXTRAS_KEY = 'tasky-game-extras';
-function loadExtras(): { arcana: string[]; skin: string | null } {
+function loadExtras(): { arcana: string[] } {
   try {
-    const saved = JSON.parse(localStorage.getItem(EXTRAS_KEY) ?? 'null') as { arcana?: unknown; skin?: string | null } | null;
-    return { arcana: Array.isArray(saved?.arcana) ? saved.arcana.filter((id): id is string => typeof id === 'string') : [], skin: saved?.skin ?? null };
+    const saved = JSON.parse(localStorage.getItem(EXTRAS_KEY) ?? 'null') as { arcana?: unknown } | null;
+    return { arcana: Array.isArray(saved?.arcana) ? saved.arcana.filter((id): id is string => typeof id === 'string') : [] };
   } catch {
-    return { arcana: [], skin: null };
+    return { arcana: [] };
   }
 }
 
@@ -70,7 +69,7 @@ function attempt(action: () => void) {
   }
 }
 
-type Kind = 'character' | 'stage' | 'skin';
+type Kind = 'character' | 'stage';
 
 /** Campamento: partidas disponibles, nivel siguiente, personaje y escenario. */
 export function PlayPage() {
@@ -105,12 +104,8 @@ export function PlayPage() {
       }
       return next;
     });
-  // Aspectos ganados con logros (C2).
+  // Logros conseguidos: desbloquean las cartas de arcana.
   const earned = useMemo(() => achieved(recordsOf(eco, data)), [eco, data]);
-  const skinOwned = (id: string) => {
-    const def = SKINS.find((s) => s.id === id);
-    return !!def && (eco.testMode || (def.achievement ? earned.has(def.achievement) : isUnlocked(eco, `skin:${id}`)));
-  };
 
   const open = eco.openRun;
   // Copia guardada de la partida en curso (solo si es de esa partida).
@@ -147,8 +142,6 @@ export function PlayPage() {
   const cardsOwned = ARCANA.filter(cardOwned).length;
   // Lo elegido puede haber dejado de estar disponible (al salir del modo de pruebas): entonces, nada.
   const arcana = extras.arcana.filter((id) => ARCANA.some((a) => a.id === id && cardOwned(a))).slice(0, MAX_ARCANA);
-  const skin = extras.skin && skinOwned(extras.skin) ? extras.skin : null;
-  const heroSprite = CHARACTERS.find((c) => c.id === character)?.sprite ?? 'hero';
 
   const [pickingWeapons, setPickingWeapons] = useState(false);
   const pickStart = CHARACTERS.find((c) => c.id === character)?.pickStart;
@@ -169,7 +162,6 @@ export function PlayPage() {
             boost: started.comeback ?? undefined,
             mode: runMode,
             arcana: cards,
-            skin,
             weapons,
             // Las de prueba no se registran: cada una con una semilla distinta.
             seed: started.test ? Math.floor(Math.random() * 1e9) : started.attempt,
@@ -208,8 +200,7 @@ export function PlayPage() {
   };
 
   const select = (kind: Kind, id: string | null) => {
-    if (kind === 'skin') saveExtras({ skin: id });
-    else if (id) attempt(() => setLoadout(kind === 'character' ? id : character, kind === 'stage' ? id : stage));
+    if (id) attempt(() => setLoadout(kind === 'character' ? id : character, kind === 'stage' ? id : stage));
   };
   /** Personaje tocado: se muestran las armas con las que empieza (esté comprado o no). */
   const [inspected, setInspected] = useState<string | null>(null);
@@ -220,10 +211,8 @@ export function PlayPage() {
 
   const choose = (kind: Kind, id: string) => {
     const key = `${kind}:${id}`;
-    const owned = kind === 'skin' ? skinOwned(id) : isUnlocked(eco, key);
-    if (!owned) return setBuying(key);
-    // El aspecto se quita volviendo a pulsarlo.
-    select(kind, kind === 'skin' && skin === id ? null : id);
+    if (!isUnlocked(eco, key)) return setBuying(key);
+    select(kind, id);
   };
 
   const confirmBuy = () => {
@@ -242,8 +231,6 @@ export function PlayPage() {
     const locked = [
       ...CHARACTERS.map((c) => ({ key: `character:${c.id}`, name: c.name, price: c.price })),
       ...STAGES.map((s) => ({ key: `stage:${s.id}`, name: s.name, price: s.price })),
-      // Usos del oro cuando ya está todo lo demás (D1): aspectos.
-      ...SKINS.filter((s) => s.price > 0).map((s) => ({ key: `skin:${s.id}`, name: `Aspecto ${s.name}`, price: s.price })),
     ]
       .filter((x) => !isUnlocked(eco, x.key))
       .sort((a, b) => a.price - b.price)[0];
@@ -257,11 +244,7 @@ export function PlayPage() {
   const buyingName =
     buying &&
     (CHARACTERS.find((c) => `character:${c.id}` === buying)?.name ??
-      STAGES.find((s) => `stage:${s.id}` === buying)?.name ??
-      SKINS.find((s) => `skin:${s.id}` === buying)?.name);
-  // Un aspecto de logro no se compra: el diálogo explica cómo conseguirlo.
-  const buyingSkin = buying?.startsWith('skin:') ? SKINS.find((s) => `skin:${s.id}` === buying) : undefined;
-  const buyingAchievement = buyingSkin?.achievement ? ACHIEVEMENTS.find((a) => a.id === buyingSkin.achievement) : undefined;
+      STAGES.find((s) => `stage:${s.id}` === buying)?.name);
   const buyingCharacter = buying ? CHARACTERS.find((c) => `character:${c.id}` === buying) : undefined;
   const buyingPrice = buying ? priceOf(buying) : 0;
 
@@ -513,51 +496,6 @@ export function PlayPage() {
       </section>
 
       <section className={styles.section}>
-        <h2 className={styles.heading}>Aspecto</h2>
-        <p className={styles.sectionText}>Solo cambia cómo se ve tu personaje. Unos se compran con oro y otros se ganan con logros.</p>
-        <div className={styles.grid}>
-          {SKINS.map((s) => {
-            const owned = skinOwned(s.id);
-            return (
-              <button
-                key={s.id}
-                type="button"
-                className={`${styles.option} ${s.id === skin ? styles.selected : ''} ${owned ? '' : styles.locked}`}
-                onClick={() => choose('skin', s.id)}
-                disabled={!!open}
-                aria-pressed={s.id === skin}
-              >
-                <span
-                  className={styles.skin}
-                  style={
-                    {
-                      '--skin': `#${s.tint.toString(16).padStart(6, '0')}`,
-                      '--shape': `url(${spriteDataUrl(`${heroSprite}_0`)})`,
-                    } as React.CSSProperties
-                  }
-                >
-                  <img className={styles.sprite} src={spriteDataUrl(`${heroSprite}_0`)} alt="" draggable={false} />
-                </span>
-                <span className={styles.optionName}>{s.name}</span>
-                {!owned && (
-                  <span className={styles.price}>
-                    <Lock />{' '}
-                    {s.achievement ? (
-                      `Logro: ${ACHIEVEMENTS.find((a) => a.id === s.achievement)?.name}`
-                    ) : (
-                      <>
-                        <CoinIcon size={12} /> {gold(s.price)}
-                      </>
-                    )}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </section>
-
-      <section className={styles.section}>
         <h2 className={styles.heading}>Sonido</h2>
         <SoundSettings />
       </section>
@@ -602,7 +540,7 @@ export function PlayPage() {
       />
 
       <ConfirmDialog
-        open={!!buying && !buyingAchievement}
+        open={!!buying}
         title={`Desbloquear ${buyingName ?? ''}`}
         description={`${
           buyingPrice > eco.gold
@@ -611,14 +549,6 @@ export function PlayPage() {
         }${buyingCharacter ? ` Empieza con: ${buyingCharacter.pickStart ? pickText(buyingCharacter.pickStart) : startingWeapons(buyingCharacter).map((w) => w.name).join(' y ')}.` : ''}`}
         confirmLabel="Desbloquear"
         onConfirm={confirmBuy}
-        onClose={() => setBuying(null)}
-      />
-      <ConfirmDialog
-        open={!!buyingAchievement}
-        title={`Aspecto ${buyingName ?? ''}`}
-        description={`Se gana con el logro «${buyingAchievement?.name}»: ${buyingAchievement?.text}`}
-        confirmLabel="Entendido"
-        onConfirm={() => setBuying(null)}
         onClose={() => setBuying(null)}
       />
       <ConfirmDialog

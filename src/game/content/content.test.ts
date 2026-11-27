@@ -24,7 +24,9 @@ describe('contenido', () => {
     expect(prices.at(-1)).toBe(10_000_000);
     expect(new Set(CHARACTERS.map((c) => c.id)).size).toBe(20);
     expect(new Set(CHARACTERS.map((c) => c.sprite)).size).toBe(20);
-    expect(new Set(CHARACTERS.map((c) => c.weapon)).size).toBeGreaterThanOrEqual(10);
+    // Cada personaje normal empieza con un arma distinta (los legendarios quedan fuera de esta regla).
+    const normal = CHARACTERS.filter((c) => !c.legendary).map((c) => c.weapon);
+    expect(new Set(normal).size).toBe(normal.length);
     for (const c of CHARACTERS) {
       for (const w of [c.weapon, ...(c.bonusWeapons ?? [])]) expect(WEAPON_BY_ID.has(w), `${c.name}: arma ${w}`).toBe(true);
       expect(SPRITES[`${c.sprite}_0`], `${c.name}: fotograma 0`).toBeDefined();

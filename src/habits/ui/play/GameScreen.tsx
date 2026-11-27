@@ -3,7 +3,8 @@ import { createPortal } from 'react-dom';
 import { Ban, Dices, Flame, Pause, Skull, SkipForward } from 'lucide-react';
 import { PASSIVE_BY_ID } from '../../../game/content/passives';
 import { TUNA_IDS, WEAPON_BY_ID } from '../../../game/content/weapons';
-import { Game, SPEEDS, type Hud } from '../../../game/Game';
+import { COMBO_TIERS, Game, SPEEDS, type Hud } from '../../../game/Game';
+import { overLevels, overTier } from '../../../game/sim/upgrades';
 import { MAX_PASSIVES, MAX_WEAPONS, RUN_SECONDS, type RunConfig, type RunResult, type UpgradeChoice, type World } from '../../../game/sim/types';
 import { spriteDataUrl } from '../../../game/sprites/atlas';
 import { now } from '../../../core/clock';
@@ -47,15 +48,18 @@ function Slots({
         const def = item && defs.get(item.id);
         // Las formas del atún (salvo la primera) son evoluciones del Atún Exprés.
         const evolvedItem = !!def && (!!def.evolvedFrom || (TUNA_IDS.includes(item.id) && item.id !== 'tuna1'));
+        // Sobremejora: el hueco brilla con el color de su tramo y muestra los niveles extra.
+        const extra = !passive && item ? overLevels(item.id, item.level) : 0;
         return def ? (
           <span
             key={item.id}
             className={`${styles.slot} ${evolvedItem ? styles.evolved : ''}`}
+            data-tier={extra > 0 ? overTier(extra) : undefined}
             title={item.ready ? `${def.name}: ¡puede evolucionar! Abre un cofre` : def.name}
           >
             <img className={styles.slotIcon} src={spriteDataUrl(def.icon)} alt="" draggable={false} />
             {item.ready && <b className={styles.star}>★</b>}
-            <i>{evolvedItem ? 'Evo' : item.level}</i>
+            <i>{extra > 0 ? `${evolvedItem ? 'Evo' : ''}+${extra}` : evolvedItem ? 'Evo' : item.level}</i>
           </span>
         ) : (
           <span key={`empty-${i}`} className={`${styles.slot} ${styles.empty}`} />
@@ -376,6 +380,13 @@ export default function GameScreen({ level, attempt, config, resume, onFinish, o
             </div>
           )}
           {hud.wave && !hud.cycleBoss && !hud.bossAlive && <div className={styles.wave}>¡Oleada!</div>}
+          {hud.combo >= 10 && (
+            <div className={styles.combo} data-tier={hud.comboTier} role="status">
+              <b key={hud.combo}>{hud.combo}</b>
+              <small>bajas seguidas</small>
+              {hud.comboTier >= 0 && <span key={hud.comboTier}>{COMBO_TIERS[hud.comboTier].name}</span>}
+            </div>
+          )}
         </div>
       )}
 
@@ -410,6 +421,7 @@ export default function GameScreen({ level, attempt, config, resume, onFinish, o
                 key={`${c.id}-${c.level}`}
                 type="button"
                 className={`${styles.choice} ${banishing ? styles.banishing : ''} ${c.evolves ? styles.evolves : ''}`}
+                data-tier={c.kind === 'weapon' && overLevels(c.id, c.level) > 0 ? overTier(overLevels(c.id, c.level)) : undefined}
                 disabled={banishing && c.kind !== 'weapon' && c.kind !== 'passive'}
                 onClick={() => pick(i)}
               >

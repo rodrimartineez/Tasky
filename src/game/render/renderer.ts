@@ -1,7 +1,8 @@
 // La CSP de producción (public/_headers) prohíbe eval; este módulo hace que PixiJS genere sus shaders sin él.
 import 'pixi.js/unsafe-eval';
 import { Application, Container, Rectangle, Sprite, Texture, TilingSprite, type ApplicationOptions } from 'pixi.js';
-import { behaviourOf, WEAPON_BY_ID } from '../content/weapons';
+import { behaviourOf, hitFxOf, WEAPON_BY_ID } from '../content/weapons';
+import { OVER_TIER_COLORS, overLevels, overTier } from '../sim/upgrades';
 import { COLUMN_HALF, emberRadius } from '../sim/weapons';
 import type { Fx, Projectile, World } from '../sim/types';
 import { buildAtlas, buildGroundTile, CIRCLE_RADIUS, WHITE } from '../sprites/atlas';
@@ -72,7 +73,29 @@ interface Particle {
   vy: number;
   life: number;
   color: number;
+  /** Chispa: disco aditivo de este tamaño (px) en lugar de un píxel. */
+  size?: number;
+  /** Estela: se estira en la dirección de su velocidad. */
+  streak?: boolean;
+  /** Frenado (por segundo) y gravedad (px/s²). */
+  drag?: number;
+  grav?: number;
 }
+
+/** Columna de luz de una subida de poder (nivel, sobremejora, evolución). */
+interface Surge {
+  x: number;
+  y: number;
+  color: number;
+  power: number;
+  life: number;
+}
+const SURGE_LIFE = 0.7;
+
+/** Color del brillo de cada familia de armas (ARTE_GUIA.md). */
+const FAMILY_GLOW: Record<string, number> = { fire: 0xff8a3a, lightning: 0x9fe6ff, arcane: 0xb58cff, poison: 0x9be06a, steel: 0xe8eeff };
+/** Proyectiles con sprite propio que reciben brillo de familia y, con sobremejora, halo de su tramo. */
+const GLOWING = new Set(['bolt', 'lance', 'orbit', 'bomb', 'boomerang', 'bounce', 'axe', 'spin', 'meteor', 'critter', 'leap', 'flare']);
 
 interface Ring {
   x: number;
@@ -103,7 +126,7 @@ const RING_LIFE = 0.3;
 const REVIVE_ANIM = 1.1;
 const BOLT_LIFE = 0.18;
 const MAX_NUMBERS = 70;
-const MAX_PARTICLES = 220;
+const MAX_PARTICLES = 360;
 /**
  * Calidad automática de los efectos: si el dispositivo se queda por debajo de ~48 fps durante 2 s, los topes de
  * partículas, impactos, cifras y ambiente bajan a la mitad; vuelven al completo tras 8 s por encima de ~57 fps.
@@ -136,6 +159,16 @@ export class Renderer {
   private rings: Ring[] = [];
   private bolts: Bolt[] = [];
   private hits: Hit[] = [];
+  private surges: Surge[] = [];
+  /** Destello de pantalla y pausa de impacto pendientes. */
+  private flash!: Sprite;
+  private flashAlpha = 0;
+  private hitstop = 0;
+  /** Por arma del jugador (índice): id, tramo de sobremejora y color de brillo; se recalculan en cada fotograma. */
+  private weaponIds: string[] = [];
+  private tiers: number[] = [];
+  private glows: number[] = [];
+  private heroAt = { x: 0, y: 0 };
   /** Partículas de ambiente: posición en el mundo, fase del vaivén y color. */
   private motes: { x: number; y: number; phase: number; color: number }[] = [];
   private shake = 0;
@@ -249,7 +282,10 @@ export class Renderer {
     }
     this.ground = new TilingSprite({ texture: this.groundTexture('t_grass'), width: 16, height: 16 });
     this.veil = new Sprite(Texture.WHITE);
-    this.app.stage.addChild(this.ground, this.world, this.veil);
+    this.flash = new Sprite(Texture.WHITE);
+    this.flash.blendMode = 'add';
+    this.flash.alpha = 0;
+    this.app.stage.addChild(this.ground, this.world, this.veil, this.flash);
   }
 
   /** Cambia el suelo al del escenario (solo se recalcula cuando cambia). */
@@ -288,22 +324,64 @@ export class Renderer {
           big: f.crit || f.player,
         });
       } else if (f.type === 'puff') {
-        for (let i = 0; i < f.count && this.particles.length < this.cap(MAX_PARTICLES); i++) {
+        for (let i = 0; i < f.count; i++) {
           const angle = Math.random() * Math.PI * 2;
           const speed = 20 + Math.random() * 60;
-          this.particles.push({
-            x: f.x,
-            y: f.y,
-            vx: Math.cos(angle) * speed,
-            vy: Math.sin(angle) * speed,
-            life: 0.25 + Math.random() * 0.25,
-            color: f.color,
-          });
+          // Mitad polvo y mitad chispas que brillan y frenan.
+          this.spark(f.x, f.y, Math.cos(angle) * speed, Math.sin(angle) * speed, 0.25 + Math.random() * 0.25, f.color, i % 2 ? { size: 1.5 + Math.random() * 1.5, drag: 4 } : {});
         }
       } else if (f.type === 'hit') {
-        if (this.hits.length < this.cap(MAX_HITS)) this.hits.push({ x: f.x, y: f.y, sprite: f.sprite, life: HIT_LIFE });
+        if (this.hits.length < this.cap(MAX_HITS)) {
+          this.hits.push({ x: f.x, y: f.y, sprite: f.sprite, life: HIT_LIFE });
+          // Dos chispas que salen disparadas del impacto.
+          const family = f.sprite.slice(3, -4);
+          for (let i = 0; i < 2; i++) {
+            const a = Math.random() * Math.PI * 2;
+            const v = 70 + Math.random() * 70;
+            this.spark(f.x, f.y, Math.cos(a) * v, Math.sin(a) * v, 0.18 + Math.random() * 0.1, FAMILY_GLOW[family] ?? 0xffffff, { streak: true, drag: 6 });
+          }
+        }
       } else if (f.type === 'ring') {
         this.rings.push({ x: f.x, y: f.y, radius: f.radius, life: RING_LIFE, color: f.color });
+        // Explosiones grandes: lluvia de chispas hacia fuera.
+        if (f.radius >= 24) {
+          const n = Math.min(16, Math.round(f.radius / 5));
+          for (let i = 0; i < n; i++) {
+            const a = (i / n) * Math.PI * 2 + Math.random() * 0.4;
+            const v = f.radius * (2.2 + Math.random() * 1.6);
+            this.spark(f.x, f.y, Math.cos(a) * v, Math.sin(a) * v, 0.22 + Math.random() * 0.15, i % 3 ? f.color : 0xffffff, { streak: true, drag: 5 });
+          }
+        }
+      } else if (f.type === 'death') {
+        // Muerte: destello, chispas con gravedad y, en élites y jefes, onda y temblor.
+        const n = f.size === 2 ? 40 : f.size === 1 ? 14 : 5;
+        if (this.hits.length < this.cap(MAX_HITS)) this.hits.push({ x: f.x, y: f.y, sprite: '', life: HIT_LIFE });
+        for (let i = 0; i < n; i++) {
+          const a = Math.random() * Math.PI * 2;
+          const v = (f.size === 2 ? 90 : 45) + Math.random() * (f.size === 2 ? 140 : 70);
+          const color = i % 3 === 0 ? 0xffffff : i % 3 === 1 ? 0xffe08a : 0xff9f6a;
+          this.spark(f.x, f.y, Math.cos(a) * v, Math.sin(a) * v - 30, 0.3 + Math.random() * 0.3, color, i % 2 ? { size: 1.2 + Math.random() * 1.6, drag: 3, grav: 160 } : { streak: true, drag: 4, grav: 120 });
+        }
+        if (f.size >= 1) {
+          this.rings.push({ x: f.x, y: f.y, radius: f.size === 2 ? 70 : 26, life: RING_LIFE, color: 0xffe08a });
+          this.shake = Math.min(8, this.shake + (f.size === 2 ? 6 : 1.2));
+        }
+        if (f.size === 2)
+          for (let i = 1; i <= 3; i++) this.rings.push({ x: f.x, y: f.y, radius: 40 + i * 40, life: RING_LIFE * (1 + i * 0.5), color: i % 2 ? 0xffffff : 0xff7a5a });
+      } else if (f.type === 'surge') {
+        this.surges.push({ x: f.x, y: f.y, color: f.color, power: f.power, life: SURGE_LIFE });
+        const n = 10 + f.power * 10;
+        for (let i = 0; i < n; i++) {
+          const a = (i / n) * Math.PI * 2;
+          const v = 40 + f.power * 25 + Math.random() * 40;
+          this.spark(f.x, f.y - 4, Math.cos(a) * v, Math.sin(a) * v * 0.6 - 50, 0.5 + Math.random() * 0.4, i % 2 ? f.color : 0xffffff, { size: 1.4 + Math.random() * 1.4, drag: 2.5, grav: -40 });
+        }
+        this.rings.push({ x: f.x, y: f.y, radius: 24 + f.power * 22, life: RING_LIFE * 1.4, color: f.color });
+      } else if (f.type === 'flash') {
+        this.flash.tint = f.color;
+        this.flashAlpha = Math.max(this.flashAlpha, f.power);
+      } else if (f.type === 'hitstop') {
+        this.hitstop = Math.max(this.hitstop, f.seconds);
       } else if (f.type === 'line') {
         // Rayo quebrado: puntos intermedios desplazados al azar.
         const points = [f.x, f.y];
@@ -328,6 +406,16 @@ export class Renderer {
     fx.length = 0;
   }
 
+  /** Añade una partícula si cabe (tope según la calidad). */
+  private spark(x: number, y: number, vx: number, vy: number, life: number, color: number, opts: Partial<Particle> = {}) {
+    if (this.particles.length < this.cap(MAX_PARTICLES)) this.particles.push({ x, y, vx, vy, life, color, ...opts });
+  }
+
+  /** Velocidad a la que debe avanzar la partida ahora: cámara lenta durante una pausa de impacto. */
+  timeScale(): number {
+    return this.hitstop > 0 ? 0.15 : 1;
+  }
+
   /** Dibuja un fotograma. `dt` = segundos reales desde el anterior (anima los efectos). */
   /**
    * `dying`: avance de la animación de muerte (0–1), o null mientras se juega. Hay dos: derrota (cae, se tiñe de
@@ -336,6 +424,7 @@ export class Renderer {
   draw(w: World, dt: number, dying: number | null = null) {
     this.clock += dt;
     this.reviveAnim = Math.max(0, this.reviveAnim - dt);
+    this.hitstop = Math.max(0, this.hitstop - dt);
     this.adapt(dt);
     if (dying === null) this.deathBurst = false;
     else if (!this.deathBurst) {
@@ -368,6 +457,15 @@ export class Renderer {
     this.veil.height = height;
     this.veil.tint = style.tint.color;
     this.veil.alpha = style.tint.alpha;
+    // Destello de pantalla (evoluciones, jefes) y, con poca vida, un latido rojo.
+    this.flashAlpha *= Math.exp(-5 * dt);
+    const danger = dying === null && p.hp / p.stats.maxHp < 0.25 ? 0.05 + 0.05 * Math.sin(this.clock * 6) : 0;
+    this.flash.width = width;
+    this.flash.height = height;
+    if (this.flashAlpha < danger) {
+      this.flash.tint = 0xff2030;
+      this.flash.alpha = danger;
+    } else this.flash.alpha = this.flashAlpha;
 
     const halfW = width / zoom / 2 + 24;
     const halfH = height / zoom / 2 + 24;
@@ -415,7 +513,13 @@ export class Renderer {
     // Bajo los personajes: aura de ascuas.
     this.under.begin();
     const ember = p.weapons.find((ws) => behaviourOf(ws.id) === 'ember');
-    if (ember) this.drawGarlicAura(p.x, p.y, emberRadius(w, ember), WEAPON_BY_ID.get(ember.id)?.color ?? 0xdff0b0, ember.id !== 'ember');
+    if (ember) {
+      const radius = emberRadius(w, ember);
+      this.drawGarlicAura(p.x, p.y, radius, WEAPON_BY_ID.get(ember.id)?.color ?? 0xdff0b0, ember.id !== 'ember');
+      // Sobremejora: corona del color de su tramo que gira por el borde.
+      const tier = overTier(overLevels(ember.id, ember.level));
+      if (tier > 0) this.drawTierCrown(this.under, p.x, p.y, radius, tier);
+    }
     // Zonas marcadas por los jefes de ciclo: se intensifican hasta estallar (sim/bosses.ts).
     for (const h of w.hazards ?? []) {
       const kind = h.kind ?? 'blast';
@@ -454,6 +558,15 @@ export class Renderer {
         continue;
       }
       const lasting = kind === 'zone' || kind === 'slow';
+      if (!lasting && !armed) {
+        // Aviso de estallido: un relleno que crece desde el centro hasta el borde justo cuando estalla.
+        const fill = this.under.next(this.tex('disc'));
+        fill.position.set(h.x, h.y);
+        fill.scale.set((h.radius * (1 - left)) / CIRCLE_RADIUS);
+        fill.tint = h.color ?? 0xff3c2e;
+        fill.alpha = 0.18 + (1 - left) * 0.2;
+        fill.blendMode = 'add';
+      }
       const zone = this.under.next(this.tex('disc'));
       zone.position.set(h.x, h.y);
       zone.scale.set(h.radius / CIRCLE_RADIUS);
@@ -480,8 +593,30 @@ export class Renderer {
           : item.kind === 'coin'
             ? 'i_coin'
             : `i_${item.kind}`;
+      // Gemas y cofres brillan (las atraídas dejan estela); el resto, tal cual.
+      if (item.kind === 'xp' || item.kind === 'chest') {
+        const glow = this.pickups.next(this.tex('disc'));
+        glow.position.set(item.x, item.y);
+        const big = item.kind === 'chest' ? 12 : item.value >= 10 ? 7 : item.value >= 3 ? 5 : 3.5;
+        glow.scale.set((big * (1 + Math.sin(this.clock * 5 + item.x) * 0.15)) / CIRCLE_RADIUS);
+        glow.tint = item.kind === 'chest' ? 0xffd75e : item.value >= 10 ? 0xff7ac3 : item.value >= 3 ? 0x5ee08a : 0x6bc5ff;
+        glow.alpha = item.kind === 'chest' ? 0.35 : 0.28;
+        glow.blendMode = 'add';
+        if (item.pulled) {
+          const dx = p.x - item.x;
+          const dy = p.y - item.y;
+          const d = Math.hypot(dx, dy) || 1;
+          const tail = this.pickups.next(this.tex('px'));
+          tail.position.set(item.x - (dx / d) * 4, item.y - (dy / d) * 4);
+          tail.rotation = Math.atan2(dy, dx);
+          tail.scale.set(4, 0.7);
+          tail.tint = glow.tint;
+          tail.alpha = 0.5;
+          tail.blendMode = 'add';
+        }
+      }
       const s = this.pickups.next(this.tex(name));
-      s.position.set(item.x, item.y + (item.kind === 'chest' ? Math.sin(this.clock * 4) * 1.5 : 0));
+      s.position.set(item.x, item.y + (item.kind === 'chest' ? Math.sin(this.clock * 4) * 1.5 : item.kind === 'xp' ? Math.sin(this.clock * 4 + item.x) * 0.8 : 0));
     }
     this.pickups.end();
 
@@ -568,19 +703,9 @@ export class Renderer {
     this.actors.begin();
     // Las partidas guardadas antes de existir los demás personajes no traen sprite: usan el del héroe base.
     const sprite = w.config.sprite ?? 'hero';
-    const skin = w.config.skin;
-    if (skin?.aura !== undefined && dying === null) {
-      // Aura del aspecto: un anillo que late bajo los pies.
-      const aura = this.actors.next(this.tex('ring'));
-      aura.position.set(p.x, p.y + 6);
-      aura.scale.set(0.42 + Math.sin(this.clock * 3) * 0.03, 0.17);
-      aura.tint = skin.aura;
-      aura.alpha = 0.8;
-    }
     const hero = this.actors.next(this.tex(`${sprite}_${p.moving && Math.floor(this.clock * 8) % 2 === 1 ? 1 : 0}`));
     hero.position.set(p.x, p.y - 2);
     hero.scale.x = p.dirX < 0 ? -1 : 1;
-    if (skin) hero.tint = skin.tint;
     // Al recibir daño destella en rojo, sin volverse transparente: el personaje se ve siempre.
     if (p.hurtTimer > 0 && dying === null && Math.floor(this.clock * 20) % 2 === 0) hero.tint = 0xff7a7a;
     // Resurrección: halo dorado que se expande y el héroe se alza con un destello blanco-dorado.
@@ -643,6 +768,10 @@ export class Renderer {
     if (dying === null) this.drawChestArrows(w, width, height, zoom);
     this.actors.end();
 
+    this.weaponIds = p.weapons.map((ws) => ws.id);
+    this.tiers = p.weapons.map((ws) => overTier(overLevels(ws.id, ws.level)));
+    this.glows = p.weapons.map((ws) => WEAPON_BY_ID.get(ws.id)?.color ?? FAMILY_GLOW[hitFxOf(ws.id)?.slice(3, -4) ?? ''] ?? 0xffffff);
+    this.heroAt = { x: p.x, y: p.y };
     this.shots.begin();
     for (const shot of w.projectiles) {
       // Los haces y la galaxia empiezan fuera de la pantalla o la cubren entera.
@@ -715,12 +844,192 @@ export class Renderer {
       t.rotation = rotation;
       t.alpha = 0.5 - i * 0.12;
       t.scale.set(1 - i * 0.12);
+      t.blendMode = 'add';
+    }
+  }
+
+  /** Brillo bajo un proyectil del jugador: disco de su familia y, con sobremejora, halo de su silueta del color del tramo. */
+  private glowUnder(shot: Projectile) {
+    const tier = this.tiers[shot.weapon] ?? 0;
+    const color = this.glows[shot.weapon] ?? 0xffffff;
+    const size = Math.min(12, Math.max(4, shot.radius * 0.9)) * (1 + tier * 0.15);
+    const glow = this.shots.next(this.tex('disc'));
+    glow.position.set(shot.x, shot.y);
+    glow.scale.set(size / CIRCLE_RADIUS);
+    glow.tint = tier > 0 ? OVER_TIER_COLORS[tier] : color;
+    glow.alpha = 0.2 + tier * 0.05;
+    glow.blendMode = 'add';
+    if (tier === 0) return;
+    const halo = this.shots.next(this.tex(shot.sprite, true));
+    halo.position.set(shot.x, shot.y);
+    halo.rotation = shot.kind === 'orbit' ? 0 : shot.angle;
+    halo.scale.set(1.3 + tier * 0.18 + Math.sin(this.clock * 10 + shot.x) * 0.06);
+    // Tramo prismático: el color va cambiando.
+    halo.tint = tier === 3 ? [0xff7ac3, 0xffd75e, 0x7fe3ff, 0x9bff8a][Math.floor(this.clock * 8 + shot.x * 0.1) % 4] : OVER_TIER_COLORS[tier];
+    halo.alpha = 0.55;
+    halo.blendMode = 'add';
+  }
+
+  /** Corona de sobremejora alrededor de un área (aura, ondas): anillo y destellos del color del tramo que giran. */
+  private drawTierCrown(pool: Pool, x: number, y: number, radius: number, tier: number) {
+    const color = OVER_TIER_COLORS[tier];
+    const ring = pool.next(this.tex('ring'));
+    ring.position.set(x, y);
+    ring.scale.set((radius * 1.04) / CIRCLE_RADIUS);
+    ring.tint = color;
+    ring.alpha = 0.5;
+    ring.blendMode = 'add';
+    const beads = 6 + tier * 4;
+    for (let k = 0; k < beads; k++) {
+      const a = (k / beads) * Math.PI * 2 - this.clock * (0.8 + tier * 0.4);
+      const bead = pool.next(this.tex('disc'));
+      bead.position.set(x + Math.cos(a) * radius * 1.04, y + Math.sin(a) * radius * 1.04);
+      bead.scale.set((2 + tier * 0.6) / CIRCLE_RADIUS);
+      bead.tint = k % 2 ? 0xffffff : color;
+      bead.alpha = 0.8;
+      bead.blendMode = 'add';
+    }
+  }
+
+  /** Columnas de luz de las subidas de poder (siguen al jugador mientras se apagan). */
+  private drawSurges(pool: Pool) {
+    const { x: px, y: py } = this.heroAt;
+    for (const s of this.surges) {
+      const t = 1 - s.life / SURGE_LIFE;
+      const fade = (1 - t) ** 1.5;
+      const width = (3 + s.power * 3) * (1 - t * 0.5);
+      for (const [w, tint, alpha] of [
+        [width * 2.4, s.color, 0.3],
+        [width, s.color, 0.6],
+        [width * 0.35, 0xffffff, 0.9],
+      ] as const) {
+        const beam = pool.next(this.tex('px'));
+        beam.position.set(px, py - 60);
+        beam.scale.set(w, 64 + s.power * 10);
+        beam.tint = tint;
+        beam.alpha = alpha * fade;
+        beam.blendMode = 'add';
+      }
+      const base = pool.next(this.tex('disc'));
+      base.position.set(px, py + 4);
+      base.scale.set(((14 + s.power * 8) * (0.6 + t)) / CIRCLE_RADIUS, ((5 + s.power * 3) * (0.6 + t)) / CIRCLE_RADIUS);
+      base.tint = s.color;
+      base.alpha = 0.6 * fade;
+      base.blendMode = 'add';
     }
   }
 
   private drawShot(shot: Projectile) {
     const pool = this.shots;
+    if (shot.weapon >= 0 && GLOWING.has(shot.kind)) this.glowUnder(shot);
     switch (shot.kind) {
+      case 'wave': {
+        // Onda expansiva: frente brillante con polvo y rocas que saltan, y grietas en el suelo.
+        const t = 1 - Math.max(0, shot.life) / shot.total;
+        const color = shot.color ?? 0xffc65a;
+        const fade = 1 - t * t;
+        const r = shot.radius;
+        const wash = pool.next(this.tex('disc'));
+        wash.position.set(shot.sx, shot.sy);
+        wash.scale.set(r / CIRCLE_RADIUS);
+        wash.tint = color;
+        wash.alpha = 0.1 * fade;
+        wash.blendMode = 'add';
+        for (let k = 0; k < 3; k++) {
+          const ring = pool.next(this.tex('ring'));
+          ring.position.set(shot.sx, shot.sy);
+          ring.scale.set((r * (1 - k * 0.07)) / CIRCLE_RADIUS);
+          ring.tint = k === 0 ? 0xffffff : color;
+          ring.alpha = fade * (0.95 - k * 0.28);
+          ring.blendMode = 'add';
+        }
+        const rocks = 12;
+        for (let i = 0; i < rocks; i++) {
+          const a = (i / rocks) * Math.PI * 2 + shot.tx * 0.37;
+          const lift = Math.sin(Math.min(1, t * 1.4) * Math.PI) * (4 + (i % 3) * 2);
+          const rock = pool.next(this.tex('px'));
+          rock.position.set(shot.sx + Math.cos(a) * r, shot.sy + Math.sin(a) * r - lift);
+          rock.scale.set(1.2 + (i % 2));
+          rock.tint = i % 3 ? 0xd8c8a8 : color;
+          rock.alpha = fade;
+        }
+        for (let i = 0; i < 6; i++) {
+          const a = (i / 6) * Math.PI * 2 + shot.tx * 0.11;
+          const crack = pool.next(this.tex('px'));
+          const len = Math.min(r, shot.orbitR * 0.6);
+          crack.position.set(shot.sx + (Math.cos(a) * len) / 2, shot.sy + (Math.sin(a) * len) / 2);
+          crack.rotation = a;
+          crack.scale.set(len / 2, 0.6);
+          crack.tint = color;
+          crack.alpha = 0.45 * fade;
+          crack.blendMode = 'add';
+        }
+        const tier = this.tiers[shot.weapon] ?? 0;
+        if (tier > 0) this.drawTierCrown(pool, shot.sx, shot.sy, r, tier);
+        return;
+      }
+      case 'vortex': {
+        const color = shot.color ?? 0xb58cff;
+        const tier = this.tiers[shot.weapon] ?? 0;
+        if (shot.vx !== 0 || shot.vy !== 0) {
+          // En vuelo: esfera oscura con borde brillante y estela.
+          const speed = Math.hypot(shot.vx, shot.vy) || 1;
+          for (let k = 4; k >= 0; k--) {
+            const orb = pool.next(this.tex('disc'));
+            orb.position.set(shot.x - (shot.vx / speed) * k * 4, shot.y - (shot.vy / speed) * k * 4);
+            orb.scale.set((6 - k) / CIRCLE_RADIUS);
+            orb.tint = k === 0 ? 0xffffff : color;
+            orb.alpha = k === 0 ? 0.9 : 0.4 - k * 0.07;
+            orb.blendMode = 'add';
+          }
+          const core = pool.next(this.tex('disc'));
+          core.position.set(shot.x, shot.y);
+          core.scale.set(3 / CIRCLE_RADIUS);
+          core.tint = 0x0b0614;
+          return;
+        }
+        // Abierto: disco de acreción que gira, brazos en espiral que caen al centro y un núcleo negro.
+        const r = shot.radius;
+        const fade = Math.min(1, shot.life * 3);
+        const glow = pool.next(this.tex('disc'));
+        glow.position.set(shot.x, shot.y);
+        glow.scale.set((r * 1.15) / CIRCLE_RADIUS);
+        glow.tint = color;
+        glow.alpha = 0.1 * fade;
+        glow.blendMode = 'add';
+        for (let k = 0; k < 2; k++) {
+          const ring = pool.next(this.tex('ring'));
+          ring.position.set(shot.x, shot.y);
+          ring.scale.set((r * (1 - k * 0.35) + Math.sin(this.clock * 8 + k) * 1.5) / CIRCLE_RADIUS);
+          ring.tint = k ? 0xffffff : color;
+          ring.alpha = (0.7 - k * 0.2) * fade;
+          ring.blendMode = 'add';
+        }
+        const arms = 3 + tier;
+        for (let arm = 0; arm < arms; arm++)
+          for (let k = 0; k < 9; k++) {
+            const f = 1 - ((k / 9 + this.clock * 0.9) % 1);
+            const a = shot.angle + (arm / arms) * Math.PI * 2 + (1 - f) * 3.2;
+            const dot = pool.next(this.tex('disc'));
+            dot.position.set(shot.x + Math.cos(a) * r * f, shot.y + Math.sin(a) * r * f);
+            dot.scale.set((1 + f * 1.8) / CIRCLE_RADIUS);
+            dot.tint = k % 3 === 0 ? 0xffffff : tier > 0 ? OVER_TIER_COLORS[tier] : color;
+            dot.alpha = fade * (0.35 + f * 0.6);
+            dot.blendMode = 'add';
+          }
+        const hole = pool.next(this.tex('disc'));
+        hole.position.set(shot.x, shot.y);
+        hole.scale.set((r * 0.26 + Math.sin(this.clock * 12) * 0.6) / CIRCLE_RADIUS);
+        hole.tint = 0x07040d;
+        hole.alpha = 0.9 * fade;
+        const rim = pool.next(this.tex('ring'));
+        rim.position.copyFrom(hole.position);
+        rim.scale.copyFrom(hole.scale);
+        rim.tint = this.weaponIds[shot.weapon] === 'eventhorizon' ? 0xffe0f0 : color;
+        rim.alpha = fade;
+        rim.blendMode = 'add';
+        return;
+      }
       case 'bomb': {
         // Vuelo en arco: sube y baja, y gira.
         const t = 1 - Math.max(0, shot.life) / shot.total;
@@ -1003,6 +1312,22 @@ export class Renderer {
         return;
       }
       case 'enemyShot': {
+        // Proyectiles enemigos: halo rojo que late para que se lean bien entre los efectos del jugador.
+        const pulse = 1 + Math.sin(this.clock * 14 + shot.x) * 0.15;
+        const halo = pool.next(this.tex('disc'));
+        halo.position.set(shot.x, shot.y);
+        halo.scale.set((7 * pulse) / CIRCLE_RADIUS);
+        halo.tint = 0xff3c4a;
+        halo.alpha = 0.35;
+        halo.blendMode = 'add';
+        const speed = Math.hypot(shot.vx, shot.vy) || 1;
+        const tail = pool.next(this.tex('px'));
+        tail.position.set(shot.x - (shot.vx / speed) * 5, shot.y - (shot.vy / speed) * 5);
+        tail.rotation = Math.atan2(shot.vy, shot.vx);
+        tail.scale.set(5, 1.2);
+        tail.tint = 0xff7a5a;
+        tail.alpha = 0.5;
+        tail.blendMode = 'add';
         const s = pool.next(this.tex(shot.sprite));
         s.position.set(shot.x, shot.y);
         s.rotation = shot.angle;
@@ -1141,6 +1466,7 @@ export class Renderer {
   private drawEffects(dt: number) {
     const fx = this.effects;
     fx.begin();
+    this.drawSurges(fx);
 
     for (const ring of this.rings) {
       ring.life -= dt;
@@ -1189,9 +1515,9 @@ export class Renderer {
         core.blendMode = 'add';
         const flash = fx.next(this.tex('disc'));
         flash.position.set(pts[i], pts[i + 1]);
-        flash.scale.set((4 + 4 * k) / CIRCLE_RADIUS);
+        flash.scale.set((2.5 + 2.5 * k) / CIRCLE_RADIUS);
         flash.tint = bolt.color;
-        flash.alpha = 0.5 * k;
+        flash.alpha = 0.45 * k;
         flash.blendMode = 'add';
       }
     }
@@ -1200,36 +1526,69 @@ export class Renderer {
     // Impactos: anticipación, impacto y disipación, con mezcla aditiva.
     for (const hit of this.hits) {
       hit.life -= dt;
-      const frame = Math.min(2, Math.floor((1 - hit.life / HIT_LIFE) * 3));
-      const s = fx.next(this.tex(`${hit.sprite}_${frame}`));
-      s.position.set(hit.x, hit.y);
-      s.blendMode = 'add';
-      s.scale.set(1.25);
-      const flash = fx.next(this.tex('disc'));
       const k = hit.life / HIT_LIFE;
+      if (hit.sprite) {
+        const frame = Math.min(2, Math.floor((1 - k) * 3));
+        const s = fx.next(this.tex(`${hit.sprite}_${frame}`));
+        s.position.set(hit.x, hit.y);
+        s.blendMode = 'add';
+        // Pequeño «pop»: el impacto nace grande y se asienta.
+        s.scale.set(1.25 + 0.5 * k * k);
+      }
+      const flash = fx.next(this.tex('disc'));
       flash.position.set(hit.x, hit.y);
-      flash.scale.set((5 + 9 * (1 - k)) / CIRCLE_RADIUS);
-      flash.alpha = 0.5 * k;
+      flash.scale.set((hit.sprite ? 5 + 9 * (1 - k) : 9 + 12 * (1 - k)) / CIRCLE_RADIUS);
+      flash.alpha = (hit.sprite ? 0.5 : 0.8) * k;
       flash.blendMode = 'add';
     }
     this.hits = this.hits.filter((h) => h.life > 0);
 
     for (const part of this.particles) {
       part.life -= dt;
+      if (part.drag) {
+        const k = Math.exp(-part.drag * dt);
+        part.vx *= k;
+        part.vy *= k;
+      }
+      if (part.grav) part.vy += part.grav * dt;
       part.x += part.vx * dt;
       part.y += part.vy * dt;
-      const s = fx.next(this.tex('px'));
-      s.position.set(part.x, part.y);
-      s.tint = part.color;
-      s.alpha = Math.min(1, part.life * 5);
+      const alpha = Math.min(1, part.life * 5);
+      if (part.streak) {
+        const speed = Math.hypot(part.vx, part.vy);
+        const s = fx.next(this.tex('px'));
+        s.position.set(part.x, part.y);
+        s.rotation = Math.atan2(part.vy, part.vx);
+        s.scale.set(Math.max(0.8, speed * 0.025), 0.6);
+        s.tint = part.color;
+        s.alpha = alpha;
+        s.blendMode = 'add';
+      } else if (part.size) {
+        const s = fx.next(this.tex('disc'));
+        s.position.set(part.x, part.y);
+        s.scale.set((part.size * Math.min(1, part.life * 3)) / CIRCLE_RADIUS);
+        s.tint = part.color;
+        s.alpha = alpha;
+        s.blendMode = 'add';
+      } else {
+        const s = fx.next(this.tex('px'));
+        s.position.set(part.x, part.y);
+        s.tint = part.color;
+        s.alpha = alpha;
+      }
     }
+    for (const s of this.surges) s.life -= dt;
+    this.surges = this.surges.filter((s) => s.life > 0);
     this.particles = this.particles.filter((q) => q.life > 0);
 
     for (const n of this.numbers) {
       n.life -= dt;
       n.y -= 22 * dt;
       const text = String(n.value);
-      const size = n.big ? 1.5 : 1;
+      // Las cifras nacen grandes y se asientan («pop»); los críticos y los golpes enormes, más.
+      const age = 1 - n.life / NUMBER_LIFE;
+      const pop = age < 0.15 ? 1 + (n.big ? 0.8 : 0.35) * (1 - age / 0.15) : 1;
+      const size = (n.big ? 1.5 : n.value >= 100 ? 1.2 : 1) * pop;
       // Cifras de 4 px más 1 de separación (los contornos se solapan).
       const startX = n.x - (text.length * 5 * size) / 2 + 2.5 * size;
       for (let i = 0; i < text.length; i++) {

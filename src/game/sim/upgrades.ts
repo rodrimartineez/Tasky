@@ -16,32 +16,42 @@ export { maxLevelOf, weaponStatsAt };
  */
 export const WEAPON_LEVEL_CAP = 999;
 
-/** Mejora porcentual de cada nivel por encima del máximo. Proyectiles y perforación extra cada cierto número de niveles. */
+/**
+ * Mejora de cada nivel por encima del máximo (27/11/2026: antes +5 % de daño y casi nada más, imperceptible). Cada nivel
+ * suma daño, área, cadencia, velocidad y duración que se notan; cada `milestone` niveles hay un hito (un proyectil más,
+ * hasta `amountMax`, y perforación). El render lo refleja con `overTier`: el arma brilla y crece por tramos.
+ */
 export const OVERLEVEL = {
-  damage: 0.05,
-  area: 0.004,
-  areaMax: 1.6,
-  haste: 0.004,
-  speed: 0.003,
-  duration: 0.003,
-  amountEvery: 50,
+  damage: 0.08,
+  area: 0.02,
+  areaMax: 2,
+  haste: 0.012,
+  speed: 0.01,
+  duration: 0.01,
+  milestone: 5,
   amountMax: 5,
-  pierceEvery: 30,
+  pierceEvery: 10,
 };
+
+/** Niveles por encima del máximo de un arma (0 si no ha pasado de él). */
+export const overLevels = (id: string, level: number) => Math.max(0, Math.min(level, WEAPON_LEVEL_CAP) - maxLevelOf(id));
+/** Tramo visual de la sobremejora: 0 ninguno, 1 dorado (+1), 2 celeste (+10), 3 prismático (+25). */
+export const overTier = (extra: number) => (extra >= 25 ? 3 : extra >= 10 ? 2 : extra >= 1 ? 1 : 0);
+export const OVER_TIER_COLORS = [0xffffff, 0xffc93d, 0x7fe3ff, 0xff7ac3];
 
 /** Estadísticas de un arma en cualquier nivel (1–999), con las mejoras heredadas (`carry`, Atún Cambiante). */
 export function statsAt(def: WeaponDef, level: number, carry?: Partial<WeaponStats>) {
   const max = maxLevelOf(def.id);
   const stats = weaponStatsAt(def, Math.min(level, max));
   for (const key in carry) stats[key as keyof WeaponStats] += carry[key as keyof WeaponStats] ?? 0;
-  const extra = Math.max(0, Math.min(level, WEAPON_LEVEL_CAP) - max);
+  const extra = overLevels(def.id, level);
   if (extra === 0) return stats;
   stats.damage *= 1 + OVERLEVEL.damage * extra;
   stats.area *= Math.min(OVERLEVEL.areaMax, 1 + OVERLEVEL.area * extra);
   stats.cooldown = Math.max(Math.min(stats.cooldown, 0.15), stats.cooldown / (1 + OVERLEVEL.haste * extra));
   stats.speed *= 1 + OVERLEVEL.speed * extra;
   stats.duration *= 1 + OVERLEVEL.duration * extra;
-  stats.amount += Math.min(OVERLEVEL.amountMax, Math.floor(extra / OVERLEVEL.amountEvery));
+  stats.amount += Math.min(OVERLEVEL.amountMax, Math.floor(extra / OVERLEVEL.milestone));
   if (stats.pierce < 999) stats.pierce += Math.floor(extra / OVERLEVEL.pierceEvery);
   return stats;
 }
@@ -59,12 +69,19 @@ export const buildComplete = (w: World) =>
   w.player.weapons.every((x) => x.level >= maxLevelOf(x.id)) &&
   w.player.passives.every((x) => x.level >= (PASSIVE_BY_ID.get(x.id)?.maxLevel ?? 1));
 
+const TIER_NAMES = ['', 'dorado', 'celeste', 'prismático'];
+
 function overlevelText(id: string, level: number): string {
-  const extra = level - maxLevelOf(id);
-  const parts = [`+${Math.round(OVERLEVEL.damage * 100)} % de daño`];
-  if (extra % OVERLEVEL.amountEvery === 0 && extra / OVERLEVEL.amountEvery <= OVERLEVEL.amountMax) parts.push('un proyectil más');
-  if (extra % OVERLEVEL.pierceEvery === 0) parts.push('atraviesa uno más');
-  return `${parts.join(', ')} y algo más de área, cadencia y alcance`;
+  const extra = overLevels(id, level);
+  const pct = (v: number) => `${Math.round(v * 100)} %`;
+  const areaCapped = 1 + OVERLEVEL.area * (extra - 1) >= OVERLEVEL.areaMax;
+  const parts = [`+${pct(OVERLEVEL.damage)} de daño`, ...(areaCapped ? [] : [`+${pct(OVERLEVEL.area)} de tamaño`]), `+${pct(OVERLEVEL.haste)} de cadencia`];
+  const perks: string[] = [];
+  if (extra % OVERLEVEL.milestone === 0 && extra / OVERLEVEL.milestone <= OVERLEVEL.amountMax) perks.push('un proyectil más');
+  if (extra % OVERLEVEL.pierceEvery === 0) perks.push('atraviesa uno más');
+  const tier = overTier(extra);
+  const tierUp = tier > overTier(extra - 1) ? ` · ¡Despierta su poder ${TIER_NAMES[tier]}!` : '';
+  return `Sobremejora +${extra}: ${parts.join(', ')}${perks.length > 0 ? ` · ★ Hito: ${perks.join(' y ')}` : ''}${tierUp}`;
 }
 
 export function newWeapon(id: string): WeaponState {
@@ -148,7 +165,9 @@ function evolve(w: World, ws: WeaponState, evo: Evolution): UpgradeChoice {
   const p = w.player;
   emit(w, { type: 'ring', x: p.x, y: p.y, radius: 90, color: 0xffe08a });
   emit(w, { type: 'ring', x: p.x, y: p.y, radius: 55, color: 0xffffff });
-  emit(w, { type: 'shake', power: 3 });
+  emit(w, { type: 'surge', x: p.x, y: p.y, color: 0xffe08a, power: 3 });
+  emit(w, { type: 'flash', color: 0xfff2c0, power: 0.6 });
+  emit(w, { type: 'shake', power: 4 });
   if (!('weapon' in evo)) {
     ws.carry = levelMods(ws);
     ws.evos = (ws.evos ?? 0) + 1;
@@ -340,6 +359,14 @@ export function applyChoice(w: World, choice: UpgradeChoice) {
     else {
       owned.level = choice.level;
       owned.stats = statsAt(WEAPON_BY_ID.get(owned.id)!, owned.level, owned.carry);
+      // Sobremejora: estallido del color de su tramo, más grande en los hitos y al despertar un tramo nuevo.
+      const extra = overLevels(owned.id, owned.level);
+      if (extra > 0) {
+        const tier = overTier(extra);
+        const big = extra % OVERLEVEL.milestone === 0 || tier > overTier(extra - 1);
+        emit(w, { type: 'surge', x: p.x, y: p.y, color: OVER_TIER_COLORS[tier], power: big ? 2 : 1 });
+        if (big) emit(w, { type: 'hitstop', seconds: 0.12 });
+      }
     }
   } else if (choice.kind === 'passive') {
     const owned = p.passives.find((x) => x.id === choice.id);

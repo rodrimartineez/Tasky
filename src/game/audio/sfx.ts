@@ -24,9 +24,11 @@ export type Sfx =
   | 'reaper'
   | 'defeat'
   | 'victory'
-  | 'purge';
+  | 'purge'
+  /** Subida de poder (sobremejora, racha, evolución): arpegio ascendente más largo cuanto mayor es `detail` (1–3). */
+  | 'surge';
 
-const GAP: Partial<Record<Sfx, number>> = { hit: 0.045, zap: 0.06, boom: 0.09, kill: 0.035, xp: 0.03, coin: 0.06, hurt: 0.18 };
+const GAP: Partial<Record<Sfx, number>> = { surge: 0.25, hit: 0.045, zap: 0.06, boom: 0.09, kill: 0.035, xp: 0.03, coin: 0.06, hurt: 0.18 };
 const last = new Map<Sfx, number>();
 
 /** Familia de elemento → tono del golpe (content/weapons.ts, hitFxOf). */
@@ -123,6 +125,12 @@ export function play(name: Sfx, detail?: string) {
       [0, 4, 7, 12].forEach((s, i) => audio.tone({ type: 'square', freq: note(s, 523.25), dur: 0.3, vol: 0.06, delay: i * 0.12, lowpass: 4000 }));
       [0, 4, 7].forEach((s) => audio.tone({ type: 'triangle', freq: note(s + 12, 523.25), dur: 1.2, vol: 0.05, delay: 0.5 }));
       break;
+    case 'surge': {
+      const steps = 2 + Number(detail ?? 1) * 2;
+      for (let i = 0; i < steps; i++) audio.tone({ type: 'triangle', freq: note(i * 3, 659.25), dur: 0.18, vol: 0.055, delay: i * 0.045 });
+      audio.noise({ dur: 0.35, vol: 0.05, filter: 'highpass', freq: 4000, to: 9000 });
+      break;
+    }
     case 'purge':
       audio.tone({ type: 'sawtooth', freq: 600, to: 80, dur: 0.6, vol: 0.08, lowpass: 2000 });
       audio.noise({ dur: 0.5, vol: 0.1, filter: 'bandpass', freq: 1200, to: 200 });

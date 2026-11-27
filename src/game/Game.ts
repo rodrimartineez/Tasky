@@ -41,7 +41,23 @@ export interface Hud {
   fps: number;
   /** Motor gráfico en uso («webgl», «canvas»…). */
   graphics: string;
+  /** Racha: bajas seguidas sin pasar `COMBO_WINDOW` segundos sin abatir a nadie (solo se muestra). */
+  combo: number;
+  /** Escalón de la racha alcanzado (índice en `COMBO_TIERS`, −1 ninguno). */
+  comboTier: number;
 }
+
+/** Ventana de la racha y escalones con su nombre: momentos de celebración, sin efecto en la partida. */
+const COMBO_WINDOW = 3;
+export const COMBO_TIERS: { at: number; name: string }[] = [
+  { at: 50, name: '¡Buena racha!' },
+  { at: 150, name: '¡Masacre!' },
+  { at: 300, name: '¡Imparable!' },
+  { at: 600, name: '¡Devastador!' },
+  { at: 1000, name: '¡Leyenda!' },
+];
+const COMBO_COLORS = [0x7fe3ff, 0x5ee08a, 0xffc93d, 0xff9f3a, 0xff7ac3];
+const comboTierOf = (combo: number) => COMBO_TIERS.filter((t) => combo >= t.at).length - 1;
 
 function cycleBossHud(w: World): Hud['cycleBoss'] {
   const boss = w.cycleBoss === 1 ? w.enemies.find((e) => !e.dead && e.def.patterns) : undefined;
@@ -86,6 +102,9 @@ export class Game {
   private destroyed = false;
   private ended = false;
   private sound: GameAudio;
+  private combo = 0;
+  private comboTimer = 0;
+  private lastKills = 0;
 
   private constructor(
     host: HTMLElement,
@@ -95,6 +114,7 @@ export class Game {
     resume: World | null,
   ) {
     this.world = resume ? migrateWorld(resume) : createWorld(config);
+    this.lastKills = this.world.kills;
     // Una partida reanudada empieza en pausa: el jugador decide cuándo seguir.
     if (resume && resume.phase === 'playing') this.paused = true;
     this.sound = new GameAudio(this.world);
@@ -139,12 +159,14 @@ export class Game {
     const w = this.world;
 
     if (!this.paused && !this.chestOpen && !this.ended && w.phase === 'playing') {
-      this.acc += dt * this.speed;
+      // Pausa de impacto (jefes, evoluciones, hitos): unos instantes a cámara lenta.
+      this.acc += dt * this.speed * this.renderer.timeScale();
       for (let i = 0; i < MAX_STEPS * Math.ceil(this.speed) && this.acc >= STEP && w.phase === 'playing'; i++) {
         step(w, STEP, this.input.x, this.input.y);
         this.acc -= STEP;
       }
       if (this.acc > STEP) this.acc = 0;
+      this.updateCombo(dt);
     }
 
     if (w.chestRewards.length > 0) {
@@ -191,6 +213,20 @@ export class Game {
     );
   };
 
+  /** Racha de bajas: al subir de escalón, una columna de luz celebra el momento (solo visual). */
+  private updateCombo(dt: number) {
+    const w = this.world;
+    const gained = w.kills - this.lastKills;
+    this.lastKills = w.kills;
+    if (gained > 0) {
+      const before = comboTierOf(this.combo);
+      this.combo += gained;
+      this.comboTimer = COMBO_WINDOW;
+      const tier = comboTierOf(this.combo);
+      if (tier > before) w.fx.push({ type: 'surge', x: w.player.x, y: w.player.y, color: COMBO_COLORS[tier], power: 1 + Math.min(2, tier) });
+    } else if ((this.comboTimer -= dt) <= 0) this.combo = 0;
+  }
+
   private sendHud() {
     const w = this.world;
     const p = w.player;
@@ -215,6 +251,8 @@ export class Game {
       banishes: p.banishes ?? 0,
       fps: Math.round(this.fps),
       graphics: this.renderer.kind,
+      combo: this.combo,
+      comboTier: comboTierOf(this.combo),
     });
   }
 

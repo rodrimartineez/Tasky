@@ -511,9 +511,9 @@ saltos, invocaciones, lluvias y anillos, cada jefe tiene ataques propios avisado
   son estadísticas (`apply`, vía `buildRunConfig`) o reglas de la simulación que consultan `RunConfig.arcana`
   (`hasArcana`): curación en `sim/core.ts`, proyectiles, cadencia y recarga en `sim/weapons.ts`, Heredero del destino en
   `sim/world.ts`. Los logros del propio juego nunca desbloquean cartas.
-- **Aspectos:** `game/content/skins.ts`. Con oro (`unlock:…:skin:<id>`) o por un logro (no se pueden comprar). Solo
-  visuales: `config.skin` (tinte y aura) lo dibuja el renderizador.
-- La elección de cartas y aspecto se guarda en el dispositivo (`tasky-game-extras`).
+- **Aspectos:** eliminados el 27/11/2026. Cada personaje tiene solo su aspecto predeterminado; las compras antiguas
+  (`unlock:…:skin:<id>`) se ignoran al reproducir el ledger y su oro vuelve al saldo.
+- La elección de cartas se guarda en el dispositivo (`tasky-game-extras`).
 
 ## 19. Progreso (antes «Recompensas», 12/11/2026)
 

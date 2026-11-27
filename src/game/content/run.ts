@@ -2,7 +2,6 @@ import { BASE_STATS, type RunConfig, type RunMode } from '../sim/types';
 import { ARCANA_BY_ID, MAX_ARCANA } from './arcana';
 import { cycleBossFor } from './bosses';
 import { CHARACTER_BY_ID, CHARACTERS } from './characters';
-import { SKIN_BY_ID } from './skins';
 import { STAGE_BY_ID, STAGES } from './stages';
 import { withUpgrades } from './upgrades';
 
@@ -16,7 +15,6 @@ import { withUpgrades } from './upgrades';
  *   ciclo en todas.
  * - `boost`: ayuda temporal solo para esta partida (fracciones: 0,3 = +30 %), p. ej. la ayuda de vuelta.
  * - `arcana`: arcanas y darkanas elegidas (hasta dos): cambian el personaje o las reglas de esta partida.
- * - `skin`: aspecto del personaje (solo visual).
  */
 export function buildRunConfig(
   level: number,
@@ -28,14 +26,12 @@ export function buildRunConfig(
     mode = 'normal',
     seed = level,
     arcana = [],
-    skin,
     weapons,
   }: {
     boost?: { xp: number; hp: number };
     mode?: RunMode;
     seed?: number;
     arcana?: string[];
-    skin?: string | null;
     /** Armas iniciales elegidas (personajes con `pickStart`). */
     weapons?: string[];
   } = {},
@@ -48,7 +44,6 @@ export function buildRunConfig(
   stats.maxHp *= 1 + boost.hp;
   const cards = arcana.slice(0, MAX_ARCANA).filter((id) => ARCANA_BY_ID.has(id));
   for (const id of cards) ARCANA_BY_ID.get(id)?.apply?.(stats);
-  const skinDef = skin ? SKIN_BY_ID.get(skin) : undefined;
   const cycleBoss = cycleBossFor(level);
   const picked = character.pickStart && weapons?.length === character.pickStart.count ? weapons : undefined;
   return {
@@ -62,6 +57,5 @@ export function buildRunConfig(
     mode,
     ...(cycleBoss ? { cycleBoss } : {}),
     ...(cards.length > 0 ? { arcana: cards } : {}),
-    ...(skinDef ? { skin: { tint: skinDef.tint, ...(skinDef.aura ? { aura: skinDef.aura } : {}) } } : {}),
   };
 }

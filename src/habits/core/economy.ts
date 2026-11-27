@@ -1,7 +1,6 @@
 import type { LocalDate, Timestamp } from '../../core/model';
 import { ARCANA_BY_ID, MAX_ARCANA } from '../../game/content/arcana';
 import { CHARACTER_BY_ID } from '../../game/content/characters';
-import { SKIN_BY_ID } from '../../game/content/skins';
 import { STAGE_BY_ID } from '../../game/content/stages';
 import { UPGRADE_BY_ID } from '../../game/content/upgrades';
 import type { RunMode } from '../../game/sim/types';
@@ -47,7 +46,7 @@ export interface Economy {
   gold: number;
   /** Nivel comprado de cada mejora permanente. */
   upgrades: Record<string, number>;
-  /** Contenido desbloqueado con oro (`character:<id>`, `stage:<id>`, `skin:<id>`). */
+  /** Contenido desbloqueado con oro (`character:<id>`, `stage:<id>`). */
   unlocked: Set<string>;
   runs: RunRecord[];
   /** Partida empezada y sin terminar (como mucho una). */
@@ -127,7 +126,7 @@ export function isFree(key: string): boolean {
   return false;
 }
 
-/** Precio en oro de lo que se desbloquea: `character:`, `stage:` y `skin:` (aspectos). Las arcanas no se compran: las da un logro. */
+/** Precio en oro de lo que se desbloquea: `character:` y `stage:`. Las arcanas no se compran: las da un logro. */
 export function priceOf(key: string): number {
   const [kind, id] = key.split(':');
   const price =
@@ -135,9 +134,7 @@ export function priceOf(key: string): number {
       ? CHARACTER_BY_ID.get(id)?.price
       : kind === 'stage'
         ? STAGE_BY_ID.get(id)?.price
-        : kind === 'skin'
-          ? SKIN_BY_ID.get(id)?.price || undefined
-          : undefined;
+        : undefined;
   return price ?? Infinity;
 }
 
@@ -210,7 +207,8 @@ export function economyOf(data: HabitsData, today: LocalDate, release: GameRelea
 
       case 'unlock': {
         const key = own(e);
-        if (key === null) break;
+        // Los aspectos ya no existen (27/11/2026): sus compras antiguas no cuentan y su oro se devuelve.
+        if (key === null || key.startsWith('skin:')) break;
         const cost = -e.gold;
         if (eco.unlocked.has(key) || cost > eco.gold || cost < 0) reject(e);
         else {
@@ -315,7 +313,7 @@ export function buyUpgrade(data: HabitsData, upgrade: string, today: LocalDate, 
   return append(data, entry(upgradeId(upgrade, level), 'upgrade', now, { points: -cost }));
 }
 
-/** Desbloquea con oro un personaje, escenario o aspecto (ver `priceOf`). */
+/** Desbloquea con oro un personaje o un escenario (ver `priceOf`). */
 export function unlock(data: HabitsData, key: string, today: LocalDate, now: Timestamp, release: GameRelease = GAME_RELEASE): HabitsData {
   const eco = economyOf(data, today, release);
   if (isUnlocked(eco, key)) return data;

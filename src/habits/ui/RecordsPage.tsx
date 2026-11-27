@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import { Check } from 'lucide-react';
 import { ARCANA } from '../../game/content/arcana';
-import { SKINS } from '../../game/content/skins';
 import { achievementsOf, recordsOf, type GroupStats } from '../core/records';
 import { useEconomy, useHabits } from '../state/store';
 import styles from './RecordsPage.module.css';
@@ -44,7 +43,7 @@ function GroupTable({ title, rows }: { title: string; rows: GroupStats[] }) {
 
 /**
  * Logros y estadísticas (Fase 10, C2 y E2): todo se deduce de tus hábitos y partidas. Los logros no dan puntos ni
- * poder; algunos regalan un aspecto para el personaje.
+ * poder; algunos regalan una carta de arcana.
  */
 export function RecordsPage() {
   const eco = useEconomy();
@@ -89,7 +88,6 @@ export function RecordsPage() {
             {achievements
               .filter((a) => a.def.group === g.id)
               .map((a) => {
-                const skin = SKINS.find((s) => s.achievement === a.def.id);
                 const card = ARCANA.find((c) => c.achievement === a.def.id);
                 return (
                   <li key={a.def.id} className={`${styles.achievement} ${a.done ? styles.done : ''}`}>
@@ -99,7 +97,6 @@ export function RecordsPage() {
                     <span className={styles.body}>
                       <b>{a.def.name}</b>
                       <small>{a.def.text}</small>
-                      {skin && <small className={styles.reward}>Recompensa: aspecto {skin.name}</small>}
                       {card && (
                         <small className={styles.reward}>
                           Recompensa: {card.dark ? 'darkana' : 'arcana'} {card.name}

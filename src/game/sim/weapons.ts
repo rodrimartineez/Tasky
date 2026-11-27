@@ -745,6 +745,98 @@ function miracle(w: World, ws: WeaponState, index: number, dt: number) {
   });
 }
 
+// ── Armas nuevas (27/11/2026) ───────────────────────────────────────────────────────────────────
+
+/** Arco Voltaico: alcance del primer rayo y daño que conserva cada salto. */
+const CHAIN = { range: 150, falloff: 0.9 };
+/**
+ * Arco Voltaico: rayo al enemigo más cercano que salta `pierce` veces de uno a otro (a `area` px como mucho), sin
+ * repetir objetivo en el mismo disparo. Juicio en Cadena: cada salto se bifurca en dos.
+ */
+const chainArc: Fire = (w, ws, index, n) => {
+  const { player } = w;
+  const forks = ws.id === 'judgement' ? 2 : 1;
+  const reach = ws.stats.area * player.stats.area;
+  const color = tint(ws, 0x9fe6ff);
+  const struck: number[] = [];
+  const zap = (fx: number, fy: number, e: Enemy, damage: number) => {
+    struck.push(e.uid);
+    const d = Math.hypot(e.x - fx, e.y - fy) || 1;
+    emit(w, { type: 'line', x: fx, y: fy, x2: e.x, y2: e.y, color });
+    emit(w, { type: 'hit', x: e.x, y: e.y, sprite: 'fx_lightning_hit' });
+    damageEnemy(w, e, damage, index, ((e.x - fx) / d) * ws.stats.knockback, ((e.y - fy) / d) * ws.stats.knockback);
+  };
+  for (let i = 0; i < n; i++) {
+    const first = nearestEnemy(w, player.x, player.y, CHAIN.range, struck);
+    if (!first) return;
+    let damage = ws.stats.damage;
+    zap(player.x, player.y - 4, first, damage);
+    let jumps = ws.stats.pierce;
+    let frontier: Enemy[] = [first];
+    while (jumps > 0 && frontier.length > 0) {
+      damage *= CHAIN.falloff;
+      const next: Enemy[] = [];
+      for (const from of frontier)
+        for (let f = 0; f < forks && jumps > 0; f++) {
+          const target = nearestEnemy(w, from.x, from.y, reach, struck);
+          if (!target) break;
+          zap(from.x, from.y, target, damage);
+          jumps -= 1;
+          next.push(target);
+        }
+      frontier = next;
+    }
+  }
+};
+
+/**
+ * Martillo del Alba: golpe al suelo que lanza una onda expansiva (caso `wave` de `updateProjectiles`). Cataclismo del
+ * Alba: las ondas aturden y al llegar a su borde estallan columnas de luz.
+ */
+const quake: Fire = (w, ws, index, n) => {
+  const { player } = w;
+  for (let i = 0; i < n; i++) {
+    const p = spawnProjectile(w, 'wave', 'px', index, player.x, player.y);
+    p.radius = 4;
+    p.orbitR = ws.stats.area * player.stats.area;
+    p.life = p.total = ws.stats.duration;
+    p.damage = ws.stats.damage;
+    p.knockback = ws.stats.knockback;
+    p.color = tint(ws, 0xffc65a);
+    emit(w, { type: 'shake', power: ws.id === 'sunquake' ? 2.5 : 1.4 });
+    emit(w, { type: 'puff', x: player.x, y: player.y + 6, color: 0xd8c8a8, count: 6 });
+  }
+};
+/** Columnas de luz del Cataclismo al llegar la onda a su borde. */
+const SUNQUAKE = { pillars: 6, radius: 22, stun: 0.5 };
+
+/** Singularidad: fuerza con que atrae (px/s), cada cuánto daña lo que hay dentro y multiplicador de la implosión. */
+const VORTEX = { pull: 46, pullEvolved: 72, tick: 0.3, implosion: 2, implosionEvolved: 5 };
+/** Singularidad: esfera hacia un enemigo en pantalla (o, si no hay, hacia delante) que se abre en un vórtice. */
+const singularity: Fire = (w, ws, index, n) => {
+  const { player } = w;
+  const targets = onScreen(w);
+  for (let i = 0; i < n; i++) {
+    const t = pick(w, targets);
+    const angle = t ? Math.atan2(t.y - player.y, t.x - player.x) : facing(w) + (i - (n - 1) / 2) * 0.6;
+    const dist = t ? Math.hypot(t.x - player.x, t.y - player.y) : 90;
+    const p = spawnProjectile(w, 'vortex', 'px', index, player.x, player.y);
+    p.tx = player.x + Math.cos(angle) * dist;
+    p.ty = player.y + Math.sin(angle) * dist;
+    const speed = ws.stats.speed * projSpeed(w);
+    p.vx = Math.cos(angle) * speed;
+    p.vy = Math.sin(angle) * speed;
+    p.radius = 5;
+    p.orbitR = ws.stats.area * player.stats.area;
+    p.damage = ws.stats.damage;
+    // `sx` = segundos que dura abierto; `total` = cronómetro del daño.
+    p.sx = ws.stats.duration * player.stats.duration;
+    p.life = p.sx + dist / Math.max(1, speed);
+    p.total = 0;
+    p.color = tint(ws, 0xb58cff);
+  }
+};
+
 // ── Efectos al golpear ──────────────────────────────────────────────────────────────────────────
 
 const LIFESTEAL = 8;
@@ -786,6 +878,9 @@ const FIRE: Record<string, Fire> = {
   unearthly,
   ammo,
   gunastrophe,
+  chain: chainArc,
+  quake,
+  vortex: singularity,
   ...TUNA_FIRE,
 };
 
@@ -1137,6 +1232,83 @@ export function updateProjectiles(w: World, dt: number) {
         if (p.total > 0) break;
         p.total += p.vx;
         for (const e of onScreen(w)) damageEnemy(w, e, p.damage, p.weapon, 0, 0);
+        break;
+      }
+      case 'wave': {
+        // El frente crece rápido y frena al llegar a su radio; golpea una vez a cada enemigo que alcanza.
+        const t = 1 - Math.max(0, p.life) / p.total;
+        p.radius = Math.max(4, p.orbitR * (1 - (1 - t) * (1 - t)));
+        const evolved = weaponOf(w, p) === 'sunquake';
+        const count = queryNear(p.sx, p.sy, p.radius);
+        const targets = near.slice(0, count);
+        for (const e of targets) {
+          if (p.hit.includes(e.uid)) continue;
+          p.hit.push(e.uid);
+          const dx = e.x - p.sx;
+          const dy = e.y - p.sy;
+          const d = Math.hypot(dx, dy) || 1;
+          damageEnemy(w, e, p.damage, p.weapon, (dx / d) * p.knockback, (dy / d) * p.knockback);
+          if (evolved) freezeFor(e, SUNQUAKE.stun);
+          hitFx(w, p, e.x, e.y);
+        }
+        if (p.life <= 0 && evolved) {
+          const { sx, sy, orbitR, damage, weapon, color } = p;
+          deferred.push(() => {
+            for (let k = 0; k < SUNQUAKE.pillars; k++) {
+              const a = (k / SUNQUAKE.pillars) * Math.PI * 2 + w.time;
+              const x = sx + Math.cos(a) * orbitR;
+              const y = sy + Math.sin(a) * orbitR;
+              ray(w, weapon, x, y - 90, x, y, 6, color ?? 0xffe08a, 0.3);
+              blast(w, x, y, SUNQUAKE.radius * player.stats.area, damage, weapon, 20, color ?? 0xffe08a, 0, true);
+            }
+            emit(w, { type: 'shake', power: 2 });
+          });
+        }
+        break;
+      }
+      case 'vortex': {
+        const evolved = weaponOf(w, p) === 'eventhorizon';
+        if (p.vx !== 0 || p.vy !== 0) {
+          // Viaje: al llegar a su destino se detiene y se abre.
+          p.x += p.vx * dt;
+          p.y += p.vy * dt;
+          if ((p.tx - p.x) * p.vx + (p.ty - p.y) * p.vy <= 0 || p.life <= p.sx) {
+            p.vx = p.vy = 0;
+            p.life = Math.min(p.life, p.sx);
+            emit(w, { type: 'ring', x: p.x, y: p.y, radius: p.orbitR, color: p.color ?? 0xb58cff });
+          }
+          break;
+        }
+        p.angle += dt * 6;
+        p.radius = Math.min(p.orbitR, p.radius + p.orbitR * dt * 4);
+        // Atrae a los enemigos (los jefes no se mueven; los resistentes y las élites, menos).
+        const pull = (evolved ? VORTEX.pullEvolved : VORTEX.pull) * dt;
+        const count = queryNear(p.x, p.y, p.radius);
+        const targets = near.slice(0, count);
+        for (const e of targets) {
+          if (e.def.ai === 'boss' || e.def.ai === 'reaper') continue;
+          const dx = p.x - e.x;
+          const dy = p.y - e.y;
+          const d = Math.hypot(dx, dy);
+          if (d < 4) continue;
+          const pullStep = Math.min(d - 3, pull * (1 - e.def.knockResist) * (e.elite ? 0.5 : 1));
+          e.x += (dx / d) * pullStep;
+          e.y += (dy / d) * pullStep;
+        }
+        // Horizonte de Sucesos: también engulle la experiencia del suelo y la envía al jugador.
+        if (evolved)
+          for (const item of w.pickups)
+            if (item.kind === 'xp' && !item.pulled && Math.abs(item.x - p.x) < p.radius && Math.abs(item.y - p.y) < p.radius) item.pulled = true;
+        p.total -= dt;
+        if (p.total <= 0) {
+          p.total += VORTEX.tick;
+          for (const e of targets) damageEnemy(w, e, p.damage, p.weapon, 0, 0);
+        }
+        if (p.life <= 0) {
+          const { x, y, orbitR, damage, weapon, color } = p;
+          const mult = evolved ? VORTEX.implosionEvolved : VORTEX.implosion;
+          deferred.push(() => blast(w, x, y, orbitR * 1.1, damage * mult, weapon, 60, color ?? 0xb58cff, evolved ? 3 : 1.5, true));
+        }
         break;
       }
       case 'enemyShot': {

@@ -40,6 +40,9 @@ export class GameAudio {
       if (f.type === 'hit') play('hit', f.sprite.slice(3, -4));
       else if (f.type === 'line') play('zap');
       else if (f.type === 'ring' && f.radius >= 40) play('boom');
+      else if (f.type === 'death' && f.size === 2) play('boom');
+      // Las subidas de nivel ya tienen su sonido; el resto de subidas de poder suenan aquí.
+      else if (f.type === 'surge' && f.power >= 2) play('surge', String(Math.min(3, f.power)));
     }
     const now = this.read(w);
     const was = this.prev;
