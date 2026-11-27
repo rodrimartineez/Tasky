@@ -60,19 +60,19 @@ export const EVOLUTIONS: EvolutionDef[] = [
   evolution(
     'lance',
     'feather',
-    { id: 'dawnlance', name: 'Mil Filos', description: 'Un chorro continuo de cuchillos hacia donde miras.', icon: 'w_dawnlance', proj: 'x_dawnlance', interval: 0.05 },
+    { id: 'dawnlance', name: 'Mil Filos', description: 'Un chorro continuo de cuchillos que rebotan dos veces; cada octavo es un puñal dorado que lo atraviesa casi todo.', icon: 'w_dawnlance', proj: 'x_dawnlance', interval: 0.05 },
     { damage: 30, cooldown: 0.15, amount: 2, pierce: 3, area: 5, speed: 340, duration: 1, knockback: 20 },
   ),
   evolution(
     'axe',
     'lens',
-    { id: 'deathspiral', name: 'Espiral Letal', description: 'Guadañas que salen en espiral en todas direcciones y lo atraviesan todo.', icon: 'w_deathspiral', proj: 'x_deathspiral' },
+    { id: 'deathspiral', name: 'Espiral Letal', description: 'Guadañas que salen en espiral en todas direcciones, lo atraviesan todo y estallan al final de su vuelo.', icon: 'w_deathspiral', proj: 'x_deathspiral' },
     { damage: 64, cooldown: 3, amount: 9, area: 11, speed: 120, duration: 2, knockback: 30 },
   ),
   evolution(
     'boomerang',
     'clover',
-    { id: 'scythe', name: 'Espada Celestial', description: 'Espadas de luz que van y vuelven y asestan críticos.', icon: 'w_scythe', proj: 'x_scythe', interval: 0.1, crit: 0.15 },
+    { id: 'scythe', name: 'Espada Celestial', description: 'Espadas de luz que van y vuelven, asestan críticos y, al girar, estallan en una cruz de luz.', icon: 'w_scythe', proj: 'x_scythe', interval: 0.1, crit: 0.15 },
     { damage: 90, cooldown: 1.1, amount: 3, area: 10, speed: 210, duration: 0.7, knockback: 30 },
   ),
   evolution(
@@ -84,8 +84,8 @@ export const EVOLUTIONS: EvolutionDef[] = [
   evolution(
     'firewand',
     'whetstone',
-    { id: 'hellfire', name: 'Fuego Infernal', description: 'Bolas de fuego enormes que lo atraviesan todo.', icon: 'w_hellfire', proj: 'x_hellfire' },
-    { damage: 100, cooldown: 2.25, amount: 2, area: 14, speed: 90, duration: 3, knockback: 60 },
+    { id: 'hellfire', name: 'Fuego Infernal', description: 'Bolas de fuego enormes que lo atraviesan todo y acaban en una gran explosión.', icon: 'w_hellfire', proj: 'x_hellfire' },
+    { damage: 100, cooldown: 2.25, amount: 2, area: 14, speed: 90, duration: 2.2, knockback: 60 },
   ),
   evolution(
     'ember',
@@ -127,8 +127,13 @@ export const EVOLUTIONS: EvolutionDef[] = [
     'clock',
     // Las dos recetas de dos pasivas las piden al nivel 5 (antes al 9, el máximo) y dan evoluciones más fuertes (27/11/2026).
     { passives: ['silverring', 'goldring'], level: 5 },
-    { id: 'eternal', name: 'Corredor del Infinito', description: 'Congela y, en cada vuelta completa, parte por la mitad la vida de todo lo que hay en pantalla.', icon: 'w_eternal' },
-    { cooldown: 0.6, area: 260, duration: 8 },
+    {
+      id: 'eternal',
+      name: 'Fin de los Tiempos',
+      description: 'Dos manecillas enormes, una en cada sentido, barren y congelan; cada tercera vuelta da la campanada: todo lo congelado en pantalla se hace añicos y recuperas un poco de vida.',
+      icon: 'w_eternal',
+    },
+    { damage: 70, cooldown: 1.6, amount: 2, area: 110, duration: 2 },
   ),
   evolution(
     'laurel',

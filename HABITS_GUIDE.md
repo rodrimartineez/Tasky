@@ -374,7 +374,7 @@ Vale para cualquier arma futura sin hacer nada más.
 
 **Niveles de armas y pasivas** (`sim/upgrades.ts`, tablas en `content/weapons.ts` y `content/passives.ts`).
 - Desde el 17/11/2026 cada objeto tiene los niveles de su referencia (`maxLevelOf`): casi todas las armas 8, la
-  Lanceta y el Laurel 7, la Espada de la Victoria 12 y las formas del atún 6; las pasivas 5 (Cuerno y Tiramisú 2;
+  Reloj de Escarcha y el Laurel 7, la Espada de la Victoria 12 y las formas del atún 6; las pasivas 5 (Cuerno y Tiramisú 2;
   sortijas, medallas y Caja de engranajes 9). Las evoluciones conservan el máximo de su base.
 - Al llegar a su máximo, un objeto deja de ofrecerse. Las pasivas no lo pasan nunca. Ninguna arma lo pasa hasta
   llevar **las 6 armas y las 6 pasivas, todas al máximo**.
@@ -387,8 +387,8 @@ Vale para cualquier arma futura sin hacer nada más.
 **Catálogo cerrado (17/11/2026).** Solo existen las armas, evoluciones y pasivas de la lista del usuario, con las
 mecánicas y recetas de la referencia del género (Vampire Survivors) y nombres, arte y efectos propios:
 `content/weapons.ts`, `content/evolutions.ts` y `content/passives.ts` (19 pasivas: las que piden las recetas).
-- Recetas con pasiva **al máximo** (`maxed`): Corredor del Infinito, Sudario Carmesí, Solución Única, Cenizas de
-  Exizografía, Tormenta de Fotones, Interrupción Espiritual y Pistolastrofe. Fusión: Viento Sacro + Látigo de Sangre.
+- Recetas con pasiva **al máximo** (`maxed`): Solución Única, Cenizas de Exizografía, Tormenta de Fotones,
+  Interrupción Espiritual y Pistolastrofe. Con dos pasivas **a nivel 5** (`level`): Fin de los Tiempos y Sudario Carmesí. Fusión: Viento Sacro + Látigo de Sangre.
   **Regalo** (`gift`): la Solución Única se suma a la Espada de la Victoria sin quitarla ni ocupar hueco.
 - **Atún Cambiante** (referencia: Penshin Fatcha): sus seis formas evolucionan sin pasiva; tras el cofre se elige
   forma (pantalla de mejora, sin repetir ni descartar): las ya desbloqueadas o la siguiente, que heredan las mejoras

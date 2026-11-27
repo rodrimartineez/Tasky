@@ -132,7 +132,7 @@ describe('equilibrio de armas', () => {
   // Margen ×2,25 (antes ×2): desde que las élites tienen ×10 de vida (12/11/2026) absorben más daño de las armas de
   // área, que ya no lo desperdician, y Nova sube a ~×2,2 en este total de 5 minutos.
   it('ninguna arma nueva supera 2,25 veces la mejor original', () => {
-    // El Laurel (escudo) y la Lanceta (congela) no hacen daño.
+    // El Laurel (escudo) no hace daño.
     const results = new Map(WEAPONS.filter((w) => w.base.damage > 0).map((w) => [w.id, dealt(w.id)]));
     const best = Math.max(...ORIGINAL.map((id) => results.get(id)!.dealt));
     for (const [id, { dealt: d, evolved }] of results) {

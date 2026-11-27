@@ -289,7 +289,7 @@ export interface WeaponState {
   timer: number;
   /** Daño total causado en la partida (resumen final). */
   dealt: number;
-  /** Contador propio de algunas armas (Lanceta: hora a la que apunta; Espada: tajos del combo; Munición: balas guardadas). */
+  /** Contador propio de algunas armas (Reloj de Escarcha: vueltas hasta la campanada; Espada: tajos del combo; Munición: balas guardadas). */
   step?: number;
   /** Ráfaga en curso: proyectiles que faltan y segundos hasta el siguiente. */
   burst?: number;
@@ -426,7 +426,9 @@ export type ProjKind =
   /** Onda expansiva (Martillo Sísmico): crece desde (sx, sy) hasta `orbitR` y golpea una vez a cada enemigo. */
   | 'wave'
   /** Esfera que viaja a (tx, ty) y se abre en un vórtice de radio `orbitR` que atrae y daña (Singularidad). */
-  | 'vortex';
+  | 'vortex'
+  /** Manecilla que barre una vuelta entera alrededor del jugador (Reloj de Escarcha): `vx` = giro (rad/s), `radius` = largo. */
+  | 'hand';
 
 export interface Projectile {
   kind: ProjKind;
@@ -459,6 +461,8 @@ export interface Projectile {
   color?: number;
   /** Al golpear o al caer deja un charco de este radio (formas del atún). */
   splash?: number;
+  /** Al desaparecer estalla (Varita Ígnea, Hacha y sus evoluciones); se borra al estallar. */
+  burst?: { radius: number; damage: number; color: number; shake: number };
   dead: boolean;
 }
 

@@ -407,52 +407,124 @@ export class Renderer {
   }
 
   /** Añade una partícula si cabe (tope según la calidad). */
+  /** Tramo recto entre dos puntos con la textura de un píxel (líneas continuas: látigo, manecillas). */
+  private segment(pool: Pool, x1: number, y1: number, x2: number, y2: number, width: number, tint: number, alpha: number, add = false) {
+    const seg = pool.next(this.tex('px'));
+    seg.position.set((x1 + x2) / 2, (y1 + y2) / 2);
+    seg.rotation = Math.atan2(y2 - y1, x2 - x1);
+    seg.scale.set(Math.hypot(x2 - x1, y2 - y1) / 2 + 0.35, width / 2);
+    seg.tint = tint;
+    seg.alpha = alpha;
+    if (add) seg.blendMode = 'add';
+  }
+
   /**
-   * Látigo: una cuerda de cuero que se desenrolla ondulando del héroe hacia fuera, al rojo hacia la punta, con un
-   * halo de brasas y un chasquido que suelta chispas; la Lanceta la tiñe de sangre.
+   * Látigo: una cuerda continua de cuero que sale del héroe arqueada por encima, se estira de golpe ondulando y restalla
+   * en la punta (estallido y chispas); se afina hacia la punta, al rojo, y deja un halo de brasas. El Látigo de Sangre
+   * la tiñe de rojo sangre.
    */
   private drawLash(pool: Pool, shot: Projectile, s: Sprite, t: number, blood: boolean) {
-    const [body, hot, tip] = blood ? [0x8a0f24, 0xff2f4a, 0xffc0c8] : [0x8a3a1a, 0xff7a24, 0xffe08a];
+    const [body, hot, tip] = blood ? [0x7a0c20, 0xff2f4a, 0xffc0c8] : [0x6e2c12, 0xff7a24, 0xffe08a];
     s.visible = false;
-    const sweep = 1 - (1 - Math.min(1, t * 3)) ** 2;
-    const fade = (1 - t) ** 0.8 * (shot.radius > 60 ? 0.7 : 1);
+    const sweep = 1 - (1 - Math.min(1, t * 2.8)) ** 3;
+    const fade = Math.min(1, (1 - t) * 2.2) * (shot.radius > 60 ? 0.8 : 1);
     const dir = Math.cos(shot.angle) < 0 ? -1 : 1;
-    const half = shot.radius / 2;
-    const beads = 34;
-    let tipY = shot.y;
-    for (let i = 0; i < beads; i++) {
-      const u = i / (beads - 1);
-      if (u > sweep) break;
-      const x = shot.x + dir * (u * 2 - 1) * half;
-      const y = shot.y + Math.sin(u * Math.PI * 2.2 - t * 14) * (2 + 7 * u) * (1 - t);
-      tipY = y;
-      if (i % 4 === 0) {
-        const glow = pool.next(this.tex('disc'));
-        glow.position.set(x, y);
-        glow.scale.set((4 + 3 * u) / CIRCLE_RADIUS);
-        glow.tint = hot;
-        glow.alpha = fade * 0.22;
-        glow.blendMode = 'add';
+    const x0 = shot.x - (dir * shot.radius) / 2;
+    const length = shot.radius * sweep;
+    const lift = (1 - sweep) * 12;
+    const points = 22;
+    const xs: number[] = [];
+    const ys: number[] = [];
+    for (let i = 0; i < points; i++) {
+      const u = i / (points - 1);
+      xs.push(x0 + dir * u * length);
+      ys.push(shot.y - lift * Math.sin(Math.PI * u) + Math.sin(u * Math.PI * 2.5 - t * 18) * 5 * u * (1 - t));
+    }
+    // Halo de brasas y, encima, la cuerda: gruesa en el mango y fina en la punta.
+    for (let i = 1; i < points; i++) {
+      const u = i / (points - 1);
+      this.segment(pool, xs[i - 1], ys[i - 1], xs[i], ys[i], 6 - 3 * u, hot, fade * 0.2, true);
+    }
+    for (let i = 1; i < points; i++) {
+      const u = i / (points - 1);
+      this.segment(pool, xs[i - 1], ys[i - 1], xs[i], ys[i], 2.6 - 1.8 * u, u > 0.75 ? tip : u > 0.3 ? hot : body, fade);
+    }
+    // Restallido: al estirarse del todo, un fogonazo en cruz y una onda pequeña en la punta.
+    const tipX = xs[points - 1];
+    const tipY = ys[points - 1];
+    const crack = sweep > 0.92 ? Math.max(0, 1 - (t - 0.36) / 0.3) : 0;
+    if (crack > 0) {
+      const r = 3 + 5 * (1 - crack);
+      this.segment(pool, tipX - r, tipY, tipX + r, tipY, 1.2, tip, crack, true);
+      this.segment(pool, tipX, tipY - r, tipX, tipY + r, 1.2, tip, crack, true);
+      const ring = pool.next(this.tex('ring'));
+      ring.position.set(tipX, tipY);
+      ring.scale.set((4 + 9 * (1 - crack)) / CIRCLE_RADIUS);
+      ring.tint = hot;
+      ring.alpha = crack * 0.8;
+      ring.blendMode = 'add';
+      if (Math.random() < 0.6) {
+        const a = (Math.random() - 0.5) * 2.4 + (dir > 0 ? 0 : Math.PI);
+        const v = 60 + Math.random() * 100;
+        this.spark(tipX, tipY, Math.cos(a) * v, Math.sin(a) * v - 20, 0.25 + Math.random() * 0.2, Math.random() < 0.5 ? tip : hot, { streak: true, drag: 4, grav: 140 });
       }
-      const bead = pool.next(this.tex('disc'));
-      bead.position.set(x, y);
-      bead.scale.set((1.9 - 0.9 * u) / CIRCLE_RADIUS);
-      bead.tint = u > 0.8 ? tip : u > 0.35 ? hot : body;
-      bead.alpha = fade;
     }
-    // Chasquido en la punta: destello y, al restallar, unas brasas.
-    const tipX = shot.x + dir * (sweep * 2 - 1) * half;
-    const flare = pool.next(this.tex('disc'));
-    flare.position.set(tipX, tipY);
-    flare.scale.set((3 + 3 * sweep) / CIRCLE_RADIUS);
-    flare.tint = tip;
-    flare.alpha = fade * 0.8;
-    flare.blendMode = 'add';
-    if (sweep > 0.9 && t < 0.5 && Math.random() < 0.5) {
-      const a = (Math.random() - 0.5) * 2.4 + (dir > 0 ? 0 : Math.PI);
-      const v = 60 + Math.random() * 90;
-      this.spark(tipX, tipY, Math.cos(a) * v, Math.sin(a) * v - 20, 0.25 + Math.random() * 0.2, Math.random() < 0.5 ? tip : hot, { drag: 4, grav: 140 });
+  }
+
+  /**
+   * Reloj de Escarcha / Fin de los Tiempos: esfera helada con sus doce marcas alrededor del héroe y una manecilla que da
+   * la vuelta dejando una estela en abanico; la evolución, violeta con detalles dorados.
+   */
+  private drawClockHand(pool: Pool, shot: Projectile) {
+    const t = 1 - Math.max(0, shot.life) / shot.total;
+    const fade = Math.min(1, t * 8, (1 - t) * 6);
+    const eternal = this.weaponIds[shot.weapon] === 'eternal';
+    const color = shot.color ?? 0x8fe3ff;
+    const accent = eternal ? 0xf6c945 : 0xeafcff;
+    const { x, y, radius: r } = shot;
+    const wash = pool.next(this.tex('disc'));
+    wash.position.set(x, y);
+    wash.scale.set(r / CIRCLE_RADIUS);
+    wash.tint = color;
+    wash.alpha = 0.07 * fade;
+    wash.blendMode = 'add';
+    // Borde fino de la esfera (con la textura de anillo saldría grueso al ampliarla).
+    const rim = 40;
+    for (let k = 0; k < rim; k++) {
+      const a1 = (k / rim) * Math.PI * 2;
+      const a2 = ((k + 1) / rim) * Math.PI * 2;
+      this.segment(pool, x + Math.cos(a1) * r, y + Math.sin(a1) * r, x + Math.cos(a2) * r, y + Math.sin(a2) * r, 1.5, color, 0.6 * fade, true);
     }
+    for (let k = 0; k < 12; k++) {
+      const a = (k * Math.PI) / 6;
+      const major = k % 3 === 0;
+      const inner = r - (major ? 9 : 5);
+      const c = Math.cos(a);
+      const sn = Math.sin(a);
+      this.segment(pool, x + c * inner, y + sn * inner, x + c * (r - 1), y + sn * (r - 1), major ? 1.6 : 1, major ? accent : color, 0.75 * fade, true);
+    }
+    // Estela en abanico detrás de la manecilla.
+    const back = -Math.sign(shot.vx || 1);
+    for (let i = 8; i >= 1; i--) {
+      const a = shot.angle + back * i * 0.1;
+      this.segment(pool, x, y, x + Math.cos(a) * r, y + Math.sin(a) * r, 3, color, 0.3 * (1 - i / 9) * fade, true);
+    }
+    const tx = x + Math.cos(shot.angle) * r;
+    const ty = y + Math.sin(shot.angle) * r;
+    this.segment(pool, x, y, tx, ty, 6, color, 0.35 * fade, true);
+    this.segment(pool, x, y, tx, ty, 2, accent, fade);
+    for (const [px, py, size] of [
+      [tx, ty, 3.2],
+      [x, y, 3],
+    ]) {
+      const dot = pool.next(this.tex('disc'));
+      dot.position.set(px, py);
+      dot.scale.set(size / CIRCLE_RADIUS);
+      dot.tint = accent;
+      dot.alpha = fade;
+      dot.blendMode = 'add';
+    }
+    if (Math.random() < 0.3) this.spark(tx, ty, Math.cos(shot.angle) * 20, Math.sin(shot.angle) * 20, 0.35, 0xd8f6ff, { size: 1.2, drag: 3 });
   }
 
   /**
@@ -1213,6 +1285,9 @@ export class Renderer {
         s.alpha = (1 - t) * (shot.radius > 60 ? 0.45 : 1);
         return;
       }
+      case 'hand':
+        this.drawClockHand(pool, shot);
+        return;
       case 'axe':
       case 'spin': {
         const speed = Math.hypot(shot.vx, shot.vy) || 1;
@@ -1417,6 +1492,16 @@ export class Renderer {
         s.position.set(shot.x, shot.y);
         if (shot.kind !== 'orbit') s.rotation = shot.angle;
         if (shot.kind === 'lance') s.scale.set(1, Math.max(1, shot.radius / 6));
+        // Puñal dorado de Mil Filos.
+        if (shot.color && shot.kind === 'lance') {
+          s.tint = shot.color;
+          s.scale.set(1.4, Math.max(1.4, shot.radius / 5));
+        }
+        // Bolas de fuego: sueltan brasas por detrás.
+        if ((shot.sprite === 'x_fireball' || shot.sprite === 'x_hellfire') && Math.random() < 0.4) {
+          const a = shot.angle + Math.PI + (Math.random() - 0.5) * 0.8;
+          this.spark(shot.x, shot.y, Math.cos(a) * 40, Math.sin(a) * 40 - 15, 0.3 + Math.random() * 0.2, Math.random() < 0.5 ? 0xffb347 : 0xff5a1f, { size: 1 + Math.random() * 1.5, drag: 3, grav: -30 });
+        }
       }
     }
   }

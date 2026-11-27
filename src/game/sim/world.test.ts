@@ -124,11 +124,9 @@ describe('simulación', () => {
     for (const weapon of WEAPONS) {
       const w = createWorld(config(11, { ...BASE_STATS, maxHp: 1e6 }, weapon.id));
       let shielded = false;
-      let frozen = false;
       // Camina en línea recta hacia los enemigos (las armas direccionales disparan hacia donde se mira).
       for (let i = 0; i < 60 / DT && w.phase !== 'dead'; i++) {
         shielded ||= (w.player.shield ?? 0) > 0;
-        frozen ||= w.enemies.some((e) => (e.freeze ?? 0) > 0);
         if (w.phase === 'levelup')
           chooseUpgrade(
             w,
@@ -140,9 +138,8 @@ describe('simulación', () => {
         else if (w.phase === 'purge') purgeItems(w, [], []);
         else step(w, DT, 1, 0);
       }
-      // El Laurel no hace daño: protege con su escudo. La Lanceta tampoco: congela.
+      // El Laurel no hace daño: protege con su escudo.
       if (weapon.id === 'laurel') expect(shielded, weapon.name).toBe(true);
-      else if (weapon.id === 'clock') expect(frozen, weapon.name).toBe(true);
       else expect(w.player.weapons[0].dealt, weapon.name).toBeGreaterThan(0);
       expect(finite(w)).toBe(true);
     }

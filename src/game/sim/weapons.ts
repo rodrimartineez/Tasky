@@ -1,5 +1,5 @@
 import { behaviourOf, hitFxOf, WEAPON_BY_ID } from '../content/weapons';
-import { damageEnemy, emit, hasArcana, healPlayer, HOOKS, hurtPlayer, killEnemy, near, nearestEnemy, ON_HIT, queryNear, rand } from './core';
+import { damageEnemy, emit, hasArcana, heal, healPlayer, HOOKS, hurtPlayer, killEnemy, near, nearestEnemy, ON_HIT, queryNear, rand } from './core';
 import { statsAt } from './upgrades';
 import type { Enemy, ProjKind, Projectile, WeaponState, World } from './types';
 
@@ -182,26 +182,57 @@ const wand: Fire = (w, ws, index, n) => {
   for (let i = 0; i < n; i++) shot(w, ws, index, 'bolt', 'x_spark', aimAngle(w) + (rand(w) - 0.5) * 0.08);
 };
 
-/** Cuchillo: hacia donde mira, con una ligera dispersión. */
+/** Rebotes de los cuchillos hacia el siguiente enemigo; Mil Filos, además, lanza cada pocos un puñal dorado mayor. */
+export const KNIFE = { bounces: 1, dawnBounces: 2, goldenEvery: 8, golden: { damage: 3, radius: 2, pierce: 4 } };
+
+/** Cuchillo: hacia donde mira, con una ligera dispersión; al acertar rebota hacia el enemigo más cercano. */
 const knife: Fire = (w, ws, index, n) => {
   const { player } = w;
+  const dawn = ws.id === 'dawnlance';
   for (let i = 0; i < n; i++) {
     const angle = facing(w) + (rand(w) - 0.5) * 0.12;
     const p = shot(w, ws, index, 'lance', 'x_lance', angle);
     const off = (rand(w) - 0.5) * 10;
     p.x = player.x - Math.sin(angle) * off;
     p.y = player.y + Math.cos(angle) * off;
+    p.bounces = (p.bounces ?? 0) + (dawn ? KNIFE.dawnBounces : KNIFE.bounces);
+    ws.step = (ws.step ?? 0) + 1;
+    if (dawn && ws.step % KNIFE.goldenEvery === 0) {
+      // Puñal dorado: más grande, más daño y lo atraviesa casi todo.
+      p.damage *= KNIFE.golden.damage;
+      p.radius *= KNIFE.golden.radius;
+      p.pierce += KNIFE.golden.pierce;
+      p.color = 0xffd36b;
+    }
   }
 };
 
+/** Estallido al desaparecer: radio (× área del jugador), daño (× el del proyectil), color y temblor de pantalla. */
+const BURSTS: Record<string, { radius: number; damage: number; color: number; shake: number }> = {
+  firewand: { radius: 20, damage: 0.7, color: 0xff7a2a, shake: 0 },
+  hellfire: { radius: 52, damage: 1, color: 0xff4a1a, shake: 2 },
+  axe: { radius: 24, damage: 0.8, color: 0xe8c890, shake: 1 },
+  deathspiral: { radius: 30, damage: 0.7, color: 0xb06cff, shake: 0.5 },
+};
+
+function armBurst(w: World, ws: WeaponState, p: Projectile) {
+  const b = BURSTS[ws.id];
+  if (b) p.burst = { radius: b.radius * w.player.stats.area, damage: p.damage * b.damage, color: b.color, shake: b.shake };
+}
+
 const AXE_GRAVITY = 260;
+/** Píxeles por debajo de su salida a los que el hacha se clava en el suelo. */
+const AXE_LAND = 14;
+/** Destello de la Cruz al dar la vuelta y cruz de luz de la Espada Celestial: radio, daño (× el suyo) y color. */
+const CROSS = { flash: { radius: 20, damage: 0.6, color: 0xffe08a }, celestial: { radius: 36, damage: 0.8, color: 0xfff2b0 } };
 /** Hacha: sale hacia arriba, abierta en abanico, y cae en parábola. */
 const axe: Fire = (w, ws, index, n) => {
   for (let i = 0; i < n; i++) {
     ws.step = (ws.step ?? 0) + 1;
     const p = shot(w, ws, index, 'axe', 'x_axe', -Math.PI / 2);
     const k = ws.step % 4;
-    p.vx = (k === 0 ? 10 : k === 1 ? -22 : k === 2 ? 34 : -46) * (w.player.dirX < 0 ? -1 : 1) + (rand(w) - 0.5) * 10;
+    p.vx = (k === 0 ? 24 : k === 1 ? -40 : k === 2 ? 56 : -72) * (w.player.dirX < 0 ? -1 : 1) + (rand(w) - 0.5) * 10;
+    armBurst(w, ws, p);
   }
 };
 
@@ -211,6 +242,7 @@ const deathspiral: Fire = (w, ws, index, n) => {
   for (let i = 0; i < n; i++) {
     const p = shot(w, ws, index, 'spin', 'x_deathspiral', base + (i / n) * Math.PI * 2);
     p.orbitR = 1.1; // giro de la trayectoria (rad/s)
+    armBurst(w, ws, p);
   }
 };
 
@@ -258,7 +290,7 @@ const firewand: Fire = (w, ws, index, n) => {
   for (let i = 0; i < n; i++) {
     const t = pick(w, targets);
     const angle = t ? Math.atan2(t.y - player.y, t.x - player.x) + (rand(w) - 0.5) * 0.15 : rand(w) * Math.PI * 2;
-    shot(w, ws, index, 'bolt', 'x_fireball', angle);
+    armBurst(w, ws, shot(w, ws, index, 'bolt', 'x_fireball', angle));
   }
 };
 
@@ -363,34 +395,52 @@ const songOfMana: Fire = (w, ws, index) => {
   p.total = 0;
 };
 
-/** Lanceta Temporal: un haz que congela, cada vez una hora más en la esfera. El Corredor, en cada vuelta, parte la vida. */
-const clockLancet: Fire = (w, ws, index) => {
+/**
+ * Reloj de Escarcha: `sweep` s por vuelta; lo ya congelado recibe `shatter` veces el daño. Fin de los Tiempos: cada
+ * `chimeEvery` vueltas da la campanada (todo lo congelado en pantalla recibe `chime` veces el daño) y cura `heal`.
+ */
+export const CLOCK = { sweep: 0.75, shatter: 1.5, chimeEvery: 3, chime: 2.5, heal: 3 };
+
+/** Reloj de Escarcha: manecillas de hielo que dan una vuelta a tu alrededor, dañando y congelando lo que barren. */
+const frostClock: Fire = (w, ws, index, n) => {
   const { player } = w;
-  ws.step = ((ws.step ?? 0) + 1) % 12;
-  const angle = -Math.PI / 2 + ws.step * (Math.PI / 6);
-  const length = ws.stats.area * player.stats.area;
-  const cx = Math.cos(angle);
-  const cy = Math.sin(angle);
-  const freeze = ws.stats.duration * player.stats.duration;
-  const count = queryNear(player.x + cx * length * 0.5, player.y + cy * length * 0.5, length * 0.5 + 8);
-  for (let i = 0; i < count; i++) {
-    const e = near[i];
-    const dx = e.x - player.x;
-    const dy = e.y - player.y;
-    const along = dx * cx + dy * cy;
-    if (along < 0 || along > length || Math.abs(dx * cy - dy * cx) > 6 + e.radius) continue;
-    freezeFor(e, freeze);
-  }
-  ray(w, index, player.x, player.y, player.x + cx * length, player.y + cy * length, 3, ws.id === 'eternal' ? 0xd8b8ff : 0x9ad8ff, 0.3);
-  if (ws.id === 'eternal' && ws.step === 0) {
-    // Cada vuelta completa: la vida de todo lo que hay en pantalla, a la mitad (jefes de ciclo y La Muerte aparte).
-    for (const e of onScreen(w)) if (e.def.ai !== 'boss') e.hp = Math.max(1, e.hp / 2);
-    emit(w, { type: 'ring', x: player.x, y: player.y, radius: VIEW.hw, color: 0xff7ac3 });
-    emit(w, { type: 'ring', x: player.x, y: player.y, radius: VIEW.hw * 0.66, color: 0x7ee8e0 });
-    emit(w, { type: 'ring', x: player.x, y: player.y, radius: VIEW.hw * 0.33, color: 0xf6c945 });
-    emit(w, { type: 'shake', power: 3 });
+  const evolved = ws.id === 'eternal';
+  ws.step = ((ws.step ?? 0) + 1) % CLOCK.chimeEvery;
+  const start = rand(w) * Math.PI * 2;
+  for (let i = 0; i < n; i++) {
+    const p = spawnProjectile(w, 'hand', 'px', index, player.x, player.y);
+    p.angle = start + (i / n) * Math.PI * 2;
+    // En la evolución, la segunda manecilla (la de las horas) gira al revés.
+    p.vx = ((Math.PI * 2) / CLOCK.sweep) * (evolved && i % 2 === 1 ? -1 : 1);
+    p.radius = ws.stats.area * player.stats.area * (evolved && i % 2 === 1 ? 0.7 : 1);
+    p.damage = ws.stats.damage;
+    p.life = CLOCK.sweep;
+    p.total = CLOCK.sweep;
+    p.color = evolved ? 0xc9a2ff : 0x8fe3ff;
+    // La primera manecilla de la vuelta de la campanada la anuncia al terminar.
+    p.tx = evolved && ws.step === 0 && i === 0 ? 1 : 0;
   }
 };
+
+/** Golpe de una manecilla: más daño a lo que ya está congelado (se hace añicos) y congela. */
+function handHit(w: World, p: Projectile, e: Enemy) {
+  const ws = w.player.weapons[p.weapon];
+  const frozen = (e.freeze ?? 0) > 0;
+  damageEnemy(w, e, p.damage * (frozen ? CLOCK.shatter : 1), p.weapon, 0, 0);
+  if (frozen) emit(w, { type: 'puff', x: e.x, y: e.y, color: 0xd8f6ff, count: 4 });
+  if (ws) freezeFor(e, ws.stats.duration * w.player.stats.duration);
+}
+
+/** Campanada de Fin de los Tiempos: todo lo congelado en pantalla se hace añicos y el jugador recupera un poco de vida. */
+function chime(w: World, p: Projectile) {
+  const { player } = w;
+  for (const e of onScreen(w)) if ((e.freeze ?? 0) > 0) damageEnemy(w, e, p.damage * CLOCK.chime, p.weapon, 0, 0, true);
+  heal(w, CLOCK.heal);
+  emit(w, { type: 'ring', x: player.x, y: player.y, radius: VIEW.hw, color: 0xc9a2ff });
+  emit(w, { type: 'ring', x: player.x, y: player.y, radius: VIEW.hw * 0.6, color: 0xf6c945 });
+  emit(w, { type: 'flash', color: 0xc9a2ff, power: 0.35 });
+  emit(w, { type: 'shake', power: 3 });
+}
 
 /** Laurel y Sudario: recarga las cargas del escudo (sim/core.ts hurtPlayer las gasta). */
 const laurel: Fire = (w, ws) => {
@@ -868,7 +918,7 @@ const FIRE: Record<string, Fire> = {
   storm: lightning,
   pentagram,
   mana: songOfMana,
-  clock: clockLancet,
+  clock: frostClock,
   laurel,
   vento,
   victory,
@@ -1067,6 +1117,19 @@ export function updateProjectiles(w: World, dt: number) {
           if (p.tx === p.sx) {
             p.tx += 1;
             p.hit.length = 0;
+            // Al girar estalla en luz: un destello pequeño (Cruz) o una cruz de luz (Espada Celestial).
+            const { x, y, damage, weapon } = p;
+            const celestial = weaponOf(w, p) === 'scythe';
+            const f = celestial ? CROSS.celestial : CROSS.flash;
+            deferred.push(() => {
+              blast(w, x, y, f.radius * player.stats.area, damage * f.damage, weapon, 20, f.color, 0, true);
+              if (celestial)
+                for (let k = 0; k < 4; k++) {
+                  const a = (k * Math.PI) / 2 + Math.PI / 4;
+                  const r = f.radius * 1.4 * player.stats.area;
+                  ray(w, weapon, x, y, x + Math.cos(a) * r, y + Math.sin(a) * r, 3, f.color, 0.25);
+                }
+            });
           }
           const dx = player.x - p.x;
           const dy = player.y - p.y;
@@ -1125,7 +1188,38 @@ export function updateProjectiles(w: World, dt: number) {
         p.y += p.vy * dt;
         p.angle += dt * 12;
         hitLine(w, p);
+        // Cae a plomo y se clava en el suelo un poco por debajo de donde salió (y estalla: `burst`).
+        if (p.vy > 0 && p.y > p.sy + AXE_LAND) p.dead = true;
         break;
+      case 'hand': {
+        // Sigue al jugador y barre el arco recorrido en este paso.
+        p.x = player.x;
+        p.y = player.y;
+        const from = p.angle;
+        const turn = p.vx * dt;
+        p.angle += turn;
+        const count = queryNear(p.x, p.y, p.radius + 8);
+        for (let i = 0; i < count; i++) {
+          const e = near[i];
+          if (p.hit.includes(e.uid)) continue;
+          const dx = e.x - p.x;
+          const dy = e.y - p.y;
+          const d = Math.hypot(dx, dy);
+          if (d > p.radius + e.radius) continue;
+          const tol = (e.radius + 4) / Math.max(d, 8);
+          const tau = Math.PI * 2;
+          const ahead = turn > 0 ? Math.atan2(dy, dx) - from : from - Math.atan2(dy, dx);
+          const diff = ((ahead % tau) + tau) % tau;
+          if (diff > Math.abs(turn) + tol && diff < tau - tol) continue;
+          p.hit.push(e.uid);
+          handHit(w, p, e);
+        }
+        if (p.life <= 0 && p.tx === 1) {
+          p.tx = 0;
+          deferred.push(() => chime(w, p));
+        }
+        break;
+      }
       case 'spin': {
         if (p.orbitR) {
           // Trayectoria en espiral: la velocidad gira poco a poco.
@@ -1325,6 +1419,12 @@ export function updateProjectiles(w: World, dt: number) {
       }
     }
     if (p.life <= 0) p.dead = true;
+    if (p.dead && p.burst) {
+      const { x, y, weapon } = p;
+      const b = p.burst;
+      p.burst = undefined;
+      deferred.push(() => blast(w, x, y, b.radius, b.damage, weapon, 30, b.color, b.shake, true));
+    }
   }
   flush();
 }

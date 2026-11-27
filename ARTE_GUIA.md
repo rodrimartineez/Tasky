@@ -49,7 +49,7 @@ contraste), sin copiar personajes, enemigos ni arte de ningún juego existente.
 | Familia | Colores | Armas |
 |---|---|---|
 | Fuego | `F` `o` `y` `h` `R` | Varita Ígnea, Llamas de Hechizografía |
-| Rayo | `y` `h` `w` `u` | Anillo Relámpago, Lanceta Temporal, Fasor |
+| Rayo | `y` `h` `w` `u` | Anillo Relámpago, Reloj de Escarcha, Fasor |
 | Arcano | `p` `P` `m` `x` `c` | Varita Mágica, Biblia del Rey, Agua Bendita, Runa Trazadora, Pentáculo, Canción de Maná, formas del atún |
 | Veneno | `l` `g` `G` `v` | Ajo, Rayo Sobrenatural |
 | Acero | `W` `s` `S` `L` `b` | Látigo, Cuchillo, Hacha, Cruz, Viento Sacro, Espada de la Victoria, Munición Espantosa, Atún Insuperable |

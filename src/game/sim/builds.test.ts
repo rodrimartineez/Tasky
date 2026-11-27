@@ -25,6 +25,7 @@ import {
   statsAt,
   WEAPON_LEVEL_CAP,
 } from './upgrades';
+import { CLOCK } from './weapons';
 import { chooseUpgrade, createWorld, migrateWorld, purgeItems, skipUpgrade, step, UPGRADE_GRACE } from './world';
 
 const config = (weapon = 'spark', stats: Stats = BASE_STATS, seed = 1) => ({
@@ -292,21 +293,75 @@ describe('mecánicas propias de las armas', () => {
     for (const p of runes) expect(Math.abs(p.x - w.player.x)).toBeLessThan(260);
   });
 
-  it('la Lanceta congela sin hacer daño y el Corredor parte la vida a la mitad en cada vuelta', () => {
+  it('el Reloj de Escarcha barre una vuelta: daña y congela, y lo ya congelado recibe más daño', () => {
     const w = createWorld(config('clock', tough));
-    const e = dummy(w, 0, -40); // las doce
-    w.player.weapons[0].step = 11;
-    w.player.weapons[0].timer = 0;
-    step(w, 1 / 60, 0, 0);
-    expect(e.freeze).toBeGreaterThan(0);
-    expect(e.hp).toBe(e.maxHp);
+    const ws = w.player.weapons[0];
+    ws.timer = 0;
+    const a = dummy(w, 0, -40);
+    const b = dummy(w, 40, 0);
+    b.freeze = 5;
+    for (let i = 0; i < 60; i++) step(w, 1 / 60, 0, 0);
+    expect(a.freeze).toBeGreaterThan(0);
+    expect(a.maxHp - a.hp).toBeGreaterThan(0);
+    expect(b.maxHp - b.hp).toBeCloseTo((a.maxHp - a.hp) * CLOCK.shatter, 0);
+    // Fuera del alcance de la manecilla, nada.
+    const far = dummy(w, 150, 0);
+    ws.timer = 0;
+    for (let i = 0; i < 60; i++) step(w, 1 / 60, 0, 0);
+    expect(far.hp).toBe(far.maxHp);
+  });
+
+  it('Fin de los Tiempos da la campanada cada tres vueltas: lo congelado en pantalla se rompe y cura un poco', () => {
     const v = createWorld(config('spark', tough));
-    const corridor = put(v, 'eternal');
-    corridor.step = 11;
-    corridor.timer = 0;
-    const far = dummy(v, 100, 50);
-    step(v, 1 / 60, 0, 0);
-    expect(far.hp).toBeCloseTo(far.maxHp / 2, -2);
+    v.player.weapons = [];
+    const end = put(v, 'eternal');
+    const far = dummy(v, 180, 60);
+    far.freeze = 99;
+    v.player.hp = 10;
+    for (let k = 0; k < CLOCK.chimeEvery; k++) {
+      end.timer = 0;
+      for (let i = 0; i < 60; i++) step(v, 1 / 60, 0, 0);
+    }
+    expect(far.maxHp - far.hp).toBeCloseTo(end.stats.damage * CLOCK.chime, -1);
+    expect(v.player.hp).toBeGreaterThan(10);
+  });
+
+  it('el Hacha y la Varita Ígnea estallan; el Cuchillo rebota al siguiente enemigo', () => {
+    const fire = createWorld(config('firewand', tough));
+    fire.player.weapons[0].timer = 0;
+    const target = dummy(fire, 60, 0);
+    const side = dummy(fire, 66, 8);
+    for (let i = 0; i < 90; i++) step(fire, 1 / 60, 0, 0);
+    expect(target.hp).toBeLessThan(target.maxHp);
+    expect(side.hp).toBeLessThan(side.maxHp);
+    // El hacha se clava donde cae: un enemigo a 15 px de ese punto (fuera de su filo) recibe el estallido.
+    const throwAxe = () => {
+      const w = createWorld(config('axe', tough));
+      w.player.weapons[0].timer = 0;
+      return { w, e: dummy(w, 400, 400) };
+    };
+    const probe = throwAxe();
+    let frames = 0;
+    let land = { x: 0, y: 0 };
+    do {
+      const a = probe.w.projectiles.find((p) => p.kind === 'axe');
+      if (a) land = { x: a.x, y: a.y };
+      step(probe.w, 1 / 60, 0, 0);
+      frames++;
+    } while (frames < 5 || probe.w.projectiles.some((p) => p.kind === 'axe'));
+    const real = throwAxe();
+    for (let i = 0; i < frames - 2; i++) step(real.w, 1 / 60, 0, 0);
+    real.e.x = land.x + 15;
+    real.e.y = land.y;
+    for (let i = 0; i < 4; i++) step(real.w, 1 / 60, 0, 0);
+    expect(real.e.hp).toBeLessThan(real.e.maxHp);
+    const knife = createWorld(config('lance', tough));
+    knife.player.weapons[0].timer = 0;
+    const first = dummy(knife, 30, 0);
+    const second = dummy(knife, 30, 50);
+    for (let i = 0; i < 40; i++) step(knife, 1 / 60, 0, 0);
+    expect(first.hp).toBeLessThan(first.maxHp);
+    expect(second.hp).toBeLessThan(second.maxHp);
   });
 
   it('el Laurel absorbe golpes enteros con sus cargas y el Sudario limita el daño y devuelve el golpe', () => {
@@ -536,8 +591,15 @@ describe('Repetir y Descartar (C1)', () => {
   });
 });
 
-/** Armas de apoyo sin daño propio (escudo y congelación): fuera de las comparaciones de daño. */
-const UTILITY = ['laurel', 'clock'];
+/** Armas de apoyo sin daño propio (el escudo): fuera de las comparaciones de daño. */
+const UTILITY = ['laurel'];
+
+/**
+ * Evoluciones sin el tope de 3 veces en la partida de 5 minutos. El Brebaje Santo: sus charcos siguen al jugador y en
+ * esa partida su cifra depende mucho de qué otras armas coja el bot (de ×2,7 a ×5 de la mejor base); el usuario decidió
+ * dejarlo como estaba (27/11/2026). En la medida de 90 s contra enemigos duros sí respeta el tope.
+ */
+const UNCAPPED = ['plague'];
 
 /** Dureza de los enemigos en la medida de daño de las armas (la que daba el nivel 20 000 antes de la Fase 8). */
 const SWARM_HARDNESS = 52.74;
@@ -594,7 +656,7 @@ describe('equilibrio de builds (daño)', () => {
       if (UTILITY.includes(evo.weapon)) continue;
       const d = dealt(evo.def.id);
       expect(d, evo.def.name).toBeGreaterThan(0);
-      expect(d, evo.def.name).toBeLessThanOrEqual(best * 3);
+      if (!UNCAPPED.includes(evo.def.id)) expect(d, evo.def.name).toBeLessThanOrEqual(best * 3);
     }
   }, 480_000);
 });
