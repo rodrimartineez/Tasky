@@ -71,8 +71,8 @@ export function HabitPage() {
         <p className={styles.milestone}>
           <FlameIcon size={14} />{' '}
           {shield
-            ? 'Tienes un escudo: si fallas un día, tu racha no se romperá.'
-            : `Escudo de racha en ${SHIELD_EVERY - charge} ${SHIELD_EVERY - charge === 1 ? 'día cumplido' : 'días cumplidos'}.`}
+            ? 'Tienes un día libre: si fallas un día, tu racha no se romperá.'
+            : `Día libre en ${SHIELD_EVERY - charge} ${SHIELD_EVERY - charge === 1 ? 'día cumplido' : 'días cumplidos'} seguidos.`}
         </p>
       )}
 
@@ -82,7 +82,7 @@ export function HabitPage() {
         <div className={styles.legend}>
           <span><i className={styles.met} /> Cumplido</span>
           <span><i className={styles.missed} /> No cumplido</span>
-          {habit.period === 'daily' && <span><i className={styles.shielded} /> Salvado por un escudo</span>}
+          {habit.period === 'daily' && <span><i className={styles.shielded} /> Día libre usado</span>}
           <span><i className={styles.open} /> En curso</span>
         </div>
       </section>
@@ -178,27 +178,76 @@ function cellClass(r: PeriodResult | undefined) {
 
 function cellTitle(r: PeriodResult | undefined, label: string) {
   if (!r) return `${label}: sin hábito`;
-  return `${label}: ${r.amount} de ${r.target}${r.closed ? (r.met ? ' · cumplido' : r.shielded ? ' · salvado por un escudo' : ' · no cumplido') : ' · en curso'}`;
+  return `${label}: ${r.amount} de ${r.target}${r.closed ? (r.met ? ' · cumplido' : r.shielded ? ' · día libre usado' : ' · no cumplido') : ' · en curso'}`;
 }
 
-/** Calendario de las últimas semanas: columnas = semanas, filas = lunes…domingo. */
+const WEEKDAYS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+const monthShort = new Intl.DateTimeFormat('es-ES', { month: 'short', timeZone: 'UTC' });
+/** Día que mantiene la racha (cumplido o salvado por el día libre): se une con sus vecinos. */
+const keepsStreak = (r: PeriodResult | undefined) => !!r && (r.met || r.shielded);
+
+/**
+ * Calendario de las últimas semanas como un calendario de pared: filas = semanas (lunes…domingo) con el número del
+ * día. Los cumplidos brillan y los seguidos se unen en una tira, para ver las rachas de un vistazo; encima, el
+ * porcentaje cumplido del periodo mostrado.
+ */
 function DailyHistory({ results, today }: { results: PeriodResult[]; today: string }) {
   const byKey = new Map(results.map((r) => [r.key, r]));
   const firstMonday = addDays(mondayOf(today), -7 * (WEEKS_SHOWN - 1));
   const weeks = Array.from({ length: WEEKS_SHOWN }, (_, w) => Array.from({ length: 7 }, (_, d) => addDays(firstMonday, w * 7 + d)));
+  const shown = weeks.flat().map((day) => byKey.get(day)).filter((r): r is PeriodResult => !!r && r.closed);
+  const met = shown.filter((r) => r.met).length;
+  const share = shown.length > 0 ? met / shown.length : 0;
   return (
-    <div className={styles.calendar} role="img" aria-label={`Historial de las últimas ${WEEKS_SHOWN} semanas`}>
-      {weeks.map((days) => (
-        <div key={days[0]} className={styles.week}>
-          {days.map((day) =>
-            day > today ? (
-              <span key={day} className={`${styles.cell} ${styles.future}`} />
-            ) : (
-              <span key={day} className={`${styles.cell} ${cellClass(byKey.get(day))}`} title={cellTitle(byKey.get(day), formatDay(day))} />
-            ),
-          )}
+    <div className={styles.calWrap}>
+      {shown.length > 0 && (
+        <div className={styles.calSummary}>
+          <span>
+            <b>{met}</b> de {shown.length} días cumplidos en las últimas {WEEKS_SHOWN} semanas
+          </span>
+          <span className={styles.calBar} aria-hidden>
+            <span style={{ width: `${share * 100}%` }} />
+          </span>
+          <b className={styles.calPct}>{Math.round(share * 100)} %</b>
         </div>
-      ))}
+      )}
+      <div className={styles.cal} role="img" aria-label={`Historial de las últimas ${WEEKS_SHOWN} semanas: ${met} días cumplidos`}>
+        <span />
+        {WEEKDAYS.map((d) => (
+          <span key={d} className={styles.calHead}>
+            {d}
+          </span>
+        ))}
+        {weeks.map((days, w) => {
+          const newMonth = days.find((d) => d.endsWith('-01'));
+          const label = w === 0 ? days[0] : newMonth;
+          return [
+            <span key={`m${days[0]}`} className={styles.calMonth}>
+              {label ? monthShort.format(new Date(`${label}T12:00:00Z`)).replace('.', '') : ''}
+            </span>,
+            ...days.map((day, i) => {
+              const r = byKey.get(day);
+              if (day > today) return <span key={day} className={`${styles.day} ${styles.future}`} />;
+              const chain = keepsStreak(r) || (!!r && !r.closed && r.met);
+              const joinNext = chain && i < 6 && days[i + 1] <= today && (keepsStreak(byKey.get(days[i + 1])) || !!byKey.get(days[i + 1])?.met);
+              return (
+                <span
+                  key={day}
+                  className={`${styles.day} ${cellClass(r)} ${joinNext ? styles.joinNext : ''} ${day === today ? styles.today : ''}`}
+                  title={cellTitle(r, formatDay(day))}
+                >
+                  {Number(day.slice(8))}
+                  {r?.shielded && (
+                    <span className={styles.dayBadge}>
+                      <ShieldIcon size={10} />
+                    </span>
+                  )}
+                </span>
+              );
+            }),
+          ];
+        })}
+      </div>
     </div>
   );
 }

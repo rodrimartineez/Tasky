@@ -4,13 +4,12 @@
  */
 
 /**
- * Escudo de racha (solo hábitos diarios): se gana uno cada 60 días cumplidos seguidos y se guarda como mucho
- * uno por hábito. Un día fallado con escudo no rompe la racha (aunque no da puntos) y gasta el escudo;
- * el día salvado no cuenta, y para el siguiente hay que volver a cumplir 60 días. Cada 60 días (y no 21) para
- * que proteja frente a un día puntual sin acercar demasiado a quien falla a menudo a quien es constante
- * (ANALISIS_ECONOMIA.md §10).
+ * Día libre (escudo de racha, solo hábitos diarios): se gana tras 3 días cumplidos seguidos y se guarda como mucho
+ * uno por hábito (no se acumula). Un día fallado con el día libre no rompe la racha, pero tampoco la suma ni da
+ * puntos o intentos, y lo gasta; el día salvado no cuenta, y para el siguiente hay que volver a cumplir 3 días
+ * seguidos. Antes era cada 60 días (ANALISIS_ECONOMIA.md §10); 3 días desde el 27/11/2026, a petición del usuario.
  */
-export const SHIELD_EVERY = 60;
+export const SHIELD_EVERY = 3;
 
 export interface StreakState {
   streak: number;

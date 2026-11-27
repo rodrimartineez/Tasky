@@ -207,7 +207,8 @@ describe('rachas en las recompensas', () => {
   it('cada recompensa guarda la racha alcanzada, y romperla vuelve a 1', () => {
     const { data, ids } = setup(read);
     let d = data;
-    for (const day of ['2026-11-02', '2026-11-03', '2026-11-04', '2026-11-06']) d = log(d, ids[0], day, 3);
+    // Falla dos días seguidos (5 y 6): el día libre ganado salva el primero, pero el segundo rompe la racha.
+    for (const day of ['2026-11-02', '2026-11-03', '2026-11-04', '2026-11-07']) d = log(d, ids[0], day, 3);
     d = evaluateRewards(d, '2026-11-09', T0);
     expect(d.ledger.map((e) => e.details?.streak)).toEqual([1, 2, 3, 1]);
   });
@@ -219,12 +220,12 @@ describe('escudo de racha (Fase 5b)', () => {
   const dayN = (n: number) => days(n, 1)[0];
   const N = SHIELD_EVERY;
 
-  it(`${SHIELD_EVERY} días cumplidos dan un escudo que salva un día fallado (sin recompensa ese día)`, () => {
+  it(`${SHIELD_EVERY} días cumplidos dan un día libre que salva un día fallado (sin recompensa ese día)`, () => {
     const { data, ids } = setup(read);
     let d = data;
-    // Cumple N días desde el 2 de noviembre, falla el siguiente y vuelve a cumplir 3.
-    for (const day of [...days(2, N), ...days(N + 3, 3)]) d = log(d, ids[0], day, 3);
-    const today = dayN(N + 6);
+    // Cumple N días desde el 2 de noviembre, falla el siguiente y vuelve a cumplir N − 1 (aún sin otro día libre).
+    for (const day of [...days(2, N), ...days(N + 3, N - 1)]) d = log(d, ids[0], day, 3);
+    const today = dayN(N + 3 + N - 1);
     d = evaluateRewards(d, today, T0);
     const byDay = new Map(d.ledger.map((e) => [e.period, e]));
     expect(byDay.has(dayN(N + 2))).toBe(false);
@@ -232,8 +233,16 @@ describe('escudo de racha (Fase 5b)', () => {
     expect(byDay.get(dayN(N + 3))?.details).toEqual({ streak: N + 1 });
     const results = history(d.habits[0], amountsOf(d), TZ, today);
     expect(results.find((r) => r.key === dayN(N + 2))?.shielded).toBe(true);
-    // El día salvado no cuenta para el siguiente escudo: solo los 3 cumplidos después.
-    expect(streaks(results, 'build', true)).toMatchObject({ current: N + 3, shield: false, charge: 3 });
+    // El día salvado no cuenta para el siguiente día libre: solo los cumplidos después.
+    expect(streaks(results, 'build', true)).toMatchObject({ current: N + N - 1, shield: false, charge: N - 1 });
+  });
+
+  it('no se acumula: con el doble de días seguidos sigue habiendo un solo día libre', () => {
+    const { data, ids } = setup(read);
+    let d = data;
+    for (const day of days(2, N * 2)) d = log(d, ids[0], day, 3);
+    const results = history(d.habits[0], amountsOf(d), TZ, dayN(N * 2 + 2));
+    expect(streaks(results, 'build', true)).toMatchObject({ current: N * 2, shield: true, charge: 0 });
   });
 
   it('sin escudo (menos días) un fallo rompe la racha, y el escudo se gasta una sola vez', () => {
