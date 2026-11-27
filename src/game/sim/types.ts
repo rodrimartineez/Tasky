@@ -423,7 +423,7 @@ export type ProjKind =
   | 'dragon'
   /** Galaxia que gira sobre toda la pantalla. */
   | 'galaxy'
-  /** Onda expansiva (Martillo del Alba): crece desde (sx, sy) hasta `orbitR` y golpea una vez a cada enemigo. */
+  /** Onda expansiva (Martillo Sísmico): crece desde (sx, sy) hasta `orbitR` y golpea una vez a cada enemigo. */
   | 'wave'
   /** Esfera que viaja a (tx, ty) y se abre en un vórtice de radio `orbitR` que atrae y daña (Singularidad). */
   | 'vortex';

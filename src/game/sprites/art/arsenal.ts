@@ -477,7 +477,7 @@ export const ART: Record<string, string[]> = {
     'u..bu',
     '.ubb.',
   ],
-  // ── Armas nuevas (27/11/2026): Arco Voltaico, Martillo del Alba, Singularidad y sus evoluciones ──
+  // ── Armas nuevas (27/11/2026): Arco Voltaico, Martillo Sísmico, Singularidad y sus evoluciones ──
   w_chain: [
     '................',
     '.........kkkkk..',

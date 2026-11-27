@@ -122,7 +122,7 @@ describe('catálogo cerrado', () => {
     expect(recipe('spirit')).toEqual(['unearthly', 'tiramisu', 'max']);
     expect(recipe('gunastrophe')).toEqual(['ammo', 'feather', 'max']);
     // Armas propias de Tasky (27/11/2026), con pasivas que ya existían.
-    expect(recipe('judgement')).toEqual(['chain', 'clover']);
+    expect(recipe('judgement')).toEqual(['chain', 'horn']);
     expect(recipe('sunquake')).toEqual(['quake', 'scales']);
     expect(recipe('eventhorizon')).toEqual(['vortex', 'lodestone']);
     for (const e of EVOLUTIONS) {

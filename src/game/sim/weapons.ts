@@ -790,8 +790,8 @@ const chainArc: Fire = (w, ws, index, n) => {
 };
 
 /**
- * Martillo del Alba: golpe al suelo que lanza una onda expansiva (caso `wave` de `updateProjectiles`). Cataclismo del
- * Alba: las ondas aturden y al llegar a su borde estallan columnas de luz.
+ * Martillo Sísmico: golpe al suelo que lanza una onda expansiva (caso `wave` de `updateProjectiles`). Cataclismo
+ * Solar: las ondas aturden y al llegar a su borde estallan columnas de luz.
  */
 const quake: Fire = (w, ws, index, n) => {
   const { player } = w;

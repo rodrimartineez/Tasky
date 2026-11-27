@@ -409,7 +409,7 @@ export const WEAPONS: WeaponDef[] = [
   },
   {
     id: 'quake',
-    name: 'Martillo del Alba',
+    name: 'Martillo Sísmico',
     description: 'Golpea el suelo y lanza una onda expansiva que daña y aparta a todo lo que alcanza.',
     attack: 'Onda expansiva',
     icon: 'w_quake',

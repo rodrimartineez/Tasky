@@ -170,14 +170,14 @@ export const EVOLUTIONS: EvolutionDef[] = [
   ),
   evolution(
     'chain',
-    'clover',
+    'horn',
     { id: 'judgement', name: 'Juicio en Cadena', description: 'Cada salto del rayo se bifurca en dos y sus golpes son a menudo críticos.', icon: 'w_judgement', color: 0xfff0a0, crit: 0.1 },
     { damage: 34, cooldown: 1, amount: 2, pierce: 12, area: 80, knockback: 6 },
   ),
   evolution(
     'quake',
     'scales',
-    { id: 'sunquake', name: 'Cataclismo del Alba', description: 'Ondas enormes que aturden; al llegar a su borde estallan columnas de luz.', icon: 'w_sunquake', color: 0xffe08a, interval: 0.3 },
+    { id: 'sunquake', name: 'Cataclismo Solar', description: 'Ondas enormes que aturden; al llegar a su borde estallan columnas de luz.', icon: 'w_sunquake', color: 0xffe08a, interval: 0.3 },
     { damage: 78, cooldown: 2.1, amount: 2, area: 100, duration: 0.4, knockback: 90 },
   ),
   evolution(
