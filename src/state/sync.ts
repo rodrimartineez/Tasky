@@ -61,6 +61,7 @@ function onlyNew(records: SyncRecords): SyncRecords {
   const unknown = <T extends { id: string; updatedAt: string }>(list: T[]) => list.filter((r) => versions.get(r.id) !== r.updatedAt);
   return {
     projects: unknown(records.projects),
+    projectGroups: unknown(records.projectGroups),
     phases: unknown(records.phases),
     tasks: unknown(records.tasks),
     ideas: unknown(records.ideas),

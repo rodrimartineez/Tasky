@@ -7,7 +7,7 @@ import { createTaskyService } from './service';
 
 function handler() {
   const d = createProject(emptyData(), { name: 'Wynot', description: '' }, 'wynot', '2026-11-01T10:00:00.000Z');
-  const state: SyncRecords = { projects: d.projects, phases: [], tasks: [], ideas: [], ideaGroups: [] };
+  const state: SyncRecords = { projects: d.projects, projectGroups: [], phases: [], tasks: [], ideas: [], ideaGroups: [] };
   let n = 0;
   const service = createTaskyService(
     {
@@ -81,6 +81,11 @@ describe('servidor MCP por HTTP', () => {
         'update_phase',
         'move_phase',
         'delete_phase',
+        'create_project_group',
+        'update_project_group',
+        'move_project_group',
+        'delete_project_group',
+        'move_project_into_group',
         'create_task',
         'delete_idea',
         'delete_task',
@@ -98,6 +103,7 @@ describe('servidor MCP por HTTP', () => {
     expect(byName.create_task.destructiveHint).toBe(false);
     expect(byName.delete_task.destructiveHint).toBe(true);
     expect(byName.delete_idea_group.destructiveHint).toBe(true);
+    expect(byName.delete_project_group.destructiveHint).toBe(true);
   });
 
   it('el escenario del audio: busca Wynot, crea una tarea y una idea', async () => {

@@ -19,7 +19,8 @@ function setup(): TaskyData {
   return d;
 }
 /** Primer nivel abierto: ids de fases y tareas sueltas, en orden. */
-const outline = (d: TaskyData) => projectOutline(d, 'p').entries.map((e) => (e.kind === 'phase' ? e.phase.id : e.task.id));
+const outline = (d: TaskyData) =>
+  projectOutline(d, 'p').entries.map((e) => (e.kind === 'phase' ? e.phase.id : e.kind === 'group' ? e.group.id : e.task.id));
 const inPhase = (d: TaskyData, id: string) => phaseTasks(d, id).open.map((t) => t.id);
 
 describe('fases', () => {
@@ -95,17 +96,17 @@ describe('fases', () => {
   it('una fase con todas sus tareas completadas pasa sola a completadas', () => {
     let d = createPhase(setup(), 'p', { name: 'F', description: '' }, 'f', T1, ['a', 'b']);
     d = updateTask(d, 'a', { status: 'done' }, T1);
-    expect(projectOutline(d, 'p').donePhases).toHaveLength(0);
+    expect(projectOutline(d, 'p').doneContainers).toHaveLength(0);
     d = updateTask(d, 'b', { status: 'done' }, T1);
     expect(outline(d)).toEqual(['c']);
-    expect(projectOutline(d, 'p').donePhases.map((e) => e.phase.id)).toEqual(['f']);
+    expect(projectOutline(d, 'p').doneContainers.map((e) => (e.kind === 'phase' ? e.phase.id : e.group.id))).toEqual(['f']);
     d = updateTask(d, 'b', { status: 'todo' }, T1);
     expect(outline(d)).toEqual(['f', 'c']);
   });
 
   it('una tarea cuya fase se borró en otro dispositivo cuenta como suelta', () => {
     const d = createPhase(setup(), 'p', { name: 'F', description: '' }, 'f', T0, ['a']);
-    const remote = { projects: [], phases: [{ ...d.phases[0], deletedAt: T1, updatedAt: T1 }], tasks: [], ideas: [], ideaGroups: [] };
+    const remote = { projects: [], projectGroups: [], phases: [{ ...d.phases[0], deletedAt: T1, updatedAt: T1 }], tasks: [], ideas: [], ideaGroups: [] };
     const merged = mergeRemote(d, remote, T1);
     expect(merged.tasks.find((t) => t.id === 'a')?.phaseId).toBe('f');
     expect(outline(merged)).toContain('a');

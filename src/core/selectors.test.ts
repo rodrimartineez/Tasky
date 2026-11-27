@@ -20,6 +20,7 @@ const task = (id: string, projectId: string, status: Task['status'], deletedAt: 
   id,
   projectId,
   phaseId: null,
+  groupId: null,
   title: id,
   description: '',
   status,
@@ -36,6 +37,7 @@ const task = (id: string, projectId: string, status: Task['status'], deletedAt: 
 describe('projectSummariesByStatus', () => {
   const data: TaskyData = {
     schemaVersion: 1,
+    projectGroups: [],
     projects: [
       project('old', 'active', '2026-01-01T00:00:00.000Z'),
       project('new', 'active', '2026-02-01T00:00:00.000Z'),

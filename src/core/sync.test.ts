@@ -14,7 +14,7 @@ function setup(): TaskyData {
   const d = createProject(emptyData(), { name: 'P', description: '' }, 'p', T0);
   return createTask(d, 'p', { title: 'A', description: '', dueDate: null }, 'a', T0);
 }
-const asRemote = (d: TaskyData) => ({ projects: d.projects, phases: d.phases, tasks: d.tasks, ideas: d.ideas, ideaGroups: d.ideaGroups });
+const asRemote = (d: TaskyData) => ({ projects: d.projects, projectGroups: d.projectGroups, phases: d.phases, tasks: d.tasks, ideas: d.ideas, ideaGroups: d.ideaGroups });
 
 describe('sincronización', () => {
   it('añade los registros que solo existen en el servidor', () => {

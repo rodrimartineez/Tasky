@@ -47,6 +47,7 @@ export function App() {
               <Route path="ideas/:groupId" element={<IdeasPage />} />
               <Route path="project/:projectId" element={<ProjectPage />} />
               <Route path="project/:projectId/phase/:phaseId" element={<ProjectPage />} />
+              <Route path="project/:projectId/group/:groupId" element={<ProjectPage />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Route>
             <Route

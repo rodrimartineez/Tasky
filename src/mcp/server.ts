@@ -11,7 +11,12 @@ Reglas:
 - Tarea = algo concreto que hacer. Idea = algo a explorar o recordar más adelante; si no es de ningún proyecto, es una idea general (create_idea sin project_id). Si no está claro qué es, pregunta antes de crearlo.
 - Títulos breves y accionables en el idioma del usuario (las tareas empiezan por un verbo); la descripción añade el contexto útil (criterios de terminado, notas). No inventes detalles.
 - Para desglosar un proyecto usa create_tasks con todas las tareas en orden de trabajo; el orden de la lista es el orden en Tasky (la primera abierta es «la siguiente»). Usa move_task para reordenar.
-- Un proyecto organiza sus tareas en fases (get_project las lista con sus tareas; cada tarea indica su phase). Tienes acceso completo: create_phase / update_phase / move_phase / delete_phase gestionan las fases; para meter una tarea en una fase pasa phase_id en create_task, create_tasks o update_task (phase_id = null la saca de la fase). Eliminar una fase NO borra sus tareas: quedan sueltas. Sin phase_id, las tareas nuevas quedan sin fase.
+- Jerarquía de un proyecto: Proyecto → Grupo → Fase → Tarea. Los grupos y las fases son opcionales: un proyecto puede tener tareas sueltas, fases sin grupo y grupos (p. ej. proyecto «Universidad», un grupo por asignatura y dentro de cada una sus fases y tareas). Un grupo contiene fases y también tareas sueltas (sin fase).
+- get_project lista project_groups (con sus fases y sus tareas sueltas), phases (cada una indica su project_group) y las tareas (cada una indica su phase y su group).
+- Grupos: create_project_group / update_project_group / move_project_group / delete_project_group. Para crear una fase dentro de un grupo pasa project_group_id en create_phase; para moverla de grupo, project_group_id en update_phase (null la saca al primer nivel del proyecto). create_project_group también puede incorporar fases existentes (phase_ids). Para crear una tarea suelta dentro de un grupo pasa project_group_id (sin phase_id) en create_task/create_tasks; para moverla, project_group_id en update_task (null = primer nivel). Eliminar un grupo NO borra sus fases ni sus tareas: quedan sin grupo. Si el usuario nombra un grupo, búscalo en get_project antes de crear otro.
+- Para convertir un proyecto entero en un grupo de otro (p. ej. juntar asignaturas en «Universidad») usa move_project_into_group: mueve todo tal cual (fases, tareas también completadas, ideas) y elimina el proyecto de origen. No lo recrees a mano.
+- Fases: create_phase / update_phase / move_phase / delete_phase. Para meter una tarea en una fase pasa phase_id en create_task, create_tasks o update_task (phase_id = null la saca de la fase y la deja suelta en el grupo de esa fase, o en el primer nivel). Eliminar una fase NO borra sus tareas: quedan sueltas en su mismo lugar. Sin phase_id, las tareas nuevas quedan sin fase.
+- No confundas los grupos de proyecto (project_group_id, organizan fases y tareas) con los grupos de ideas generales (group_id, organizan ideas).
 - Las ideas generales se organizan en grupos (get_idea_groups / create_idea_group / update_idea_group / delete_idea_group). Para crear una idea dentro de un grupo pasa group_id en create_idea; para moverla, group_id en update_idea (null la saca del grupo). Eliminar un grupo NO borra sus ideas: quedan sin grupo. Si el usuario nombra un grupo, búscalo con get_idea_groups antes de crear otro.
 - Repetir una creación no duplica: si ya hay una tarea abierta, una idea o un proyecto con el mismo título, se devuelve en already_existed. Ante un error de conexión puedes reintentar con seguridad.
 - Estados: todo = pendiente, in_progress = en curso, done = completada. Marca in_progress al empezar una tarea y done (complete_task) SOLO cuando el trabajo esté terminado y verificado (pruebas pasadas, comprobado en la app…). Si no se ha podido verificar, déjala en curso y explica qué falta en su descripción.
@@ -41,6 +46,7 @@ const timeSlot = z
   .describe('Cuándo hacerla: morning = mañana, afternoon = tarde, evening = noche, all_day = día completo');
 
 const phaseRef = id.describe('Id de una fase del mismo proyecto (get_project las lista)');
+const projectGroupRef = id.describe('Id de un grupo del mismo proyecto (get_project los lista en project_groups)');
 
 const READ = { readOnlyHint: true, destructiveHint: false, openWorldHint: false } as const;
 const WRITE = { readOnlyHint: false, destructiveHint: false, openWorldHint: false } as const;
@@ -84,7 +90,8 @@ export function createTaskyMcpServer(service: TaskyService): McpServer {
     'get_project',
     {
       title: 'Ver proyecto',
-      description: 'Detalle de un proyecto: sus tareas abiertas (en su orden), completadas e ideas.',
+      description:
+        'Detalle de un proyecto: sus grupos (con sus fases), sus fases (con sus tareas), sus tareas abiertas (en su orden de trabajo), completadas e ideas.',
       inputSchema: z.object({ project_id: id }),
       annotations: READ,
     },
@@ -134,38 +141,113 @@ export function createTaskyMcpServer(service: TaskyService): McpServer {
     ({ project_id, name, description, status }) => run(() => service.updateProject(project_id, { name, description, status })),
   );
 
+  // ── Grupos de proyecto ──
+  server.registerTool(
+    'create_project_group',
+    {
+      title: 'Crear grupo de proyecto',
+      description:
+        'Crea un grupo dentro de un proyecto para organizar sus fases (p. ej. una asignatura en el proyecto «Universidad»); va al final del proyecto. Opcionalmente incorpora fases ya existentes del proyecto (phase_ids). Para crear fases nuevas dentro de él usa create_phase con project_group_id. Si ya existe un grupo con ese nombre en el proyecto, lo devuelve en already_existed.',
+      inputSchema: z.object({
+        project_id: id,
+        name: z.string().min(1).max(120),
+        description: z.string().max(2000).optional(),
+        phase_ids: z.array(id).max(100).optional().describe('Fases existentes del proyecto que pasan al grupo'),
+      }),
+      annotations: WRITE,
+    },
+    ({ project_id, name, description, phase_ids }) =>
+      run(() => service.createProjectGroup(project_id, { name, description, phaseIds: phase_ids })),
+  );
+  server.registerTool(
+    'update_project_group',
+    {
+      title: 'Modificar grupo de proyecto',
+      description: 'Cambia el nombre o la descripción de un grupo de proyecto (lo que no se indique se conserva).',
+      inputSchema: z.object({
+        project_group_id: id,
+        name: z.string().min(1).max(120).optional(),
+        description: z.string().max(2000).optional(),
+      }),
+      annotations: WRITE,
+    },
+    ({ project_group_id, name, description }) => run(() => service.updateProjectGroup(project_group_id, { name, description })),
+  );
+  server.registerTool(
+    'move_project_group',
+    {
+      title: 'Reordenar grupo de proyecto',
+      description: 'Mueve un grupo a otra posición entre los grupos de su proyecto (1 = el primero). Sus fases y tareas se mueven con él.',
+      inputSchema: z.object({ project_group_id: id, position: z.number().int().min(1) }),
+      annotations: WRITE,
+    },
+    ({ project_group_id, position }) => run(() => service.moveProjectGroup(project_group_id, position)),
+  );
+  server.registerTool(
+    'delete_project_group',
+    {
+      title: 'Eliminar grupo de proyecto',
+      description:
+        'Elimina un grupo de proyecto. Sus fases y tareas NO se borran: quedan en el proyecto, sin grupo. Confirma con el usuario antes de usarla salvo que lo haya pedido explícitamente.',
+      inputSchema: z.object({ project_group_id: id }),
+      annotations: DELETE,
+    },
+    ({ project_group_id }) => run(() => service.deleteProjectGroup(project_group_id)),
+  );
+  server.registerTool(
+    'move_project_into_group',
+    {
+      title: 'Convertir proyecto en grupo de otro',
+      description:
+        'Convierte un proyecto (source_project_id) en un grupo de otro proyecto (target_project_id): crea el grupo con su nombre y descripción y mueve a él todo su contenido tal cual —fases, tareas (también las completadas) e ideas— con los mismos ids, estados, fechas y orden. Después ELIMINA el proyecto de origen, ya vacío. El origen no puede tener grupos propios. Confirma con el usuario antes de usarla salvo que lo haya pedido explícitamente.',
+      inputSchema: z.object({ source_project_id: id, target_project_id: id }),
+      annotations: { ...WRITE, destructiveHint: true },
+    },
+    ({ source_project_id, target_project_id }) => run(() => service.moveProjectIntoGroup(source_project_id, target_project_id)),
+  );
+
   // ── Fases ──
   server.registerTool(
     'create_phase',
     {
       title: 'Crear fase',
       description:
-        'Crea una fase al final de un proyecto. Opcionalmente incorpora tareas ya existentes del proyecto (task_ids). Para crear tareas nuevas dentro de ella usa create_task/create_tasks con phase_id. Si ya existe una fase con ese nombre, la devuelve en already_existed.',
+        'Crea una fase al final de un proyecto o, con project_group_id, al final de ese grupo del proyecto. Opcionalmente incorpora tareas ya existentes del proyecto (task_ids). Para crear tareas nuevas dentro de ella usa create_task/create_tasks con phase_id. Si ya existe una fase con ese nombre en el mismo lugar, la devuelve en already_existed.',
       inputSchema: z.object({
         project_id: id,
+        project_group_id: projectGroupRef.optional(),
         name: z.string().min(1).max(120),
         description: z.string().max(2000).optional(),
         task_ids: z.array(id).max(100).optional().describe('Tareas existentes del proyecto que pasan a la fase'),
       }),
       annotations: WRITE,
     },
-    ({ project_id, name, description, task_ids }) => run(() => service.createPhase(project_id, { name, description, taskIds: task_ids })),
+    ({ project_id, project_group_id, name, description, task_ids }) =>
+      run(() => service.createPhase(project_id, { name, description, taskIds: task_ids, groupId: project_group_id })),
   );
   server.registerTool(
     'update_phase',
     {
       title: 'Modificar fase',
-      description: 'Cambia el nombre o la descripción de una fase (lo que no se indique se conserva).',
-      inputSchema: z.object({ phase_id: id, name: z.string().min(1).max(120).optional(), description: z.string().max(2000).optional() }),
+      description:
+        'Cambia el nombre o la descripción de una fase (lo que no se indique se conserva). Con project_group_id la mueve a ese grupo del proyecto (al final); con project_group_id = null la saca al primer nivel del proyecto.',
+      inputSchema: z.object({
+        phase_id: id,
+        name: z.string().min(1).max(120).optional(),
+        description: z.string().max(2000).optional(),
+        project_group_id: projectGroupRef.nullable().optional(),
+      }),
       annotations: WRITE,
     },
-    ({ phase_id, name, description }) => run(() => service.updatePhase(phase_id, { name, description })),
+    ({ phase_id, name, description, project_group_id }) =>
+      run(() => service.updatePhase(phase_id, { name, description, groupId: project_group_id })),
   );
   server.registerTool(
     'move_phase',
     {
       title: 'Reordenar fase',
-      description: 'Mueve una fase a otra posición entre las fases del proyecto (1 = la primera). Sus tareas se mueven con ella.',
+      description:
+        'Mueve una fase a otra posición entre las fases de su mismo lugar: las de su grupo o, si no tiene, las fases sin grupo del proyecto (1 = la primera). Sus tareas se mueven con ella. Para cambiarla de grupo usa update_phase.',
       inputSchema: z.object({ phase_id: id, position: z.number().int().min(1) }),
       annotations: WRITE,
     },
@@ -211,14 +293,16 @@ export function createTaskyMcpServer(service: TaskyService): McpServer {
         ...schedule,
         status: taskStatus.optional(),
         phase_id: phaseRef.optional(),
+        project_group_id: projectGroupRef.optional().describe('Sin phase_id: grupo del proyecto donde crearla suelta'),
       }),
       annotations: WRITE,
     },
-    ({ project_id, due_date, time_slot, scheduled_days, repeat_weekly, phase_id, ...rest }) =>
+    ({ project_id, due_date, time_slot, scheduled_days, repeat_weekly, phase_id, project_group_id, ...rest }) =>
       run(() =>
         service.createTask(project_id, {
           ...rest,
           phaseId: phase_id,
+          groupId: project_group_id,
           dueDate: due_date,
           timeSlot: time_slot,
           scheduledDays: scheduled_days,
@@ -244,6 +328,7 @@ export function createTaskyMcpServer(service: TaskyService): McpServer {
               ...schedule,
               status: taskStatus.optional(),
               phase_id: phaseRef.optional(),
+              project_group_id: projectGroupRef.optional().describe('Sin phase_id: grupo del proyecto donde crearla suelta'),
             }),
           )
           .min(1)
@@ -255,9 +340,10 @@ export function createTaskyMcpServer(service: TaskyService): McpServer {
       run(() =>
         service.createTasks(
           project_id,
-          tasks.map(({ due_date, time_slot, scheduled_days, repeat_weekly, phase_id, ...rest }) => ({
+          tasks.map(({ due_date, time_slot, scheduled_days, repeat_weekly, phase_id, project_group_id, ...rest }) => ({
             ...rest,
             phaseId: phase_id,
+          groupId: project_group_id,
             dueDate: due_date,
             timeSlot: time_slot,
             scheduledDays: scheduled_days,
@@ -282,7 +368,7 @@ export function createTaskyMcpServer(service: TaskyService): McpServer {
     {
       title: 'Modificar tarea',
       description:
-        'Cambia el título, la descripción, la fecha límite (null para quitarla), la programación (días y repetición semanal), la franja horaria, el estado o la fase (phase_id) de una tarea.',
+        'Cambia el título, la descripción, la fecha límite (null para quitarla), la programación (días y repetición semanal), la franja horaria, el estado o el lugar de una tarea: su fase (phase_id) o, sin fase, el grupo del proyecto donde queda suelta (project_group_id).',
       inputSchema: z.object({
         task_id: id,
         title: z.string().min(1).max(200).optional(),
@@ -292,14 +378,19 @@ export function createTaskyMcpServer(service: TaskyService): McpServer {
         ...schedule,
         status: taskStatus.optional(),
         phase_id: phaseRef.nullable().optional().describe('Id de la fase a la que moverla (al final de ella); null para sacarla de su fase'),
+        project_group_id: projectGroupRef
+          .nullable()
+          .optional()
+          .describe('Sin fase: grupo donde dejarla suelta (al final); null = primer nivel del proyecto'),
       }),
       annotations: WRITE,
     },
-    ({ task_id, due_date, time_slot, scheduled_days, repeat_weekly, phase_id, ...rest }) =>
+    ({ task_id, due_date, time_slot, scheduled_days, repeat_weekly, phase_id, project_group_id, ...rest }) =>
       run(() =>
         service.updateTask(task_id, {
           ...rest,
           phaseId: phase_id,
+          groupId: project_group_id,
           dueDate: due_date,
           timeSlot: time_slot,
           scheduledDays: scheduled_days,

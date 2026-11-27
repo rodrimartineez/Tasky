@@ -30,12 +30,26 @@ export const projectSchema = z.object({
 });
 
 /**
- * Fase de un proyecto: agrupa tareas. Su `rank` comparte el orden del proyecto con las tareas sueltas,
- * así fases y tareas sin fase se intercalan.
+ * Grupo de un proyecto: agrupa fases (p. ej. una asignatura dentro de «Universidad»). Su `rank` comparte el orden del
+ * primer nivel del proyecto con las fases sin grupo y las tareas sueltas.
+ */
+export const projectGroupSchema = z.object({
+  ...baseRecord,
+  projectId: z.string().min(1),
+  name: z.string().min(1),
+  description: z.string(),
+  rank: z.string().min(1),
+});
+
+/**
+ * Fase de un proyecto: agrupa tareas. Sin grupo, su `rank` comparte el orden del primer nivel del proyecto con los
+ * grupos y las tareas sueltas; dentro de un grupo, ordena las fases del grupo.
  */
 export const phaseSchema = z.object({
   ...baseRecord,
   projectId: z.string().min(1),
+  /** Grupo del proyecto al que pertenece. null = en el primer nivel (las fases anteriores a los grupos quedan así). */
+  groupId: z.string().min(1).nullable().default(null),
   name: z.string().min(1),
   description: z.string(),
   rank: z.string().min(1),
@@ -46,6 +60,8 @@ export const taskSchema = z.object({
   projectId: z.string().min(1),
   /** Fase a la que pertenece. null = tarea suelta del proyecto (los datos anteriores a las fases quedan así). */
   phaseId: z.string().min(1).nullable().default(null),
+  /** Sin fase: grupo del proyecto donde está suelta. null = primer nivel (las tareas anteriores a esto quedan así). */
+  groupId: z.string().min(1).nullable().default(null),
   title: z.string().min(1),
   description: z.string(),
   status: taskStatusSchema,
@@ -80,6 +96,8 @@ export const ideaGroupSchema = z.object({
 export const taskyDataSchema = z.object({
   schemaVersion: z.literal(SCHEMA_VERSION),
   projects: z.array(projectSchema),
+  /** Los datos anteriores a los grupos de proyecto no tienen ninguno. */
+  projectGroups: z.array(projectGroupSchema).default([]),
   /** Los datos anteriores a las fases no tienen ninguna. */
   phases: z.array(phaseSchema).default([]),
   tasks: z.array(taskSchema),
@@ -94,6 +112,7 @@ export type ProjectStatus = z.infer<typeof projectStatusSchema>;
 export type TaskStatus = z.infer<typeof taskStatusSchema>;
 export type TimeSlot = z.infer<typeof timeSlotSchema>;
 export type Project = z.infer<typeof projectSchema>;
+export type ProjectGroup = z.infer<typeof projectGroupSchema>;
 export type Phase = z.infer<typeof phaseSchema>;
 export type Task = z.infer<typeof taskSchema>;
 export type Idea = z.infer<typeof ideaSchema>;

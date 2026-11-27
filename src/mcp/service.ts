@@ -16,6 +16,7 @@ import type {
   LocalDate,
   Phase,
   Project,
+  ProjectGroup,
   ProjectStatus,
   Task,
   TaskStatus,
@@ -23,11 +24,24 @@ import type {
   TimeSlot,
   Timestamp,
 } from '../core/model';
-import { createPhase, deletePhase, movePhase, updatePhase } from '../core/phases';
+import { createPhase, deletePhase, movePhase, setPhaseGroup, updatePhase } from '../core/phases';
+import { createProjectGroup, deleteProjectGroup, moveProjectGroup, moveProjectIntoGroup, updateProjectGroup } from '../core/projectGroups';
 import { createProject, updateProject } from '../core/projects';
-import { findPhase, groupIdeas, ideaGroups, projectIdeas, projectPhases, projectSummariesByStatus, projectTasks } from '../core/selectors';
+import {
+  findPhase,
+  findProjectGroup,
+  groupIdeas,
+  ideaGroups,
+  phaseGroup,
+  projectGroups,
+  projectIdeas,
+  projectPhases,
+  projectSummariesByStatus,
+  projectTasks,
+  taskGroup,
+} from '../core/selectors';
 import { countRecords, pendingChanges, rememberVersions, type ServerVersions, type SyncRecords } from '../core/sync';
-import { createTask, deleteTask, moveTask, taskOrder, updateTask, type TaskPatch } from '../core/tasks';
+import { createTask, deleteTask, looseTasksIn, moveTask, phasesIn, taskOrder, taskPlace, updateTask, type TaskPatch } from '../core/tasks';
 
 /**
  * Operaciones de Tasky para el asistente (servidor MCP). Toda la lógica de negocio es la de core/:
@@ -83,6 +97,8 @@ export interface TaskFields {
   status?: TaskStatus;
   /** Fase del mismo proyecto; sin indicar, queda suelta. */
   phaseId?: string | null;
+  /** Sin fase: grupo del mismo proyecto donde queda suelta (null = primer nivel). */
+  groupId?: string | null;
 }
 
 export function createTaskyService(repo: TaskyRepository, env: ServiceEnv) {
@@ -147,6 +163,7 @@ export function createTaskyService(repo: TaskyRepository, env: ServiceEnv) {
       scheduledDays: input.scheduledDays,
       repeatWeekly: input.repeatWeekly,
       phaseId: input.phaseId,
+      groupId: input.groupId,
     };
     const created = createTask(d, projectId, fields, id, env.now());
     return input.status && input.status !== 'todo' ? updateTask(created, id, { status: input.status }, env.now()) : created;
@@ -158,7 +175,18 @@ export function createTaskyService(repo: TaskyRepository, env: ServiceEnv) {
     if (!phase) throw new ToolError(`No existe ninguna fase con id «${id}». Usa get_project para ver las fases del proyecto.`);
     return phase;
   }
-  const phaseNamed = (d: TaskyData, projectId: string, name: string) => projectPhases(d, projectId).find((f) => sameText(f.name, name));
+  /** Fase con ese nombre en el mismo lugar (el grupo indicado o, con null, el primer nivel del proyecto). */
+  const phaseNamed = (d: TaskyData, projectId: string, groupId: string | null, name: string) =>
+    phasesIn(d, projectId, groupId).find((f) => sameText(f.name, name));
+  function requireProjectGroup(data: TaskyData, id: string): ProjectGroup {
+    const group = findProjectGroup(data, id);
+    if (!group) {
+      throw new ToolError(`No existe ningún grupo de proyecto con id «${id}». Usa get_project para ver los grupos del proyecto.`);
+    }
+    return group;
+  }
+  const projectGroupNamed = (d: TaskyData, projectId: string, name: string) =>
+    projectGroups(d, projectId).find((g) => sameText(g.name, name));
 
   const phaseName = (data: TaskyData, id: string | null) => (id ? (findPhase(data, id)?.name ?? null) : null);
 
@@ -167,6 +195,8 @@ export function createTaskyService(repo: TaskyRepository, env: ServiceEnv) {
     project_id: t.projectId,
     project: projectName(data, t.projectId),
     phase: phaseName(data, t.phaseId),
+    project_group_id: taskGroup(data, t)?.id ?? null,
+    group: taskGroup(data, t)?.name ?? null,
     title: t.title,
     description: t.description,
     status: t.status,
@@ -199,10 +229,23 @@ export function createTaskyService(repo: TaskyRepository, env: ServiceEnv) {
   const phaseView = (data: TaskyData, f: Phase) => ({
     id: f.id,
     project_id: f.projectId,
+    project_group_id: phaseGroup(data, f)?.id ?? null,
+    project_group: phaseGroup(data, f)?.name ?? null,
     name: f.name,
     description: f.description,
     tasks: data.tasks
       .filter((t) => t.phaseId === f.id && !t.deletedAt)
+      .sort(taskOrder(data))
+      .map((t) => ({ id: t.id, title: t.title, status: t.status })),
+  });
+
+  const projectGroupView = (data: TaskyData, g: ProjectGroup) => ({
+    id: g.id,
+    project_id: g.projectId,
+    name: g.name,
+    description: g.description,
+    phases: phasesIn(data, g.projectId, g.id).map((f) => ({ id: f.id, name: f.name })),
+    loose_tasks: looseTasksIn(data, g.projectId, g.id)
       .sort(taskOrder(data))
       .map((t) => ({ id: t.id, title: t.title, status: t.status })),
   });
@@ -248,6 +291,7 @@ export function createTaskyService(repo: TaskyRepository, env: ServiceEnv) {
       const project = requireProject(data, projectId);
       return {
         project: projectViews(data).find((p) => p.id === project.id),
+        project_groups: projectGroups(data, project.id).map((g) => projectGroupView(data, g)),
         phases: projectPhases(data, project.id).map((f) => phaseView(data, f)),
         open_tasks: tasksOf(data, project.id, 'open'),
         completed_tasks: tasksOf(data, project.id, 'done'),
@@ -296,51 +340,150 @@ export function createTaskyService(repo: TaskyRepository, env: ServiceEnv) {
       return { updated: projectViews(data).find((p) => p.id === projectId) };
     },
 
+    // ── Grupos de proyecto (Proyecto → Grupo → Fase → Tarea) ──
+
     /**
-     * Crea una fase (al final del proyecto) e incorpora, si se indican, tareas ya existentes del mismo proyecto.
-     * Si ya hay una fase con ese nombre, la devuelve sin duplicarla.
+     * Crea un grupo en el primer nivel del proyecto e incorpora, si se indican, fases ya existentes del mismo proyecto.
+     * Si ya hay un grupo con ese nombre, lo devuelve sin duplicarlo.
      */
-    async createPhase(projectId: string, input: { name: string; description?: string; taskIds?: string[] }) {
+    async createProjectGroup(projectId: string, input: { name: string; description?: string; phaseIds?: string[] }) {
+      const id = env.newId();
+      let existing: ProjectGroup | undefined;
+      const data = await mutate((d) => {
+        requireProject(d, projectId);
+        existing = projectGroupNamed(d, projectId, input.name);
+        if (existing) return d;
+        for (const phaseId of input.phaseIds ?? []) {
+          if (requirePhase(d, phaseId).projectId !== projectId) throw new ToolError(`La fase «${phaseId}» no es de este proyecto.`);
+        }
+        return createProjectGroup(d, projectId, { name: input.name, description: input.description ?? '' }, id, env.now(), input.phaseIds);
+      });
+      return existing
+        ? { already_existed: projectGroupView(data, existing), note: 'Ya existía un grupo con ese nombre en el proyecto; no se ha creado otro.' }
+        : { created: projectGroupView(data, requireProjectGroup(data, id)) };
+    },
+
+    async updateProjectGroup(groupId: string, patch: { name?: string; description?: string }) {
+      const data = await mutate((d) => {
+        const group = requireProjectGroup(d, groupId);
+        if (patch.name !== undefined) {
+          const clash = projectGroupNamed(d, group.projectId, patch.name);
+          if (clash && clash.id !== groupId) throw new ToolError(`Ya existe otro grupo llamado «${clash.name}» en el proyecto.`);
+        }
+        return updateProjectGroup(
+          d,
+          groupId,
+          { name: patch.name ?? group.name, description: patch.description ?? group.description },
+          env.now(),
+        );
+      });
+      return { updated: projectGroupView(data, requireProjectGroup(data, groupId)) };
+    },
+
+    /** Mueve el grupo a otra posición entre los grupos del proyecto (1 = el primero). */
+    async moveProjectGroup(groupId: string, position: number) {
+      const data = await mutate((d) => {
+        const group = requireProjectGroup(d, groupId);
+        const groups = projectGroups(d, group.projectId);
+        const others = groups.filter((g) => g.id !== groupId);
+        const index = Math.min(Math.max(Math.round(position) - 1, 0), others.length);
+        if (groups.findIndex((g) => g.id === groupId) === index) return d;
+        return moveProjectGroup(d, groupId, others[index - 1]?.id ?? null, others[index]?.id ?? null, env.now());
+      });
+      const group = requireProjectGroup(data, groupId);
+      return { moved: projectGroupView(data, group), project_groups: projectGroups(data, group.projectId).map((g) => g.name) };
+    },
+
+    /**
+     * Convierte un proyecto en un grupo de otro: todo su contenido (fases, tareas también completadas e ideas) pasa tal
+     * cual al grupo nuevo, con los mismos ids, estados y fechas; después se elimina el proyecto de origen, ya vacío.
+     */
+    async moveProjectIntoGroup(sourceId: string, targetId: string) {
+      const id = env.newId();
+      let counts = { phases: 0, tasks: 0, completed_tasks: 0, ideas: 0 };
+      const data = await mutate((d) => {
+        const source = requireProject(d, sourceId);
+        requireProject(d, targetId);
+        const live = (r: { projectId: string; deletedAt: string | null }) => r.projectId === source.id && !r.deletedAt;
+        const tasks = d.tasks.filter(live);
+        counts = {
+          phases: d.phases.filter(live).length,
+          tasks: tasks.length,
+          completed_tasks: tasks.filter((t) => t.status === 'done').length,
+          ideas: d.ideas.filter(live).length,
+        };
+        return moveProjectIntoGroup(d, sourceId, targetId, id, env.now());
+      });
+      return {
+        created_group: projectGroupView(data, requireProjectGroup(data, id)),
+        moved: counts,
+        note: 'El proyecto de origen se ha eliminado; todo su contenido está ahora en el grupo.',
+      };
+    },
+
+    /** Elimina el grupo; sus fases y tareas NO se borran: quedan en el primer nivel del proyecto. */
+    async deleteProjectGroup(groupId: string) {
+      let deleted: ReturnType<typeof projectGroupView> | undefined;
+      await mutate((d) => {
+        deleted = projectGroupView(d, requireProjectGroup(d, groupId));
+        return deleteProjectGroup(d, groupId, env.now());
+      });
+      return { deleted, note: 'Sus fases y tareas no se han eliminado: han quedado en el proyecto, sin grupo.' };
+    },
+
+    // ── Fases ──
+
+    /**
+     * Crea una fase (al final del proyecto o, con groupId, al final de ese grupo) e incorpora, si se indican, tareas ya
+     * existentes del mismo proyecto. Si ya hay una fase con ese nombre en el mismo lugar, la devuelve sin duplicarla.
+     */
+    async createPhase(projectId: string, input: { name: string; description?: string; taskIds?: string[]; groupId?: string }) {
       const id = env.newId();
       let existing: Phase | undefined;
       const data = await mutate((d) => {
         requireProject(d, projectId);
-        existing = phaseNamed(d, projectId, input.name);
+        const groupId = input.groupId ? requireProjectGroup(d, input.groupId).id : null;
+        if (groupId && findProjectGroup(d, groupId)!.projectId !== projectId) throw new ToolError('El grupo no es de este proyecto.');
+        existing = phaseNamed(d, projectId, groupId, input.name);
         if (existing) return d;
         for (const taskId of input.taskIds ?? []) {
           if (requireTask(d, taskId).projectId !== projectId) throw new ToolError(`La tarea «${taskId}» no es de este proyecto.`);
         }
-        return createPhase(d, projectId, { name: input.name, description: input.description ?? '' }, id, env.now(), input.taskIds);
+        return createPhase(d, projectId, { name: input.name, description: input.description ?? '' }, id, env.now(), input.taskIds, groupId);
       });
       return existing
-        ? { already_existed: phaseView(data, existing), note: 'Ya existía una fase con ese nombre en el proyecto; no se ha creado otra.' }
+        ? { already_existed: phaseView(data, existing), note: 'Ya existía una fase con ese nombre en el mismo lugar; no se ha creado otra.' }
         : { created: phaseView(data, requirePhase(data, id)) };
     },
 
-    async updatePhase(phaseId: string, patch: { name?: string; description?: string }) {
+    /** `groupId`: mueve la fase a ese grupo del proyecto (al final); null la saca al primer nivel. */
+    async updatePhase(phaseId: string, patch: { name?: string; description?: string; groupId?: string | null }) {
       const data = await mutate((d) => {
         const phase = requirePhase(d, phaseId);
+        const groupId =
+          patch.groupId === undefined ? (phaseGroup(d, phase)?.id ?? null) : patch.groupId && requireProjectGroup(d, patch.groupId).id;
         if (patch.name !== undefined) {
-          const clash = phaseNamed(d, phase.projectId, patch.name);
-          if (clash && clash.id !== phaseId) throw new ToolError(`Ya existe otra fase llamada «${clash.name}» en el proyecto.`);
+          const clash = phaseNamed(d, phase.projectId, groupId, patch.name);
+          if (clash && clash.id !== phaseId) throw new ToolError(`Ya existe otra fase llamada «${clash.name}» en el mismo lugar.`);
         }
-        return updatePhase(d, phaseId, { name: patch.name ?? phase.name, description: patch.description ?? phase.description }, env.now());
+        const next = updatePhase(d, phaseId, { name: patch.name ?? phase.name, description: patch.description ?? phase.description }, env.now());
+        return patch.groupId === undefined ? next : setPhaseGroup(next, phaseId, groupId, env.now());
       });
       return { updated: phaseView(data, requirePhase(data, phaseId)) };
     },
 
-    /** Mueve la fase a otra posición entre las fases del proyecto (1 = la primera). */
+    /** Mueve la fase a otra posición entre las fases de su mismo lugar (su grupo o las fases sin grupo; 1 = la primera). */
     async movePhase(phaseId: string, position: number) {
       const data = await mutate((d) => {
         const phase = requirePhase(d, phaseId);
-        const phases = projectPhases(d, phase.projectId);
+        const phases = phasesIn(d, phase.projectId, phaseGroup(d, phase)?.id ?? null);
         const others = phases.filter((f) => f.id !== phaseId);
         const index = Math.min(Math.max(Math.round(position) - 1, 0), others.length);
         if (phases.findIndex((f) => f.id === phaseId) === index) return d;
         return movePhase(d, phaseId, others[index - 1]?.id ?? null, others[index]?.id ?? null, env.now());
       });
       const phase = requirePhase(data, phaseId);
-      return { moved: phaseView(data, phase), phases: projectPhases(data, phase.projectId).map((f) => f.name) };
+      return { moved: phaseView(data, phase), phases: phasesIn(data, phase.projectId, phaseGroup(data, phase)?.id ?? null).map((f) => f.name) };
     },
 
     /** Elimina la fase; sus tareas NO se borran: quedan sueltas en el proyecto. */
@@ -395,13 +538,16 @@ export function createTaskyService(repo: TaskyRepository, env: ServiceEnv) {
 
     /**
      * Cambia el orden de trabajo: position 1 = la primera de las tareas abiertas de su mismo lugar
-     * (su fase o, si no tiene, las tareas sin fase del proyecto). No la cambia de fase.
+     * (su fase o, si no tiene, las sueltas de su grupo o del primer nivel). No la cambia de lugar.
      */
     async moveTask(taskId: string, position: number) {
       const data = await mutate((d) => {
         const task = requireTask(d, taskId);
         if (task.status === 'done') throw new ToolError('Las tareas completadas no tienen orden; reábrela antes si quieres moverla.');
-        const place = (t: Task) => (phaseName(d, t.phaseId) === null ? null : t.phaseId);
+        const place = (t: Task) => {
+          const p = taskPlace(d, t);
+          return p.phaseId ?? `g:${p.groupId}`;
+        };
         const open = projectTasks(d, task.projectId).open.filter((t) => place(t) === place(task));
         const others = open.filter((t) => t.id !== taskId);
         const index = Math.min(Math.max(Math.round(position) - 1, 0), others.length);

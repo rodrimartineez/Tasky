@@ -2,8 +2,10 @@ import { useMemo, useState } from 'react';
 import { CalendarPlus, ChevronRight, Trash2, X } from 'lucide-react';
 import { today as getToday } from '../../core/clock';
 import { addDays, endOfWeek, isScheduledOn, weekday } from '../../core/dueDates';
-import type { LocalDate, Task, TaskStatus, TimeSlot } from '../../core/model';
-import { projectPhases } from '../../core/selectors';
+import type { LocalDate, Task, TaskStatus, TaskyData, TimeSlot } from '../../core/model';
+import { projectGroups } from '../../core/selectors';
+import { compareRank } from '../../core/rank';
+import { phasesIn, taskPlace, type TaskPlace } from '../../core/tasks';
 import { useTasky } from '../../state/store';
 import { Button } from '../components/Button';
 import { ConfirmDialog } from '../components/ConfirmDialog';
@@ -46,27 +48,54 @@ interface TaskFormDialogProps {
   projectId: string;
   /** Si se pasa, se edita esta tarea; si no, se crea una nueva al final de la lista (o de su fase). */
   task?: Task;
-  /** Fase propuesta para una tarea nueva (p. ej. al crearla desde dentro de una fase). */
+  /** Lugar propuesto para una tarea nueva (p. ej. al crearla desde dentro de una fase o de un grupo). */
   phaseId?: string | null;
+  groupId?: string | null;
 }
 
-export function TaskFormDialog({ open, onClose, projectId, task, phaseId }: TaskFormDialogProps) {
+export function TaskFormDialog({ open, onClose, projectId, task, phaseId, groupId }: TaskFormDialogProps) {
+  const data = useTasky((s) => s.data);
   return (
     <Dialog open={open} onClose={onClose} title={task ? 'Editar tarea' : 'Nueva tarea'}>
-      {open && <TaskForm projectId={projectId} task={task} initialPhaseId={task ? task.phaseId : (phaseId ?? null)} onDone={onClose} />}
+      {open && (
+        <TaskForm
+          projectId={projectId}
+          task={task}
+          initialPlace={task ? taskPlace(data, task) : { phaseId: phaseId ?? null, groupId: phaseId ? null : (groupId ?? null) }}
+          onDone={onClose}
+        />
+      )}
     </Dialog>
   );
+}
+
+const placeKey = (p: TaskPlace) => p.phaseId ?? (p.groupId ? `g:${p.groupId}` : '');
+
+/** Lugares del proyecto donde puede ir una tarea, en su orden: cada grupo seguido de sus fases, y las fases sin grupo. */
+function placeOptions(data: TaskyData, projectId: string): { place: TaskPlace; label: string }[] {
+  const top = [...projectGroups(data, projectId), ...phasesIn(data, projectId, null)].sort(compareRank);
+  return [
+    { place: { phaseId: null, groupId: null }, label: 'Sin fase' },
+    ...top.flatMap((item) =>
+      'groupId' in item
+        ? [{ place: { phaseId: item.id, groupId: null }, label: item.name }]
+        : [
+            { place: { phaseId: null, groupId: item.id }, label: item.name },
+            ...phasesIn(data, projectId, item.id).map((f) => ({ place: { phaseId: f.id, groupId: null }, label: `${item.name} › ${f.name}` })),
+          ],
+    ),
+  ];
 }
 
 function TaskForm({
   projectId,
   task,
-  initialPhaseId,
+  initialPlace,
   onDone,
 }: {
   projectId: string;
   task?: Task;
-  initialPhaseId: string | null;
+  initialPlace: TaskPlace;
   onDone: () => void;
 }) {
   const [title, setTitle] = useState(task?.title ?? '');
@@ -78,9 +107,11 @@ function TaskForm({
   const [status, setStatus] = useState<TaskStatus>(task?.status ?? 'todo');
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const data = useTasky((s) => s.data);
-  const phases = useMemo(() => projectPhases(data, projectId), [data, projectId]);
-  // Una fase que ya no existe (p. ej. borrada en otro dispositivo) cuenta como «Sin fase».
-  const [phaseId, setPhaseId] = useState<string | null>(() => (phases.some((f) => f.id === initialPhaseId) ? initialPhaseId : null));
+  const places = useMemo(() => placeOptions(data, projectId), [data, projectId]);
+  // Un lugar que ya no existe (p. ej. borrado en otro dispositivo) cuenta como «Sin fase».
+  const [place, setPlace] = useState<TaskPlace>(() =>
+    places.some((o) => placeKey(o.place) === placeKey(initialPlace)) ? initialPlace : { phaseId: null, groupId: null },
+  );
   const createTask = useTasky((s) => s.createTask);
   const updateTask = useTasky((s) => s.updateTask);
   const deleteTask = useTasky((s) => s.deleteTask);
@@ -109,10 +140,10 @@ function TaskForm({
       timeSlot,
       scheduledDays: keepDays ? task.scheduledDays : scheduledDays,
       repeatWeekly: repeats,
-      phaseId,
     };
-    if (task) updateTask(task.id, { ...fields, status, phaseId: phaseId === initialPhaseId ? undefined : phaseId });
-    else createTask(projectId, fields);
+    const moved = placeKey(place) !== placeKey(initialPlace);
+    if (task) updateTask(task.id, { ...fields, status, ...(moved ? place : {}) });
+    else createTask(projectId, { ...fields, ...place });
     onDone();
   };
 
@@ -147,24 +178,27 @@ function TaskForm({
         }}
       />
 
-      {phases.length > 0 && (
+      {places.length > 1 && (
         <fieldset className={styles.group}>
           <legend className={styles.legend}>
-            Fase
+            Ubicación
             <span className={form.hint}>Opcional</span>
           </legend>
-          <div className={styles.chips} role="group" aria-label="Fase">
-            {[{ id: null, name: 'Sin fase' }, ...phases].map((f) => (
-              <button
-                key={f.id ?? 'none'}
-                type="button"
-                aria-pressed={phaseId === f.id}
-                className={`${styles.chip} ${phaseId === f.id ? styles.chipSelected : ''}`}
-                onClick={() => setPhaseId(f.id)}
-              >
-                {f.name}
-              </button>
-            ))}
+          <div className={styles.chips} role="group" aria-label="Ubicación">
+            {places.map((o) => {
+              const selected = placeKey(o.place) === placeKey(place);
+              return (
+                <button
+                  key={placeKey(o.place) || 'none'}
+                  type="button"
+                  aria-pressed={selected}
+                  className={`${styles.chip} ${selected ? styles.chipSelected : ''}`}
+                  onClick={() => setPlace(o.place)}
+                >
+                  {o.label}
+                </button>
+              );
+            })}
           </div>
         </fieldset>
       )}

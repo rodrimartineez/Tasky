@@ -13,6 +13,7 @@ function fakeServer() {
   let seq = 0;
   const rows: Record<Table, Map<string, { rec: Rec; seq: number }>> = {
     projects: new Map(),
+    projectGroups: new Map(),
     phases: new Map(),
     tasks: new Map(),
     ideas: new Map(),
@@ -138,6 +139,7 @@ describe('sincronización con el servidor', () => {
       id: 'desde-claude',
       projectId: p.id,
       phaseId: null,
+      groupId: null,
       title: 'Creada por Claude',
       description: '',
       status: 'todo',

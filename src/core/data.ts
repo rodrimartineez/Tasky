@@ -5,6 +5,7 @@ const TOMBSTONE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 export const emptyData = (): TaskyData => ({
   schemaVersion: SCHEMA_VERSION,
   projects: [],
+  projectGroups: [],
   phases: [],
   tasks: [],
   ideas: [],
@@ -40,6 +41,7 @@ function purgeTombstones(data: TaskyData, now: Timestamp): TaskyData {
   return {
     ...data,
     projects: data.projects.filter(keep),
+    projectGroups: data.projectGroups.filter(keep),
     phases: data.phases.filter(keep),
     tasks: data.tasks.filter(keep),
     ideas: data.ideas.filter(keep),

@@ -17,7 +17,14 @@ import {
   type IdeaGroupInput,
   type IdeaInput,
 } from '../core/ideas';
-import { createPhase, deletePhase, movePhase, updatePhase, type PhaseInput } from '../core/phases';
+import { createPhase, deletePhase, movePhase, setPhaseGroup, updatePhase, type PhaseInput } from '../core/phases';
+import {
+  createProjectGroup,
+  deleteProjectGroup,
+  moveProjectGroup,
+  updateProjectGroup,
+  type ProjectGroupInput,
+} from '../core/projectGroups';
 import { createTask, deleteTask, moveTask, updateTask, type TaskInput, type TaskPatch } from '../core/tasks';
 
 type Status = 'loading' | 'ready' | 'error';
@@ -47,10 +54,19 @@ interface TaskyState {
   deleteProject(id: string): void;
   /** `orderedIds`: orden de la sección de Inicio tras soltar el proyecto. */
   reorderProject(orderedIds: string[], movedId: string): void;
-  /** Crea una fase e incorpora a ella las tareas indicadas del proyecto. */
-  createPhase(projectId: string, input: PhaseInput, taskIds: string[]): string;
+  /** Crea un grupo e incorpora a él las fases indicadas del proyecto. */
+  createProjectGroup(projectId: string, input: ProjectGroupInput, phaseIds: string[]): string;
+  updateProjectGroup(id: string, input: ProjectGroupInput): void;
+  /** Coloca el grupo entre dos elementos del primer nivel del proyecto (null = extremo). */
+  moveProjectGroup(id: string, beforeId: string | null, afterId: string | null): void;
+  /** Sus fases no se borran: quedan sin grupo. */
+  deleteProjectGroup(id: string): void;
+  /** Crea una fase (en `groupId`, o en el primer nivel con null) e incorpora a ella las tareas indicadas del proyecto. */
+  createPhase(projectId: string, input: PhaseInput, taskIds: string[], groupId?: string | null): string;
   updatePhase(id: string, input: PhaseInput): void;
-  /** Coloca la fase entre dos elementos del primer nivel del proyecto (null = extremo). */
+  /** Mueve la fase a un grupo (null = al primer nivel del proyecto), al final. */
+  setPhaseGroup(id: string, groupId: string | null): void;
+  /** Coloca la fase entre dos elementos de su mismo lugar (null = extremo). */
   movePhase(id: string, beforeId: string | null, afterId: string | null): void;
   /** Sus tareas no se borran: quedan sin fase. */
   deletePhase(id: string): void;
@@ -176,12 +192,22 @@ export const useTasky = create<TaskyState>()((set, get) => {
     deleteProject: (id) => commit((d) => deleteProject(d, id, now())),
     reorderProject: (orderedIds, movedId) => commit((d) => reorderProject(d, orderedIds, movedId, now())),
 
-    createPhase(projectId, input, taskIds) {
+    createProjectGroup(projectId, input, phaseIds) {
       const id = newId();
-      commit((d) => createPhase(d, projectId, input, id, now(), taskIds));
+      commit((d) => createProjectGroup(d, projectId, input, id, now(), phaseIds));
+      return id;
+    },
+    updateProjectGroup: (id, input) => commit((d) => updateProjectGroup(d, id, input, now())),
+    moveProjectGroup: (id, beforeId, afterId) => commit((d) => moveProjectGroup(d, id, beforeId, afterId, now())),
+    deleteProjectGroup: (id) => commit((d) => deleteProjectGroup(d, id, now())),
+
+    createPhase(projectId, input, taskIds, groupId = null) {
+      const id = newId();
+      commit((d) => createPhase(d, projectId, input, id, now(), taskIds, groupId));
       return id;
     },
     updatePhase: (id, input) => commit((d) => updatePhase(d, id, input, now())),
+    setPhaseGroup: (id, groupId) => commit((d) => setPhaseGroup(d, id, groupId, now())),
     movePhase: (id, beforeId, afterId) => commit((d) => movePhase(d, id, beforeId, afterId, now())),
     deletePhase: (id) => commit((d) => deletePhase(d, id, now())),
 

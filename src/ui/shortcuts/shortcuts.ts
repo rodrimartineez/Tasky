@@ -7,10 +7,11 @@ export const SHORTCUT_GROUPS: { title: string; items: { keys: string[]; label: s
   {
     title: 'Proyecto',
     items: [
-      { keys: ['T'], label: 'Nueva tarea (dentro de una fase, en esa fase)' },
-      { keys: ['F'], label: 'Nueva fase' },
+      { keys: ['T'], label: 'Nueva tarea (dentro de una fase o un grupo, ahí)' },
+      { keys: ['G'], label: 'Nuevo grupo' },
+      { keys: ['F'], label: 'Nueva fase (dentro de un grupo, en ese grupo)' },
       { keys: ['I'], label: 'Nueva idea' },
-      { keys: ['Esc'], label: 'Volver a Inicio (desde una fase, al proyecto)' },
+      { keys: ['Esc'], label: 'Volver a Inicio (desde una fase, a su grupo o al proyecto)' },
     ],
   },
   {

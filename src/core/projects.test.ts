@@ -54,6 +54,7 @@ describe('deleteProject', () => {
           id: 't1',
           projectId: 'p1',
           phaseId: null,
+          groupId: null,
           title: 'x',
           description: '',
           status: 'todo',

@@ -1,8 +1,8 @@
-import type { Idea, IdeaGroup, LocalDate, Phase, Project, ProjectStatus, Task, TaskyData, TimeSlot } from './model';
+import type { Idea, IdeaGroup, LocalDate, Phase, Project, ProjectGroup, ProjectStatus, Task, TaskyData, TimeSlot } from './model';
 import { isScheduledOn } from './dueDates';
 import { compareProjects } from './projects';
 import { compareRank } from './rank';
-import { taskOrder } from './tasks';
+import { groupOfPhase, looseTasksIn, phasesIn, taskOrder, taskPlace } from './tasks';
 import { GENERAL_IDEAS_ID } from './ideas';
 
 export interface ProjectSummary {
@@ -87,45 +87,88 @@ export function findPhase(data: TaskyData, id: string): Phase | undefined {
   return data.phases.find((f) => f.id === id && !f.deletedAt);
 }
 
-/** Fases vivas de un proyecto, en su orden. */
+/** Fases vivas de un proyecto en su orden de trabajo: las de cada grupo, en el lugar del grupo. */
 export function projectPhases(data: TaskyData, projectId: string): Phase[] {
-  return data.phases.filter((f) => f.projectId === projectId && !f.deletedAt).sort(compareRank);
+  const groups = projectGroups(data, projectId).map((g) => ({ rank: g.rank, id: g.id, phases: phasesIn(data, projectId, g.id) }));
+  const loose = phasesIn(data, projectId, null).map((f) => ({ rank: f.rank, id: f.id, phases: [f] }));
+  return [...groups, ...loose].sort(compareRank).flatMap((r) => r.phases);
 }
 
-/** Elemento del primer nivel de un proyecto: una fase (con sus contadores) o una tarea suelta abierta. */
-export type OutlineEntry = { kind: 'phase'; phase: Phase; open: number; done: number } | { kind: 'task'; task: Task };
+export function findProjectGroup(data: TaskyData, id: string): ProjectGroup | undefined {
+  return data.projectGroups.find((g) => g.id === id && !g.deletedAt);
+}
+
+/** Grupos vivos de un proyecto, en su orden. */
+export function projectGroups(data: TaskyData, projectId: string): ProjectGroup[] {
+  return data.projectGroups.filter((g) => g.projectId === projectId && !g.deletedAt).sort(compareRank);
+}
+
+/** Grupo vivo de una fase (undefined = en el primer nivel del proyecto). */
+export const phaseGroup = (data: TaskyData, phase: Phase): ProjectGroup | undefined => {
+  const id = groupOfPhase(data, phase);
+  return id ? findProjectGroup(data, id) : undefined;
+};
+
+/** Grupo vivo de una tarea: el de su fase o, si no tiene fase, el grupo donde está suelta (undefined = ninguno). */
+export function taskGroup(data: TaskyData, task: Task): ProjectGroup | undefined {
+  const place = taskPlace(data, task);
+  const phase = place.phaseId ? findPhase(data, place.phaseId) : undefined;
+  const id = phase ? groupOfPhase(data, phase) : place.groupId;
+  return id ? findProjectGroup(data, id) : undefined;
+}
+
+type Counts = { open: number; done: number };
+export type PhaseEntry = { kind: 'phase'; phase: Phase } & Counts;
+export type GroupEntry = { kind: 'group'; group: ProjectGroup; phases: number } & Counts;
+/** Elemento de una lista del proyecto: un grupo o una fase (con sus contadores de tareas) o una tarea suelta abierta. */
+export type OutlineEntry = GroupEntry | PhaseEntry | { kind: 'task'; task: Task };
+export interface Outline {
+  /** Abiertos, intercalados en su orden. */
+  entries: OutlineEntry[];
+  /** Tareas sueltas completadas, de la más reciente a la más antigua. */
+  done: Task[];
+  /** Grupos y fases completados (todas sus tareas hechas), en su orden. */
+  doneContainers: (GroupEntry | PhaseEntry)[];
+}
+
+/** Un grupo o una fase se completa solo cuando todas sus tareas lo están. */
+const isComplete = (e: Counts) => e.open === 0 && e.done > 0;
+const count = (tasks: Task[]): Counts => ({
+  open: tasks.filter((t) => t.status !== 'done').length,
+  done: tasks.filter((t) => t.status === 'done').length,
+});
+
+const entryItem = (e: OutlineEntry) => (e.kind === 'phase' ? e.phase : e.kind === 'group' ? e.group : e.task);
 
 /**
- * Primer nivel de un proyecto: fases y tareas sueltas abiertas intercaladas en su orden;
- * aparte, las tareas sueltas completadas y las fases completadas. Una fase se completa sola cuando todas sus tareas lo están.
- * Las tareas cuya fase ya no existe cuentan como sueltas.
+ * Contenido de un lugar del proyecto: con null, su primer nivel (grupos, fases sin grupo y tareas sueltas); con un grupo,
+ * sus fases y tareas sueltas. Las tareas cuya fase (o grupo) ya no existe cuentan como sueltas del lugar de arriba.
  */
-export function projectOutline(
-  data: TaskyData,
-  projectId: string,
-): { entries: OutlineEntry[]; done: Task[]; donePhases: Extract<OutlineEntry, { kind: 'phase' }>[] } {
-  const phases = projectPhases(data, projectId);
-  const counts = new Map(phases.map((f) => [f.id, { open: 0, done: 0 }]));
-  const loose: Task[] = [];
-  for (const t of data.tasks) {
-    if (t.projectId !== projectId || t.deletedAt) continue;
-    const c = t.phaseId ? counts.get(t.phaseId) : undefined;
-    if (c) c[t.status === 'done' ? 'done' : 'open']++;
-    else loose.push(t);
-  }
-  const phaseEntries = phases.map((phase) => ({ kind: 'phase' as const, phase, ...counts.get(phase.id)! }));
-  const isComplete = (e: { open: number; done: number }) => e.open === 0 && e.done > 0;
-  const entries: OutlineEntry[] = [
-    ...phaseEntries.filter((e) => !isComplete(e)),
-    ...loose.filter((t) => t.status !== 'done').map((task) => ({ kind: 'task' as const, task })),
-  ];
-  const item = (e: OutlineEntry) => (e.kind === 'phase' ? e.phase : e.task);
+export function outlineOf(data: TaskyData, projectId: string, groupId: string | null): Outline {
+  const tasksOfPhase = (phaseId: string) => data.tasks.filter((t) => t.phaseId === phaseId && !t.deletedAt);
+  const phaseEntry = (phase: Phase): PhaseEntry => ({ kind: 'phase', phase, ...count(tasksOfPhase(phase.id)) });
+  const groups: GroupEntry[] = groupId
+    ? []
+    : projectGroups(data, projectId).map((group) => {
+        const phases = phasesIn(data, projectId, group.id);
+        const tasks = [...phases.flatMap((f) => tasksOfPhase(f.id)), ...looseTasksIn(data, projectId, group.id)];
+        return { kind: 'group', group, phases: phases.length, ...count(tasks) };
+      });
+  const containers = [...groups, ...phasesIn(data, projectId, groupId).map(phaseEntry)];
+  const loose = looseTasksIn(data, projectId, groupId);
+  const byRank = (a: OutlineEntry, b: OutlineEntry) => compareRank(entryItem(a), entryItem(b));
   return {
-    entries: entries.sort((a, b) => compareRank(item(a), item(b))),
+    entries: [
+      ...containers.filter((e) => !isComplete(e)),
+      ...loose.filter((t) => t.status !== 'done').map((task) => ({ kind: 'task' as const, task })),
+    ].sort(byRank),
     done: loose.filter((t) => t.status === 'done').sort(byCompletion),
-    donePhases: phaseEntries.filter(isComplete),
+    doneContainers: containers.filter(isComplete).sort(byRank),
   };
 }
+
+/** Primer nivel de un proyecto: grupos, fases sin grupo y tareas sueltas. */
+export const projectOutline = (data: TaskyData, projectId: string): Outline => outlineOf(data, projectId, null);
 
 /** Tareas de una fase: abiertas en su orden y completadas de la más reciente a la más antigua. */
 export function phaseTasks(data: TaskyData, phaseId: string): { open: Task[]; done: Task[] } {

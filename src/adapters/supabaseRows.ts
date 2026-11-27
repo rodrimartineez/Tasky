@@ -3,12 +3,14 @@ import {
   ideaGroupSchema,
   ideaSchema,
   phaseSchema,
+  projectGroupSchema,
   projectSchema,
   taskSchema,
   type Idea,
   type IdeaGroup,
   type Phase,
   type Project,
+  type ProjectGroup,
   type Task,
 } from '../core/model';
 import type { Authors } from '../core/collab';
@@ -28,6 +30,7 @@ export type Table = keyof SyncRecords;
 /** Nombre de cada colección en Postgres. */
 export const TABLE_NAMES: Record<Table, string> = {
   projects: 'projects',
+  projectGroups: 'project_groups',
   phases: 'phases',
   tasks: 'tasks',
   ideas: 'ideas',
@@ -52,10 +55,22 @@ export const fromRow: { [K in Table]: (r: Row) => SyncRecords[K][number] } = {
       updatedAt: ts(r.updated_at),
       deletedAt: ts(r.deleted_at),
     }),
+  projectGroups: (r) =>
+    projectGroupSchema.parse({
+      id: r.id,
+      projectId: r.project_id,
+      name: r.name,
+      description: r.description,
+      rank: r.rank,
+      createdAt: ts(r.created_at),
+      updatedAt: ts(r.updated_at),
+      deletedAt: ts(r.deleted_at),
+    }),
   phases: (r) =>
     phaseSchema.parse({
       id: r.id,
       projectId: r.project_id,
+      groupId: r.group_id ?? null,
       name: r.name,
       description: r.description,
       rank: r.rank,
@@ -68,6 +83,7 @@ export const fromRow: { [K in Table]: (r: Row) => SyncRecords[K][number] } = {
       id: r.id,
       projectId: r.project_id,
       phaseId: r.phase_id ?? null,
+      groupId: r.group_id ?? null,
       title: r.title,
       description: r.description,
       status: r.status,
@@ -104,7 +120,7 @@ export const fromRow: { [K in Table]: (r: Row) => SyncRecords[K][number] } = {
     }),
 };
 
-const base = (r: Project | Phase | Task | Idea | IdeaGroup) => ({
+const base = (r: Project | ProjectGroup | Phase | Task | Idea | IdeaGroup) => ({
   id: r.id,
   created_at: r.createdAt,
   updated_at: r.updatedAt,
@@ -113,11 +129,20 @@ const base = (r: Project | Phase | Task | Idea | IdeaGroup) => ({
 
 export const toRow = {
   projects: (p: Project) => ({ ...base(p), name: p.name, description: p.description, status: p.status, rank: p.rank }),
-  phases: (f: Phase) => ({ ...base(f), project_id: f.projectId, name: f.name, description: f.description, rank: f.rank }),
+  projectGroups: (g: ProjectGroup) => ({ ...base(g), project_id: g.projectId, name: g.name, description: g.description, rank: g.rank }),
+  phases: (f: Phase) => ({
+    ...base(f),
+    project_id: f.projectId,
+    group_id: f.groupId,
+    name: f.name,
+    description: f.description,
+    rank: f.rank,
+  }),
   tasks: (t: Task) => ({
     ...base(t),
     project_id: t.projectId,
     phase_id: t.phaseId,
+    group_id: t.groupId,
     title: t.title,
     description: t.description,
     status: t.status,
@@ -132,7 +157,7 @@ export const toRow = {
   ideaGroups: (g: IdeaGroup) => ({ ...base(g), name: g.name, description: g.description, rank: g.rank }),
 };
 
-export const TABLES: Table[] = ['projects', 'phases', 'tasks', 'ideas', 'ideaGroups'];
+export const TABLES: Table[] = ['projects', 'projectGroups', 'phases', 'tasks', 'ideas', 'ideaGroups'];
 
 /** Errores de red y de servidor con un mensaje comprensible. */
 export function fail(error: { message: string } | null): never {
@@ -185,7 +210,7 @@ export async function pullRecords(
 export async function pushRecords(client: SupabaseLike, records: SyncRecords): Promise<SyncRecords> {
   const newerOnServer = noRecords();
   for (const table of TABLES) {
-    const list = records[table] as (Project & Phase & Task & Idea & IdeaGroup)[];
+    const list = records[table] as (Project & ProjectGroup & Phase & Task & Idea & IdeaGroup)[];
     for (let i = 0; i < list.length; i += BATCH) {
       const rows = list.slice(i, i + BATCH).map((r) => toRow[table](r));
       // El trigger del servidor ignora (y no devuelve) las filas más antiguas que las suyas.

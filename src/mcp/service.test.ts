@@ -14,7 +14,7 @@ function memoryRepo(initial: SyncRecords) {
     async save(records) {
       saves.push(records);
       const newer = noRecords();
-      for (const table of ['projects', 'phases', 'tasks', 'ideas', 'ideaGroups'] as const) {
+      for (const table of ['projects', 'projectGroups', 'phases', 'tasks', 'ideas', 'ideaGroups'] as const) {
         const list = state[table] as { id: string; updatedAt: string }[];
         for (const rec of records[table] as { id: string; updatedAt: string }[]) {
           const i = list.findIndex((r) => r.id === rec.id);
@@ -43,7 +43,7 @@ function setup() {
   d = createProject(d, { name: 'Deep Lake', description: '' }, 'deep', T0);
   d = createProject(d, { name: 'Borrado', description: '' }, 'gone', T0);
   d = deleteProject(d, 'gone', T0);
-  const mem = memoryRepo({ projects: d.projects, phases: d.phases, tasks: d.tasks, ideas: d.ideas, ideaGroups: d.ideaGroups });
+  const mem = memoryRepo({ projects: d.projects, projectGroups: d.projectGroups, phases: d.phases, tasks: d.tasks, ideas: d.ideas, ideaGroups: d.ideaGroups });
   return { ...mem, service: createTaskyService(mem.repo, env) };
 }
 
@@ -283,5 +283,53 @@ describe('programación y estado «próximo»', () => {
     const { service } = setup();
     expect((await service.createProject({ name: 'Más adelante', status: 'upcoming' })).created).toMatchObject({ status: 'próximo' });
     expect((await service.getProjects()).projects.find((p) => p.name === 'Más adelante')).toMatchObject({ status: 'próximo' });
+  });
+});
+
+describe('grupos de proyecto (MCP)', () => {
+  it('crea grupo, fase dentro del grupo y tarea; get_project muestra la jerarquía', async () => {
+    const { service } = setup();
+    const group = (await service.createProjectGroup('wynot', { name: 'Matemáticas' })).created!;
+    const phase = (await service.createPhase('wynot', { name: 'Tema 1', groupId: group.id })).created!;
+    expect(phase).toMatchObject({ project_group_id: group.id, project_group: 'Matemáticas' });
+    await service.createTask('wynot', { title: 'Hacer ejercicios', phaseId: phase.id });
+    const project = await service.getProject('wynot');
+    expect(project.project_groups).toEqual([
+      { id: group.id, project_id: 'wynot', name: 'Matemáticas', description: '', phases: [{ id: phase.id, name: 'Tema 1' }], loose_tasks: [] },
+    ]);
+    expect(project.open_tasks[0]).toMatchObject({ title: 'Hacer ejercicios', phase: 'Tema 1', group: 'Matemáticas' });
+    expect((await service.createProjectGroup('wynot', { name: 'matematicas' })).already_existed?.id).toBe(group.id);
+  });
+
+  it('mueve fases entre grupos y elimina un grupo sin borrar sus fases', async () => {
+    const { service } = setup();
+    const a = (await service.createProjectGroup('wynot', { name: 'A' })).created!;
+    const b = (await service.createProjectGroup('wynot', { name: 'B' })).created!;
+    const phase = (await service.createPhase('wynot', { name: 'F', groupId: a.id })).created!;
+    expect((await service.updatePhase(phase.id, { groupId: b.id })).updated.project_group_id).toBe(b.id);
+    expect((await service.moveProjectGroup(b.id, 1)).project_groups).toEqual(['B', 'A']);
+    await service.deleteProjectGroup(b.id);
+    const project = await service.getProject('wynot');
+    expect(project.project_groups.map((g) => g.name)).toEqual(['A']);
+    expect(project.phases).toMatchObject([{ id: phase.id, project_group_id: null }]);
+    await expect(service.createPhase('deep', { name: 'X', groupId: a.id })).rejects.toThrow(ToolError);
+  });
+});
+
+describe('convertir proyecto en grupo (MCP)', () => {
+  it('mueve fases, tareas sueltas y completadas al grupo y elimina el origen', async () => {
+    const { service } = setup();
+    const phase = (await service.createPhase('deep', { name: 'Fase' })).created!;
+    await service.createTasks('deep', [{ title: 'Suelta' }, { title: 'Hecha', phaseId: phase.id, status: 'done' }]);
+    const before = (await service.getProject('deep')).completed_tasks[0];
+    const result = await service.moveProjectIntoGroup('deep', 'wynot');
+    expect(result.moved).toEqual({ phases: 1, tasks: 2, completed_tasks: 1, ideas: 0 });
+    expect(result.created_group).toMatchObject({ name: 'Deep Lake', phases: [{ id: phase.id, name: 'Fase' }] });
+    expect(result.created_group.loose_tasks.map((t) => t.title)).toEqual(['Suelta']);
+    const wynot = await service.getProject('wynot');
+    expect(wynot.completed_tasks[0]).toEqual({ ...before, project_id: 'wynot', project: 'Wynot', group: 'Deep Lake', project_group_id: result.created_group.id });
+    expect((await service.getProjects()).projects.some((p) => p.id === 'deep')).toBe(false);
+    const loose = await service.createTask('wynot', { title: 'Nueva en grupo', groupId: result.created_group.id });
+    expect(loose.created).toMatchObject({ group: 'Deep Lake', phase: null });
   });
 });

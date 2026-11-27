@@ -1,6 +1,6 @@
 import type { Phase, TaskyData, Timestamp } from './model';
 import { rankBetween, ranksBetween } from './rank';
-import { rankOf, taskOrder, topLevelOf, updateTask } from './tasks';
+import { groupItemsOf, groupOfPhase, rankOf, taskOrder, topLevelOf, updateTask } from './tasks';
 
 export interface PhaseInput {
   name: string;
@@ -13,9 +13,25 @@ function cleanName(name: string): string {
   return trimmed;
 }
 
+function checkGroup(data: TaskyData, projectId: string, groupId: string | null): string | null {
+  if (groupId && !data.projectGroups.some((g) => g.id === groupId && g.projectId === projectId && !g.deletedAt)) {
+    throw new Error('El grupo no existe en este proyecto.');
+  }
+  return groupId;
+}
+
+/** Elementos de un lugar del proyecto, en su orden: un grupo o, con null, el primer nivel. */
+const itemsIn = (data: TaskyData, projectId: string, groupId: string | null) =>
+  groupId ? groupItemsOf(data, projectId, groupId) : topLevelOf(data, projectId);
+
+/** Rank para ir al final de un lugar del proyecto. */
+const endOf = (data: TaskyData, projectId: string, groupId: string | null) =>
+  rankBetween(itemsIn(data, projectId, groupId).at(-1)?.rank ?? null, null);
+
 /**
- * Crea una fase e incorpora las tareas indicadas (en su orden de trabajo, al final de la fase).
- * La fase ocupa el lugar de la primera de esas tareas en el primer nivel; sin tareas, va al final.
+ * Crea una fase (en un grupo o, con null, en el primer nivel) e incorpora las tareas indicadas (en su orden de trabajo,
+ * al final de la fase). Ocupa el lugar de la primera de esas tareas si está en ese mismo lugar (o en una fase de él);
+ * si no, va al final.
  */
 export function createPhase(
   data: TaskyData,
@@ -24,15 +40,17 @@ export function createPhase(
   id: string,
   now: Timestamp,
   taskIds: string[] = [],
+  groupId: string | null = null,
 ): TaskyData {
+  checkGroup(data, projectId, groupId);
   const chosen = data.tasks.filter((t) => taskIds.includes(t.id) && t.projectId === projectId && !t.deletedAt).sort(taskOrder(data));
-  const top = topLevelOf(data, projectId);
-  // Lugar en el primer nivel de la primera tarea elegida (o de la fase que la contiene).
-  const at = chosen.length > 0 ? top.findIndex((r) => r.id === chosen[0].id || r.id === chosen[0].phaseId) : -1;
-  const rank = at >= 0 ? rankBetween(top[at - 1]?.rank ?? null, top[at].rank) : rankBetween(top.at(-1)?.rank ?? null, null);
+  const items = itemsIn(data, projectId, groupId);
+  const at = chosen.length > 0 ? items.findIndex((r) => r.id === chosen[0].id || r.id === chosen[0].phaseId) : -1;
+  const rank = at >= 0 ? rankBetween(items[at - 1]?.rank ?? null, items[at].rank) : endOf(data, projectId, groupId);
   const phase: Phase = {
     id,
     projectId,
+    groupId,
     name: cleanName(input.name),
     description: input.description.trim(),
     rank,
@@ -56,24 +74,34 @@ export function updatePhase(data: TaskyData, id: string, input: PhaseInput, now:
   };
 }
 
-/** Coloca la fase entre dos elementos del primer nivel del proyecto (fases o tareas sueltas; null = extremo). */
+/** Mete la fase en un grupo del proyecto (null = la saca al primer nivel), al final de su nuevo lugar. */
+export function setPhaseGroup(data: TaskyData, id: string, groupId: string | null, now: Timestamp): TaskyData {
+  const phase = data.phases.find((f) => f.id === id && !f.deletedAt);
+  if (!phase || groupOfPhase(data, phase) === groupId) return data;
+  checkGroup(data, phase.projectId, groupId);
+  const rank = endOf(data, phase.projectId, groupId);
+  return { ...data, phases: data.phases.map((f) => (f.id === id ? { ...f, groupId, rank, updatedAt: now } : f)) };
+}
+
+/** Coloca la fase entre dos elementos de su mismo lugar (grupos, fases o tareas sueltas; null = extremo). */
 export function movePhase(data: TaskyData, id: string, beforeId: string | null, afterId: string | null, now: Timestamp): TaskyData {
   const rank = rankBetween(rankOf(data, beforeId), rankOf(data, afterId));
   return { ...data, phases: data.phases.map((f) => (f.id === id ? { ...f, rank, updatedAt: now } : f)) };
 }
 
-/** Borra la fase sin borrar sus tareas: quedan sueltas, en el lugar que ocupaba la fase y en su mismo orden. */
+/** Borra la fase sin borrar sus tareas: quedan sueltas en su mismo orden, en el lugar que ocupaba la fase (en su grupo, si tenía). */
 export function deletePhase(data: TaskyData, id: string, now: Timestamp): TaskyData {
   const phase = data.phases.find((f) => f.id === id && !f.deletedAt);
   if (!phase) return data;
-  const top = topLevelOf(data, phase.projectId);
-  const at = top.findIndex((r) => r.id === id);
+  const groupId = groupOfPhase(data, phase);
+  const items = itemsIn(data, phase.projectId, groupId);
+  const at = items.findIndex((r) => r.id === id);
   const members = data.tasks.filter((t) => t.phaseId === id && !t.deletedAt).sort(taskOrder(data));
-  const ranks = ranksBetween(top[at - 1]?.rank ?? null, top[at + 1]?.rank ?? null, members.length);
+  const ranks = ranksBetween(items[at - 1]?.rank ?? null, items[at + 1]?.rank ?? null, members.length);
   const newRank = new Map(members.map((t, i) => [t.id, ranks[i]]));
   return {
     ...data,
     phases: data.phases.map((f) => (f.id === id ? { ...f, deletedAt: now, updatedAt: now } : f)),
-    tasks: data.tasks.map((t) => (newRank.has(t.id) ? { ...t, phaseId: null, rank: newRank.get(t.id)!, updatedAt: now } : t)),
+    tasks: data.tasks.map((t) => (newRank.has(t.id) ? { ...t, phaseId: null, groupId, rank: newRank.get(t.id)!, updatedAt: now } : t)),
   };
 }

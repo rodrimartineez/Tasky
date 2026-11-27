@@ -88,13 +88,14 @@ export function reorderProject(data: TaskyData, orderedIds: string[], movedId: s
   };
 }
 
-/** Borrado lógico en cascada: el proyecto y todas sus fases, tareas e ideas. */
+/** Borrado lógico en cascada: el proyecto y todos sus grupos, fases, tareas e ideas. */
 export function deleteProject(data: TaskyData, id: string, now: Timestamp): TaskyData {
   const tomb = <T extends { deletedAt: Timestamp | null; updatedAt: Timestamp }>(r: T): T =>
     r.deletedAt ? r : { ...r, deletedAt: now, updatedAt: now };
   return {
     ...data,
     projects: data.projects.map((p) => (p.id === id ? tomb(p) : p)),
+    projectGroups: data.projectGroups.map((g) => (g.projectId === id ? tomb(g) : g)),
     phases: data.phases.map((f) => (f.projectId === id ? tomb(f) : f)),
     tasks: data.tasks.map((t) => (t.projectId === id ? tomb(t) : t)),
     ideas: data.ideas.map((i) => (i.projectId === id ? tomb(i) : i)),
