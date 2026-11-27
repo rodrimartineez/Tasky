@@ -407,6 +407,92 @@ export class Renderer {
   }
 
   /** Añade una partícula si cabe (tope según la calidad). */
+  /**
+   * Látigo: una cuerda de cuero que se desenrolla ondulando del héroe hacia fuera, al rojo hacia la punta, con un
+   * halo de brasas y un chasquido que suelta chispas; la Lanceta la tiñe de sangre.
+   */
+  private drawLash(pool: Pool, shot: Projectile, s: Sprite, t: number, blood: boolean) {
+    const [body, hot, tip] = blood ? [0x8a0f24, 0xff2f4a, 0xffc0c8] : [0x8a3a1a, 0xff7a24, 0xffe08a];
+    s.visible = false;
+    const sweep = 1 - (1 - Math.min(1, t * 3)) ** 2;
+    const fade = (1 - t) ** 0.8 * (shot.radius > 60 ? 0.7 : 1);
+    const dir = Math.cos(shot.angle) < 0 ? -1 : 1;
+    const half = shot.radius / 2;
+    const beads = 34;
+    let tipY = shot.y;
+    for (let i = 0; i < beads; i++) {
+      const u = i / (beads - 1);
+      if (u > sweep) break;
+      const x = shot.x + dir * (u * 2 - 1) * half;
+      const y = shot.y + Math.sin(u * Math.PI * 2.2 - t * 14) * (2 + 7 * u) * (1 - t);
+      tipY = y;
+      if (i % 4 === 0) {
+        const glow = pool.next(this.tex('disc'));
+        glow.position.set(x, y);
+        glow.scale.set((4 + 3 * u) / CIRCLE_RADIUS);
+        glow.tint = hot;
+        glow.alpha = fade * 0.22;
+        glow.blendMode = 'add';
+      }
+      const bead = pool.next(this.tex('disc'));
+      bead.position.set(x, y);
+      bead.scale.set((1.9 - 0.9 * u) / CIRCLE_RADIUS);
+      bead.tint = u > 0.8 ? tip : u > 0.35 ? hot : body;
+      bead.alpha = fade;
+    }
+    // Chasquido en la punta: destello y, al restallar, unas brasas.
+    const tipX = shot.x + dir * (sweep * 2 - 1) * half;
+    const flare = pool.next(this.tex('disc'));
+    flare.position.set(tipX, tipY);
+    flare.scale.set((3 + 3 * sweep) / CIRCLE_RADIUS);
+    flare.tint = tip;
+    flare.alpha = fade * 0.8;
+    flare.blendMode = 'add';
+    if (sweep > 0.9 && t < 0.5 && Math.random() < 0.5) {
+      const a = (Math.random() - 0.5) * 2.4 + (dir > 0 ? 0 : Math.PI);
+      const v = 60 + Math.random() * 90;
+      this.spark(tipX, tipY, Math.cos(a) * v, Math.sin(a) * v - 20, 0.25 + Math.random() * 0.2, Math.random() < 0.5 ? tip : hot, { drag: 4, grav: 140 });
+    }
+  }
+
+  /**
+   * Viento Sacro: media luna turquesa que barre rápida, con rachas de viento que salen disparadas por delante y un
+   * filo cian; el Vendaval la vuelve carmesí y rosa.
+   */
+  private drawGust(pool: Pool, shot: Projectile, s: Sprite, t: number, crimson: boolean) {
+    const [body, edgeTint, streakTint] = crimson ? [0xff2d6e, 0xff8cc0, 0xffd0e4] : [0x1fb8b0, 0x6ff6ff, 0xc8fff6];
+    const sweep = 1 - (1 - Math.min(1, t * 2.5)) ** 2;
+    const fade = (1 - t) ** 0.7 * (shot.radius > 60 ? 0.55 : 1);
+    const sx = (shot.radius * 1.2) / 20;
+    s.scale.set(sx * (0.5 + 0.5 * sweep), sx * (1.1 - 0.4 * t));
+    s.tint = body;
+    s.alpha = fade * 0.8;
+    s.blendMode = 'add';
+    const edge = pool.next(this.tex(shot.sprite));
+    edge.position.set(shot.x, shot.y);
+    edge.rotation = shot.angle;
+    edge.scale.set(s.scale.x * 1.15, s.scale.y * 0.7);
+    edge.tint = edgeTint;
+    edge.alpha = fade * 0.5;
+    edge.blendMode = 'add';
+    // Rachas: líneas finas que se adelantan al tajo y se estiran al irse.
+    const cos = Math.cos(shot.angle);
+    const sin = Math.sin(shot.angle);
+    const r = shot.radius * 0.5;
+    for (let i = 0; i < 4; i++) {
+      const lane = (i - 1.5) * r * 0.32;
+      const push = r * (0.1 + 0.9 * sweep) - Math.abs(lane) * 0.4 + (i % 2) * 6;
+      const len = r * (0.35 + 0.4 * t) * (i % 2 ? 0.7 : 1);
+      const line = pool.next(this.tex('px'));
+      line.position.set(shot.x + cos * push - sin * lane, shot.y + sin * push + cos * lane);
+      line.rotation = shot.angle;
+      line.scale.set(len / 2, 0.5);
+      line.tint = streakTint;
+      line.alpha = fade * 0.7;
+      line.blendMode = 'add';
+    }
+  }
+
   private spark(x: number, y: number, vx: number, vy: number, life: number, color: number, opts: Partial<Particle> = {}) {
     if (this.particles.length < this.cap(MAX_PARTICLES)) this.particles.push({ x, y, vx, vy, life, color, ...opts });
   }
@@ -1118,19 +1204,9 @@ export class Renderer {
         if (shot.sprite === 'x_finisher') s.scale.set(Math.max(1, shot.radius / 40) * (1 + t * 0.5), shot.radius / 11);
         else if (shot.sprite === 'x_victory') s.scale.set(shot.radius / 20, shot.radius / 14);
         else {
-          // Estela de Látigo / Viento Sacro: media luna alargada que barre hacia fuera y se desvanece.
-          const sweep = 1 - (1 - Math.min(1, t * 2.5)) ** 2;
-          const sx = (shot.radius * 1.2) / 20;
-          s.scale.set(sx * (0.5 + 0.5 * sweep), sx * (1.1 - 0.4 * t));
-          s.alpha = (1 - t) ** 0.7 * (shot.radius > 60 ? 0.5 : 1);
-          // Filo brillante que se adelanta al tajo y lo deja ardiendo.
-          const edge = pool.next(this.tex(shot.sprite));
-          edge.position.set(shot.x, shot.y);
-          edge.rotation = shot.angle;
-          edge.scale.set(s.scale.x * 1.12, s.scale.y * 1.12);
-          edge.tint = 0xffffff;
-          edge.alpha = s.alpha * 0.55;
-          edge.blendMode = 'add';
+          const id = this.weaponIds[shot.weapon];
+          if (id === 'vento' || id === 'galedance') this.drawGust(pool, shot, s, t, id === 'galedance');
+          else this.drawLash(pool, shot, s, t, id === 'galewhip');
           return;
         }
         // Muy ampliado se vuelve translúcido para no tapar la escena.

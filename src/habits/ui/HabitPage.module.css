@@ -272,18 +272,33 @@
   }
 }
 
-.weeks {
+/* Historial semanal: una fila por mes con sus semanas. */
+.weekCal {
   display: grid;
-  grid-template-columns: repeat(13, 1fr);
-  gap: 4px;
-  max-width: 460px;
+  grid-template-columns: 30px 1fr;
+  gap: 6px 5px;
+  align-items: center;
+}
+.weekRow {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 5px;
+}
+.day.weekCell {
+  aspect-ratio: auto;
+  height: 46px;
+  grid-template-rows: auto auto;
+  align-content: center;
+  gap: 1px;
+}
+.weekCell b {
+  font-size: 14px;
+}
+.weekCell small {
+  font-size: 10px;
+  opacity: 0.8;
 }
 
-.cell {
-  aspect-ratio: 1;
-  border-radius: 2px;
-  background: var(--hb-surface-2);
-}
 .none {
   background: var(--hb-surface-1);
   opacity: 0.5;

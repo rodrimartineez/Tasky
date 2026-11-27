@@ -197,20 +197,9 @@ function DailyHistory({ results, today }: { results: PeriodResult[]; today: stri
   const weeks = Array.from({ length: WEEKS_SHOWN }, (_, w) => Array.from({ length: 7 }, (_, d) => addDays(firstMonday, w * 7 + d)));
   const shown = weeks.flat().map((day) => byKey.get(day)).filter((r): r is PeriodResult => !!r && r.closed);
   const met = shown.filter((r) => r.met).length;
-  const share = shown.length > 0 ? met / shown.length : 0;
   return (
     <div className={styles.calWrap}>
-      {shown.length > 0 && (
-        <div className={styles.calSummary}>
-          <span>
-            <b>{met}</b> de {shown.length} días cumplidos en las últimas {WEEKS_SHOWN} semanas
-          </span>
-          <span className={styles.calBar} aria-hidden>
-            <span style={{ width: `${share * 100}%` }} />
-          </span>
-          <b className={styles.calPct}>{Math.round(share * 100)} %</b>
-        </div>
-      )}
+      <HistorySummary met={met} total={shown.length} what="días cumplidos" span={`las últimas ${WEEKS_SHOWN} semanas`} />
       <div className={styles.cal} role="img" aria-label={`Historial de las últimas ${WEEKS_SHOWN} semanas: ${met} días cumplidos`}>
         <span />
         {WEEKDAYS.map((d) => (
@@ -252,15 +241,68 @@ function DailyHistory({ results, today }: { results: PeriodResult[]; today: stri
   );
 }
 
+/** Resumen encima del historial: cumplidos del periodo mostrado, con barra y porcentaje. */
+function HistorySummary({ met, total, what, span }: { met: number; total: number; what: string; span: string }) {
+  if (total === 0) return null;
+  const share = met / total;
+  return (
+    <div className={styles.calSummary}>
+      <span>
+        <b>{met}</b> de {total} {what} en {span}
+      </span>
+      <span className={styles.calBar} aria-hidden>
+        <span style={{ width: `${share * 100}%` }} />
+      </span>
+      <b className={styles.calPct}>{Math.round(share * 100)} %</b>
+    </div>
+  );
+}
+
+const WEEKS_SHOWN_WEEKLY = 26;
+
+/**
+ * Historial semanal con el mismo estilo que el diario: una fila por mes con sus semanas (día en que empiezan y lo
+ * registrado frente al objetivo); las cumplidas brillan y las seguidas se unen en una tira.
+ */
 function WeeklyHistory({ results, today }: { results: PeriodResult[]; today: string }) {
   const byKey = new Map(results.map((r) => [r.key, r]));
   const current = periodKey('weekly', today);
-  const keys = Array.from({ length: 26 }, (_, i) => `W${addDays(periodStart(current), -7 * (25 - i))}`);
+  const keys = Array.from({ length: WEEKS_SHOWN_WEEKLY }, (_, i) => `W${addDays(periodStart(current), -7 * (WEEKS_SHOWN_WEEKLY - 1 - i))}`);
+  const months: { month: string; keys: string[] }[] = [];
+  for (const key of keys) {
+    const month = periodStart(key).slice(0, 7);
+    if (months.at(-1)?.month === month) months.at(-1)!.keys.push(key);
+    else months.push({ month, keys: [key] });
+  }
+  const shown = keys.map((k) => byKey.get(k)).filter((r): r is PeriodResult => !!r && r.closed);
+  const met = shown.filter((r) => r.met).length;
   return (
-    <div className={styles.weeks} role="img" aria-label="Historial de las últimas 26 semanas">
-      {keys.map((key) => (
-        <span key={key} className={`${styles.cell} ${cellClass(byKey.get(key))}`} title={cellTitle(byKey.get(key), `Semana del ${formatDay(periodStart(key))}`)} />
-      ))}
+    <div className={styles.calWrap}>
+      <HistorySummary met={met} total={shown.length} what="semanas cumplidas" span={`las últimas ${WEEKS_SHOWN_WEEKLY} semanas`} />
+      <div className={styles.weekCal} role="img" aria-label={`Historial de las últimas ${WEEKS_SHOWN_WEEKLY} semanas: ${met} cumplidas`}>
+        {months.map(({ month, keys: row }) => [
+          <span key={month} className={styles.calMonth}>
+            {monthShort.format(new Date(`${month}-15T12:00:00Z`)).replace('.', '')}
+          </span>,
+          <span key={`${month}-weeks`} className={styles.weekRow}>
+            {row.map((key, i) => {
+              const r = byKey.get(key);
+              const next = row[i + 1] && byKey.get(row[i + 1]);
+              const joinNext = (keepsStreak(r) || (!!r && r.met)) && !!next && (keepsStreak(next) || next.met);
+              return (
+                <span
+                  key={key}
+                  className={`${styles.day} ${styles.weekCell} ${cellClass(r)} ${joinNext ? styles.joinNext : ''} ${key === current ? styles.today : ''}`}
+                  title={cellTitle(r, `Semana del ${formatDay(periodStart(key))}`)}
+                >
+                  <b>{Number(periodStart(key).slice(8))}</b>
+                  {r && <small>{`${r.amount}/${r.target}`}</small>}
+                </span>
+              );
+            })}
+          </span>,
+        ])}
+      </div>
     </div>
   );
 }
