@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ENEMY_BY_ID } from '../content/enemies';
-import { EVOLUTIONS, type EvolutionDef } from '../content/evolutions';
+import { EVOLUTIONS, passiveLevelNeeded, type EvolutionDef } from '../content/evolutions';
 import { PASSIVE_BY_ID, PASSIVES } from '../content/passives';
 import { WITHERED_WOODS } from '../content/stages';
 import { UPGRADE_BY_ID, withUpgrades } from '../content/upgrades';
@@ -61,7 +61,7 @@ function recipeWorld(evo: EvolutionDef, skip?: string, level = maxLevelOf(evo.we
   const w = createWorld(config(evo.weapon === 'spark' ? 'lance' : 'spark'));
   put(w, evo.weapon, level);
   if (evo.union && evo.union !== skip) put(w, evo.union);
-  for (const id of evo.passives) if (id !== skip) passive(w, id, passiveLevel ?? (evo.maxed ? passiveMax(id) : 1));
+  for (const id of evo.passives) if (id !== skip) passive(w, id, passiveLevel ?? passiveLevelNeeded(evo, passiveMax(id)));
   return w;
 }
 
@@ -98,7 +98,7 @@ describe('catálogo cerrado', () => {
     for (const p of PASSIVES) expect(EVOLUTIONS.some((e) => e.passives.includes(p.id)), p.name).toBe(true);
     const recipe = (id: string) => {
       const e = EVOLUTIONS.find((x) => x.def.id === id)!;
-      return [e.weapon, ...(e.union ? [e.union] : []), ...e.passives, ...(e.maxed ? ['max'] : [])];
+      return [e.weapon, ...(e.union ? [e.union] : []), ...e.passives, ...(e.maxed ? ['max'] : []), ...(e.level ? [`nivel ${e.level}`] : [])];
     };
     expect(recipe('galewhip')).toEqual(['whip', 'oakheart']);
     expect(recipe('constellation')).toEqual(['spark', 'hourglass']);
@@ -113,8 +113,8 @@ describe('catálogo cerrado', () => {
     expect(recipe('tempest')).toEqual(['storm', 'horn']);
     expect(recipe('fullmoon')).toEqual(['pentagram', 'tome']);
     expect(recipe('cataract')).toEqual(['mana', 'skull']);
-    expect(recipe('eternal')).toEqual(['clock', 'silverring', 'goldring', 'max']);
-    expect(recipe('thornmail')).toEqual(['laurel', 'medalleft', 'medalright', 'max']);
+    expect(recipe('eternal')).toEqual(['clock', 'silverring', 'goldring', 'nivel 5']);
+    expect(recipe('thornmail')).toEqual(['laurel', 'medalleft', 'medalright', 'nivel 5']);
     expect(recipe('galedance')).toEqual(['vento', 'galewhip']);
     expect(recipe('sole')).toEqual(['victory', 'puzzlebox', 'max']);
     expect(recipe('muspell')).toEqual(['misspell', 'puzzlebox', 'max']);
@@ -152,7 +152,7 @@ describe('evoluciones', () => {
     it(`${base.name} → ${evo.def.name}, solo con nivel máximo y toda su receta`, () => {
       // Sin cualquiera de sus ingredientes, sin el nivel máximo o (si la receta lo pide) sin las pasivas al máximo, no evoluciona.
       const incomplete = [...missing.map((id) => recipeWorld(evo, id)), recipeWorld(evo, undefined, maxLevelOf(evo.weapon) - 1)];
-      if (evo.maxed) incomplete.push(recipeWorld(evo, undefined, undefined, 1));
+      if (evo.maxed || evo.level) incomplete.push(recipeWorld(evo, undefined, undefined, 1));
       for (const w of incomplete) {
         expect(evolutionReady(w, w.player.weapons[1])).toBeNull();
         openChest(w);
@@ -325,7 +325,7 @@ describe('mecánicas propias de las armas', () => {
     v.player.shield = 0;
     const before = v.player.hp;
     hurt(v, 50);
-    expect(before - v.player.hp).toBe(10);
+    expect(before - v.player.hp).toBe(8);
     v.player.shield = 1;
     v.player.hurtTimer = 0;
     hurt(v, 50);

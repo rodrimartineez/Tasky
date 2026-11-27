@@ -5,7 +5,7 @@ import type { WeaponDef, WeaponStats } from '../sim/types';
  * que pida su receta se convierte, al abrir el siguiente cofre, en su versión evolucionada: ocupa el mismo hueco,
  * hereda el comportamiento del arma base (`evolvedFrom`, salvo que sim/weapons.ts tenga uno propio con su id) y no
  * tiene más niveles. Recetas:
- * - `passives`: pasivas necesarias; a cualquier nivel salvo con `maxed`, que las pide al máximo.
+ * - `passives`: pasivas necesarias; a cualquier nivel salvo con `maxed` (al máximo) o `level` (a ese nivel).
  * - `union`: segunda arma (o evolución), también al máximo, que se fusiona con la primera (libera su hueco).
  * El Atún Cambiante evoluciona aparte (sin pasiva, eligiendo forma: sim/upgrades.ts).
  * No importa de `weapons.ts` (que sí las importa a ellas) para evitar un ciclo.
@@ -16,12 +16,14 @@ export interface EvolutionDef {
   passives: string[];
   /** Las pasivas tienen que estar a su nivel máximo. */
   maxed?: boolean;
+  /** Nivel que tienen que tener las pasivas (en lugar del máximo). */
+  level?: number;
   /** Arma que se fusiona con la base (las dos al nivel máximo). */
   union?: string;
   def: WeaponDef;
 }
 
-type Recipe = { passives?: string[]; maxed?: boolean; union?: string };
+type Recipe = { passives?: string[]; maxed?: boolean; level?: number; union?: string };
 
 const s = (stats: Partial<WeaponStats>): WeaponStats => ({ damage: 0, cooldown: 1, amount: 1, pierce: 999, area: 0, speed: 0, duration: 0, knockback: 0, ...stats });
 
@@ -36,6 +38,7 @@ function evolution(
     weapon,
     passives: r.passives ?? [],
     ...(r.maxed ? { maxed: true } : {}),
+    ...(r.level ? { level: r.level } : {}),
     ...(r.union ? { union: r.union } : {}),
     def: { ...def, evolvedFrom: weapon, base: s(base), levels: [] },
   };
@@ -122,15 +125,16 @@ export const EVOLUTIONS: EvolutionDef[] = [
   ),
   evolution(
     'clock',
-    { passives: ['silverring', 'goldring'], maxed: true },
+    // Las dos recetas de dos pasivas las piden al nivel 5 (antes al 9, el máximo) y dan evoluciones más fuertes (27/11/2026).
+    { passives: ['silverring', 'goldring'], level: 5 },
     { id: 'eternal', name: 'Corredor del Infinito', description: 'Congela y, en cada vuelta completa, parte por la mitad la vida de todo lo que hay en pantalla.', icon: 'w_eternal' },
-    { cooldown: 0.75, area: 220, duration: 6 },
+    { cooldown: 0.6, area: 260, duration: 8 },
   ),
   evolution(
     'laurel',
-    { passives: ['medalleft', 'medalright'], maxed: true },
-    { id: 'thornmail', name: 'Sudario Carmesí', description: 'Tres cargas; ningún golpe te quita más de 10 de vida y cada carga gastada estalla devolviendo el daño.', icon: 'w_thornmail', color: 0xff5a6a },
-    { cooldown: 6, amount: 3, area: 40, knockback: 20 },
+    { passives: ['medalleft', 'medalright'], level: 5 },
+    { id: 'thornmail', name: 'Sudario Carmesí', description: 'Cuatro cargas que se recargan rápido; ningún golpe te quita más de 8 de vida y cada carga gastada estalla devolviendo el daño.', icon: 'w_thornmail', color: 0xff5a6a },
+    { cooldown: 4.5, amount: 4, area: 55, knockback: 30 },
   ),
   evolution(
     'vento',
@@ -192,6 +196,9 @@ export const EVOLUTIONS: EvolutionDef[] = [
 export const EVOLUTION_BY_WEAPON = new Map<string, EvolutionDef>(
   EVOLUTIONS.flatMap((e) => (e.union ? [[e.weapon, e] as const, [e.union, e] as const] : [[e.weapon, e] as const])),
 );
+
+/** Nivel que tiene que tener cada pasiva de la receta (`max` = su nivel máximo). */
+export const passiveLevelNeeded = (e: EvolutionDef, max: number) => e.level ?? (e.maxed ? max : 1);
 
 /** Lo que pide una evolución además del arma base al máximo: armas (fusión) y pasivas. */
 export function ingredientsOf(e: EvolutionDef): { kind: 'passive' | 'weapon'; id: string }[] {

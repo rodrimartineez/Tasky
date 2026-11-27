@@ -321,7 +321,7 @@ export function damageEnemy(w: World, e: Enemy, base: number, weapon: number, kx
 }
 
 /** Sudario Carmesí: tope de daño por golpe y represalia (daño recibido, con tope, +10 % por nivel de Coraza). */
-const SHROUD = { cap: 10, retaliationCap: 100, armorBonus: 0.1 };
+const SHROUD = { cap: 8, retaliationCap: 150, armorBonus: 0.1 };
 
 /**
  * Golpe al jugador. El Laurel (y el Sudario) gastan una carga en vez de recibir el daño; el Sudario además limita el

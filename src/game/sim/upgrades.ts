@@ -1,4 +1,4 @@
-import { EVOLUTION_BY_WEAPON, EVOLUTIONS, type EvolutionDef } from '../content/evolutions';
+import { EVOLUTION_BY_WEAPON, EVOLUTIONS, passiveLevelNeeded, type EvolutionDef } from '../content/evolutions';
 import { PASSIVE_BY_ID, PASSIVES } from '../content/passives';
 import { maxLevelOf, TUNA_IDS, WEAPON_BY_ID, WEAPONS, weaponStatsAt } from '../content/weapons';
 import { emit, heal, rand } from './core';
@@ -123,7 +123,7 @@ function recipeMet(w: World, evo: EvolutionDef, assume?: { id: string; level: nu
   const level = (id: string) => (assume?.id === id ? assume.level : w.player.spentPassives?.includes(id) ? (PASSIVE_BY_ID.get(id)?.maxLevel ?? 1) : passiveLevel(w, id));
   return (
     [evo.weapon, ...(evo.union ? [evo.union] : [])].every((id) => (assume?.id === id && assume.level >= maxLevelOf(id)) || maxedWeapon(w, id)) &&
-    evo.passives.every((id) => level(id) >= (evo.maxed ? (PASSIVE_BY_ID.get(id)?.maxLevel ?? 1) : 1))
+    evo.passives.every((id) => level(id) >= passiveLevelNeeded(evo, PASSIVE_BY_ID.get(id)?.maxLevel ?? 1))
   );
 }
 

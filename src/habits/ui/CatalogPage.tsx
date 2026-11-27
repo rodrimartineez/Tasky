@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, Plus } from 'lucide-react';
 import { GAME_BUILD } from '../core/release';
 import { evolutionEntries, passiveEntries, recipeText, WEAPON_FIGURE_LABELS, weaponEntries, type WeaponFigures } from '../../game/content/catalog';
+import { passiveLevelNeeded } from '../../game/content/evolutions';
 import { PASSIVE_BY_ID } from '../../game/content/passives';
 import { WEAPON_BY_ID } from '../../game/content/weapons';
 import { spriteDataUrl } from '../../game/sprites/atlas';
@@ -168,7 +169,9 @@ export function CatalogPage() {
                     <Plus className={styles.op} />
                     <Icon name={i.icon} size={28} /> {i.name}
                     {i.id === e.evolution.union && <small>nivel {WEAPON_BY_ID.get(i.id)!.levels.length + 1}</small>}
-                    {i.kind === 'passive' && e.evolution.maxed && <small>nivel {PASSIVE_BY_ID.get(i.id)!.maxLevel}</small>}
+                    {i.kind === 'passive' && passiveLevelNeeded(e.evolution, PASSIVE_BY_ID.get(i.id)!.maxLevel) > 1 && (
+                      <small>nivel {passiveLevelNeeded(e.evolution, PASSIVE_BY_ID.get(i.id)!.maxLevel)}</small>
+                    )}
                   </span>
                 ))}
                 <ArrowRight className={styles.op} />

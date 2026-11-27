@@ -250,7 +250,7 @@ export const WEAPONS: WeaponDef[] = [
     attack: 'Haz congelante',
     icon: 'w_clock',
     // No hace daño: `duration` = segundos de congelación; `area` = largo del haz.
-    base: s({ cooldown: 1.5, area: 190, duration: 2 }),
+    base: s({ cooldown: 1.2, area: 220, duration: 2.5 }),
     levels: [
       L('Congela 1 s más', { duration: 1 }),
       L('Dispara más a menudo', { cooldown: -0.4 }),
@@ -267,13 +267,13 @@ export const WEAPONS: WeaponDef[] = [
     attack: 'Escudo',
     icon: 'w_laurel',
     // `amount` = cargas del escudo; `duration` = invulnerabilidad extra tras gastar una; `cooldown` = recarga.
-    base: s({ cooldown: 7.5, amount: 1, pierce: 0 }),
+    base: s({ cooldown: 6, amount: 1, pierce: 0 }),
     levels: [
-      L('Se recarga antes y protege 0,2 s más', { cooldown: -0.4, duration: 0.2 }),
-      L('Se recarga antes y protege 0,2 s más', { cooldown: -0.4, duration: 0.2 }),
+      L('Se recarga antes y protege 0,25 s más', { cooldown: -0.5, duration: 0.25 }),
+      L('Se recarga antes y protege 0,25 s más', { cooldown: -0.5, duration: 0.25 }),
       L('Una carga más', { amount: 1 }),
-      L('Se recarga antes y protege 0,2 s más', { cooldown: -0.4, duration: 0.2 }),
-      L('Se recarga antes y protege 0,2 s más', { cooldown: -0.4, duration: 0.2 }),
+      L('Se recarga antes y protege 0,25 s más', { cooldown: -0.5, duration: 0.25 }),
+      L('Se recarga antes y protege 0,25 s más', { cooldown: -0.5, duration: 0.25 }),
       L('Una carga más', { amount: 1 }),
     ],
   },
