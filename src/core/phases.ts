@@ -79,6 +79,7 @@ export function setPhaseGroup(data: TaskyData, id: string, groupId: string | nul
   const phase = data.phases.find((f) => f.id === id && !f.deletedAt);
   if (!phase || groupOfPhase(data, phase) === groupId) return data;
   checkGroup(data, phase.projectId, groupId);
+  if (groupId && groupOfPhase(data, phase)) throw new Error('La fase ya pertenece a otro grupo: sácala de él antes de moverla a otro.');
   const rank = endOf(data, phase.projectId, groupId);
   return { ...data, phases: data.phases.map((f) => (f.id === id ? { ...f, groupId, rank, updatedAt: now } : f)) };
 }

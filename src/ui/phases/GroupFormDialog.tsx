@@ -32,8 +32,11 @@ function GroupForm({ projectId, group, onDone }: { projectId: string; group?: Pr
   const data = useTasky((s) => s.data);
   const createProjectGroup = useTasky((s) => s.createProjectGroup);
   const updateProjectGroup = useTasky((s) => s.updateProjectGroup);
-  /** Al crear: fases del proyecto que se pueden incorporar (también las de otro grupo, que cambian de grupo). */
-  const candidates = useMemo(() => (group ? [] : projectPhases(data, projectId)), [data, projectId, group]);
+  /** Al crear: fases del proyecto que se pueden incorporar (solo las que no están en otro grupo). */
+  const candidates = useMemo(
+    () => (group ? [] : projectPhases(data, projectId).filter((f) => !phaseGroup(data, f))),
+    [data, projectId, group],
+  );
   const canSubmit = name.trim().length > 0;
 
   const submit = () => {
@@ -83,18 +86,14 @@ function GroupForm({ projectId, group, onDone }: { projectId: string; group?: Pr
             <span className={form.hint}>{selected.length > 0 ? `${selected.length} seleccionadas` : 'Opcional'}</span>
           </legend>
           <ul className={styles.list}>
-            {candidates.map((phase) => {
-              const current = phaseGroup(data, phase);
-              return (
-                <li key={phase.id}>
-                  <label className={styles.option}>
-                    <input type="checkbox" checked={selected.includes(phase.id)} onChange={() => toggle(phase.id)} />
-                    <span className={styles.optionTitle}>{phase.name}</span>
-                    {current && <span className={styles.optionPhase}>{current.name}</span>}
-                  </label>
-                </li>
-              );
-            })}
+            {candidates.map((phase) => (
+              <li key={phase.id}>
+                <label className={styles.option}>
+                  <input type="checkbox" checked={selected.includes(phase.id)} onChange={() => toggle(phase.id)} />
+                  <span className={styles.optionTitle}>{phase.name}</span>
+                </label>
+              </li>
+            ))}
           </ul>
         </fieldset>
       )}

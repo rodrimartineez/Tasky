@@ -131,12 +131,12 @@ describe('grupos de proyecto', () => {
     expect(() => moveProjectIntoGroup(d, 'p', 'p', 'g2', T1)).toThrow();
   });
 
-  it('un grupo con todas sus tareas hechas pasa a completados', () => {
+  it('un grupo con todas sus tareas hechas sigue activo (no se completa)', () => {
     let d = updateTask(setup(), 'a', { status: 'done' }, T1);
     d = updateTask(d, 'b', { status: 'done' }, T1);
     const { entries, doneContainers } = projectOutline(d, 'p');
-    expect(entries.some((e) => e.kind === 'group')).toBe(false);
-    expect(doneContainers.map((e) => e.kind)).toEqual(['group']);
+    expect(entries.some((e) => e.kind === 'group')).toBe(true);
+    expect(doneContainers.some((e) => (e as { kind: string }).kind === 'group')).toBe(false);
   });
 
   it('si el grupo se borra en otro dispositivo sus fases cuentan como sin grupo', () => {

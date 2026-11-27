@@ -1,7 +1,7 @@
 import type { ProjectGroup, TaskyData, Timestamp } from './model';
 import { compareRank, rankBetween, ranksBetween, ranksFor } from './rank';
 import { deleteProject } from './projects';
-import { groupItemsOf, looseTasksIn, rankOf, topLevelOf } from './tasks';
+import { groupItemsOf, groupOfPhase, looseTasksIn, rankOf, topLevelOf } from './tasks';
 
 export interface ProjectGroupInput {
   name: string;
@@ -27,6 +27,9 @@ export function createProjectGroup(
   phaseIds: string[] = [],
 ): TaskyData {
   const top = topLevelOf(data, projectId);
+  if (data.phases.some((f) => phaseIds.includes(f.id) && !f.deletedAt && groupOfPhase(data, f))) {
+    throw new Error('Alguna fase ya pertenece a un grupo y no puede estar en dos.');
+  }
   const topIndex = new Map(top.map((r, i) => [r.id, i]));
   const chosen = data.phases
     .filter((f) => phaseIds.includes(f.id) && f.projectId === projectId && !f.deletedAt)

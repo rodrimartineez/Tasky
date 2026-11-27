@@ -141,6 +141,12 @@ export function taskOrder(data: TaskyData): (a: Task, b: Task) => number {
   };
 }
 
+/** Grupo vivo al que pertenece un lugar: el suyo o, dentro de una fase, el de la fase (null = ninguno). */
+export function groupOfPlace(data: TaskyData, place: TaskPlace): string | null {
+  const phase = place.phaseId ? data.phases.find((f) => f.id === place.phaseId && !f.deletedAt) : undefined;
+  return phase ? groupOfPhase(data, phase) : place.groupId;
+}
+
 function checkPlace(data: TaskyData, projectId: string, place: TaskPlace): TaskPlace {
   if (place.phaseId && !data.phases.some((f) => f.id === place.phaseId && f.projectId === projectId && !f.deletedAt)) {
     throw new Error('La fase no existe en este proyecto.');
@@ -196,6 +202,11 @@ export function updateTask(data: TaskyData, id: string, patch: TaskPatch, now: T
       const wanted = requestedPlace(data, t, patch);
       const moved = wanted !== null && (wanted.phaseId !== current.phaseId || wanted.groupId !== current.groupId);
       const place = moved ? checkPlace(data, t.projectId, wanted) : { phaseId: t.phaseId, groupId: t.groupId };
+      if (moved) {
+        const from = groupOfPlace(data, current);
+        const to = groupOfPlace(data, place);
+        if (from && to && from !== to) throw new Error('La tarea ya pertenece a otro grupo: sácala de él antes de moverla a otro.');
+      }
       const next: Task = {
         ...t,
         ...place,

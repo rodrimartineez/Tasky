@@ -99,7 +99,7 @@ describe('fases', () => {
     expect(projectOutline(d, 'p').doneContainers).toHaveLength(0);
     d = updateTask(d, 'b', { status: 'done' }, T1);
     expect(outline(d)).toEqual(['c']);
-    expect(projectOutline(d, 'p').doneContainers.map((e) => (e.kind === 'phase' ? e.phase.id : e.group.id))).toEqual(['f']);
+    expect(projectOutline(d, 'p').doneContainers.map((e) => e.phase.id)).toEqual(['f']);
     d = updateTask(d, 'b', { status: 'todo' }, T1);
     expect(outline(d)).toEqual(['f', 'c']);
   });

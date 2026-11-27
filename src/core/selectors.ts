@@ -127,12 +127,12 @@ export interface Outline {
   entries: OutlineEntry[];
   /** Tareas sueltas completadas, de la más reciente a la más antigua. */
   done: Task[];
-  /** Grupos y fases completados (todas sus tareas hechas), en su orden. */
-  doneContainers: (GroupEntry | PhaseEntry)[];
+  /** Fases completadas (todas sus tareas hechas), en su orden. */
+  doneContainers: PhaseEntry[];
 }
 
-/** Un grupo o una fase se completa solo cuando todas sus tareas lo están. */
-const isComplete = (e: Counts) => e.open === 0 && e.done > 0;
+/** Una fase se completa cuando todas sus tareas lo están; un grupo nunca se completa (sigue activo aunque todo lo esté). */
+const isComplete = (e: GroupEntry | PhaseEntry) => e.kind === 'phase' && e.open === 0 && e.done > 0;
 const count = (tasks: Task[]): Counts => ({
   open: tasks.filter((t) => t.status !== 'done').length,
   done: tasks.filter((t) => t.status === 'done').length,
@@ -163,7 +163,7 @@ export function outlineOf(data: TaskyData, projectId: string, groupId: string | 
       ...loose.filter((t) => t.status !== 'done').map((task) => ({ kind: 'task' as const, task })),
     ].sort(byRank),
     done: loose.filter((t) => t.status === 'done').sort(byCompletion),
-    doneContainers: containers.filter(isComplete).sort(byRank),
+    doneContainers: containers.filter((e): e is PhaseEntry => isComplete(e)).sort(byRank),
   };
 }
 

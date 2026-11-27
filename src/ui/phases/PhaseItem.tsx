@@ -37,11 +37,11 @@ function describe(entry: ContainerEntry) {
   return { item: phase, noun: 'la fase', ofNoun: 'de la fase', icon: <Layers />, href: `/project/${phase.projectId}/phase/${phase.id}`, detail: null };
 }
 
-function Count({ open, done, detail }: { open: number; done: number; detail: string | null }) {
+function Count({ open, done, detail, allDone }: { open: number; done: number; detail: string | null; allDone: boolean }) {
   const total = open + done;
   return (
     <span className={styles.count} title={`${detail ? `${detail} · ` : ''}${done} de ${total} tareas completadas`}>
-      {done}/{total}
+      {allDone ? 'Todo completado' : `${done}/${total}`}
     </span>
   );
 }
@@ -78,7 +78,7 @@ export function SortableContainerItem({ entry, ...actions }: { entry: ContainerE
           {item.description && <span className={row.description}>{previewText(item.description)}</span>}
         </Link>
         <span className={row.actions}>
-          <Count open={entry.open} done={entry.done} detail={detail} />
+          <Count open={entry.open} done={entry.done} detail={detail} allDone={entry.kind === 'group' && entry.open === 0 && entry.done > 0} />
           <Menu
             label={`Acciones ${ofNoun} «${item.name}»`}
             trigger={<Ellipsis />}
@@ -106,7 +106,7 @@ export function DoneContainerItem({ entry }: { entry: ContainerEntry }) {
         <span className={`${row.title} ${styles.name}`}>{item.name}</span>
       </Link>
       <span className={row.actions}>
-        <Count open={0} done={entry.done} detail={detail} />
+        <Count open={0} done={entry.done} detail={detail} allDone={false} />
         <ChevronRight className={styles.chevron} aria-hidden />
       </span>
     </div>

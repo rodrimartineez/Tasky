@@ -105,6 +105,7 @@ function PhaseForm({
               <button
                 key={g.id ?? 'none'}
                 type="button"
+                disabled={g.id !== null && currentGroupId !== null && g.id !== currentGroupId}
                 aria-pressed={groupId === g.id}
                 className={`${chips.chip} ${groupId === g.id ? chips.chipSelected : ''}`}
                 onClick={() => setGroupId(g.id)}

@@ -5,7 +5,7 @@ import { addDays, endOfWeek, isScheduledOn, weekday } from '../../core/dueDates'
 import type { LocalDate, Task, TaskStatus, TaskyData, TimeSlot } from '../../core/model';
 import { projectGroups } from '../../core/selectors';
 import { compareRank } from '../../core/rank';
-import { phasesIn, taskPlace, type TaskPlace } from '../../core/tasks';
+import { groupOfPlace, phasesIn, taskPlace, type TaskPlace } from '../../core/tasks';
 import { useTasky } from '../../state/store';
 import { Button } from '../components/Button';
 import { ConfirmDialog } from '../components/ConfirmDialog';
@@ -107,7 +107,22 @@ function TaskForm({
   const [status, setStatus] = useState<TaskStatus>(task?.status ?? 'todo');
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const data = useTasky((s) => s.data);
-  const places = useMemo(() => placeOptions(data, projectId), [data, projectId]);
+  // Una tarea que ya está en un grupo solo puede ir a lugares de ese grupo o fuera de cualquier grupo.
+  // Una tarea nueva solo puede ir al lugar desde el que se crea o a sus hijos directos (sin saltar niveles).
+  const places = useMemo(() => {
+    const all = placeOptions(data, projectId);
+    if (task) {
+      const own = groupOfPlace(data, taskPlace(data, task));
+      return all.filter((o) => {
+        const target = groupOfPlace(data, o.place);
+        return !own || !target || target === own;
+      });
+    }
+    if (initialPlace.phaseId) return all.filter((o) => o.place.phaseId === initialPlace.phaseId);
+    const gid = initialPlace.groupId;
+    // Desde un grupo: el propio grupo y sus fases. Desde el proyecto: sin fase, fases sin grupo y grupos.
+    return all.filter((o) => (gid ? o.place.groupId === gid || groupOfPlace(data, o.place) === gid : !o.place.phaseId || !groupOfPlace(data, o.place)));
+  }, [data, projectId, task, initialPlace]);
   // Un lugar que ya no existe (p. ej. borrado en otro dispositivo) cuenta como «Sin fase».
   const [place, setPlace] = useState<TaskPlace>(() =>
     places.some((o) => placeKey(o.place) === placeKey(initialPlace)) ? initialPlace : { phaseId: null, groupId: null },

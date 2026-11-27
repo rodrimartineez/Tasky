@@ -306,6 +306,8 @@ describe('grupos de proyecto (MCP)', () => {
     const a = (await service.createProjectGroup('wynot', { name: 'A' })).created!;
     const b = (await service.createProjectGroup('wynot', { name: 'B' })).created!;
     const phase = (await service.createPhase('wynot', { name: 'F', groupId: a.id })).created!;
+    await expect(service.updatePhase(phase.id, { groupId: b.id })).rejects.toThrow(ToolError);
+    await service.updatePhase(phase.id, { groupId: null });
     expect((await service.updatePhase(phase.id, { groupId: b.id })).updated.project_group_id).toBe(b.id);
     expect((await service.moveProjectGroup(b.id, 1)).project_groups).toEqual(['B', 'A']);
     await service.deleteProjectGroup(b.id);
