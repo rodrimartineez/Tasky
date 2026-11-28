@@ -32,7 +32,7 @@ export interface GameRelease {
  */
 export const GAME_BUILD = {
   // Activado a petición del usuario (27/11/2026). La temporada sigue en 0 (cambiarla empezaría la progresión de cero).
-  devTools: false,
+  devTools: true,
   season: 0,
   startsOn: null as LocalDate | null,
 } as const;

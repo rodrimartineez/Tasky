@@ -147,6 +147,8 @@ function ray(w: World, weapon: number, x1: number, y1: number, x2: number, y2: n
 
 const FREEZE_TOUGH = 0.3;
 const freezeFor = (e: Enemy, seconds: number) => {
+  // La Muerte no se congela.
+  if (e.def.ai === 'reaper') return;
   const tough = e.elite || e.def.ai === 'boss';
   e.freeze = Math.max(e.freeze ?? 0, seconds * (tough ? FREEZE_TOUGH : 1));
 };
@@ -858,7 +860,7 @@ const quake: Fire = (w, ws, index, n) => {
   }
 };
 /** Columnas de luz del Cataclismo al llegar la onda a su borde. */
-const SUNQUAKE = { pillars: 6, radius: 22, stun: 0.5 };
+const SUNQUAKE = { pillars: 6, radius: 22, stun: 0.25 };
 
 /** Singularidad: fuerza con que atrae (px/s), cada cuánto daña lo que hay dentro y multiplicador de la implosión. */
 const VORTEX = { pull: 46, pullEvolved: 72, tick: 0.3, implosion: 2, implosionEvolved: 5 };
