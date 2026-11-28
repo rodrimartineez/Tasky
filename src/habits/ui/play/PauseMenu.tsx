@@ -86,7 +86,7 @@ function Evolutions({ hud }: { hud: Hud }) {
 }
 
 /** Menú de pausa: continuar, ver el equipamiento, la tabla de evoluciones, o guardar y salir. */
-/** `final`: modo infinito pasado el minuto 15; salir termina la partida (no se guarda para volver). */
+/** `final`: pasado el minuto 15; salir termina la partida (no se guarda para volver). */
 export function PauseMenu({ hud, onResume, onExit, final = false }: { hud: Hud | null; onResume: () => void; onExit: () => void; final?: boolean }) {
   const [view, setView] = useState<'menu' | 'loadout' | 'evolutions'>('menu');
   if (view !== 'menu' && hud)

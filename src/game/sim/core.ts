@@ -99,8 +99,8 @@ const minutes = (w: World) => (w.time * TIMELINE) / 60;
  *   en el 15), con más vida y daño.
  */
 export const RAMP = {
-  hp: [0.08, 0.0075],
-  damage: [0.035, 0.0005],
+  hp: [0.1, 0.009],
+  damage: [0.05, 0.0007],
   /** Veteranos: minuto en que empiezan, fracción en el 30 y refuerzo (vida, daño, tamaño, experiencia). */
   champion: { from: 8, share: 1 / 8, hp: 3, damage: 1.3, radius: 1.2, xp: 3 },
 };

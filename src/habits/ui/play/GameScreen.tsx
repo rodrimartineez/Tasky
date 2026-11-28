@@ -184,7 +184,7 @@ export default function GameScreen({ level, attempt, config, resume, onFinish, o
   const [banishing, setBanishing] = useState(false);
   const hudRef = useRef<Hud | null>(null);
   // Infinito pasado el minuto 15: el nivel ya está superado y salir termina la partida.
-  const pastEnd = config.mode === 'infinite' && (hud?.time ?? 0) >= RUN_SECONDS;
+  const pastEnd = (hud?.time ?? 0) >= RUN_SECONDS;
   // Mayor número de repeticiones/descartes visto: los botones solo aparecen si el jugador tiene esas mejoras.
   const [tools, setTools] = useState({ rerolls: 0, banishes: 0 });
   const [result, setResult] = useState<RunResult | null>(null);

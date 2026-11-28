@@ -254,6 +254,9 @@ function updateEnemy(w: World, e: Enemy, dt: number) {
       }
       break;
     case 'reaper':
+      // Inmune a empujes: ni retroceso ni desplazamiento ajeno.
+      e.kx = 0;
+      e.ky = 0;
       e.t1 -= dt;
       if (dist < e.radius + PLAYER_RADIUS + 6) reaperStrike(w, e);
       break;
