@@ -97,7 +97,7 @@ export const EVOLUTIONS: EvolutionDef[] = [
     'cloud',
     'lodestone',
     { id: 'plague', name: 'Brebaje Santo', description: 'Charcos que crecen y te siguen allá donde vas.', icon: 'w_plague', proj: 'x_plague', interval: 0.3 },
-    { damage: 400, cooldown: 5, amount: 4, area: 45, duration: 5 },
+    { damage: 320, cooldown: 5.5, amount: 4, area: 40, duration: 4.5 },
   ),
   evolution(
     'ricochet',
@@ -186,7 +186,7 @@ export const EVOLUTIONS: EvolutionDef[] = [
     'quake',
     'scales',
     { id: 'sunquake', name: 'Cataclismo Solar', description: 'Ondas enormes que aturden; al llegar a su borde estallan columnas de luz.', icon: 'w_sunquake', color: 0xffe08a, interval: 0.3 },
-    { damage: 78, cooldown: 2.1, amount: 2, area: 100, duration: 0.4, knockback: 90 },
+    { damage: 65, cooldown: 2.3, amount: 2, area: 90, duration: 0.4, knockback: 75 },
   ),
   evolution(
     'vortex',

@@ -596,8 +596,8 @@ const UTILITY = ['laurel'];
 
 /**
  * Evoluciones sin el tope de 3 veces en la partida de 5 minutos. El Brebaje Santo: sus charcos siguen al jugador y en
- * esa partida su cifra depende mucho de qué otras armas coja el bot (de ×2,7 a ×5 de la mejor base); el usuario decidió
- * dejarlo como estaba (27/11/2026). En la medida de 90 s contra enemigos duros sí respeta el tope.
+ * esa partida su cifra depende mucho de qué otras armas coja el bot. En la medida de 90 s contra enemigos duros sí
+ * respeta el tope.
  */
 const UNCAPPED = ['plague'];
 

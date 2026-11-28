@@ -505,7 +505,7 @@ const victory: Fire = (w, ws, index, n) => {
       f.angle = 0;
       f.radius = radius * 3;
       f.life = f.total = 0.3;
-      emit(w, { type: 'shake', power: 2 });
+      emit(w, { type: 'shake', power: 1.5 });
       continue;
     }
     slashAt(w, ws, index, x, y, radius, rand(w) * Math.PI * 2);
@@ -855,12 +855,12 @@ const quake: Fire = (w, ws, index, n) => {
     p.damage = ws.stats.damage;
     p.knockback = ws.stats.knockback;
     p.color = tint(ws, 0xffc65a);
-    emit(w, { type: 'shake', power: ws.id === 'sunquake' ? 2.5 : 1.4 });
+    emit(w, { type: 'shake', power: ws.id === 'sunquake' ? 1.8 : 1.4 });
     emit(w, { type: 'puff', x: player.x, y: player.y + 6, color: 0xd8c8a8, count: 6 });
   }
 };
 /** Columnas de luz del Cataclismo al llegar la onda a su borde. */
-const SUNQUAKE = { pillars: 6, radius: 22, stun: 0.2 };
+const SUNQUAKE = { pillars: 5, radius: 18, stun: 0.15 };
 
 /** Singularidad: fuerza con que atrae (px/s), cada cuánto daña lo que hay dentro y multiplicador de la implosión. */
 const VORTEX = { pull: 46, pullEvolved: 72, tick: 0.3, implosion: 2, implosionEvolved: 5 };
@@ -1048,7 +1048,7 @@ function bounceEdges(w: World, p: Projectile): boolean {
 }
 
 const CLOUD_TICK = 0.5;
-const BORRA = { speed: 10, growth: 3 };
+const BORRA = { speed: 8, growth: 2.5 };
 const LEAP_GRAVITY = 230;
 const TORNADO_TURN = 0.35;
 
