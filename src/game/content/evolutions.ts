@@ -125,8 +125,7 @@ export const EVOLUTIONS: EvolutionDef[] = [
   ),
   evolution(
     'clock',
-    // Las dos recetas de dos pasivas las piden al nivel 5 (antes al 9, el máximo) y dan evoluciones más fuertes (27/11/2026).
-    { passives: ['silverring', 'goldring'], level: 5 },
+    { passives: ['silverring', 'goldring'], maxed: true },
     {
       id: 'eternal',
       name: 'Fin de los Tiempos',
@@ -137,7 +136,7 @@ export const EVOLUTIONS: EvolutionDef[] = [
   ),
   evolution(
     'laurel',
-    { passives: ['medalleft', 'medalright'], level: 5 },
+    { passives: ['medalleft', 'medalright'], maxed: true },
     { id: 'thornmail', name: 'Sudario Carmesí', description: 'Cuatro cargas que se recargan rápido; ningún golpe te quita más de 8 de vida y cada carga gastada estalla devolviendo el daño.', icon: 'w_thornmail', color: 0xff5a6a },
     { cooldown: 4.5, amount: 4, area: 55, knockback: 30 },
   ),

@@ -860,7 +860,7 @@ const quake: Fire = (w, ws, index, n) => {
   }
 };
 /** Columnas de luz del Cataclismo al llegar la onda a su borde. */
-const SUNQUAKE = { pillars: 6, radius: 22, stun: 0.25 };
+const SUNQUAKE = { pillars: 6, radius: 22, stun: 0.2 };
 
 /** Singularidad: fuerza con que atrae (px/s), cada cuánto daña lo que hay dentro y multiplicador de la implosión. */
 const VORTEX = { pull: 46, pullEvolved: 72, tick: 0.3, implosion: 2, implosionEvolved: 5 };

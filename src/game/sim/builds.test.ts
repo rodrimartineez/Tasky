@@ -114,8 +114,8 @@ describe('catálogo cerrado', () => {
     expect(recipe('tempest')).toEqual(['storm', 'horn']);
     expect(recipe('fullmoon')).toEqual(['pentagram', 'tome']);
     expect(recipe('cataract')).toEqual(['mana', 'skull']);
-    expect(recipe('eternal')).toEqual(['clock', 'silverring', 'goldring', 'nivel 5']);
-    expect(recipe('thornmail')).toEqual(['laurel', 'medalleft', 'medalright', 'nivel 5']);
+    expect(recipe('eternal')).toEqual(['clock', 'silverring', 'goldring', 'max']);
+    expect(recipe('thornmail')).toEqual(['laurel', 'medalleft', 'medalright', 'max']);
     expect(recipe('galedance')).toEqual(['vento', 'galewhip']);
     expect(recipe('sole')).toEqual(['victory', 'puzzlebox', 'max']);
     expect(recipe('muspell')).toEqual(['misspell', 'puzzlebox', 'max']);
